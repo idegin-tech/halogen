@@ -7,7 +7,7 @@ import {
   DropdownMenu,
   DropdownItem,
 } from "@heroui/react";
-import { ToggleButton } from "../ToggleBtn";
+import { ToggleButton } from "../components/ToggleBtn";
 
 
 export default function BuilderHeader() {
@@ -19,25 +19,11 @@ export default function BuilderHeader() {
         }
       >
         <ToggleButton Icon={ArrowLeft} label={"Go back"} />
-        <div className={"w-full flex items-center justify-between"}>
-          <div
-            className={
-              "flex items-center text-content4 gap-sm cursor-pointer hover:text-foreground hover:bg-content2 p-sm rounded-xl"
-            }
-          >
-            <InfoIcon />
-            <small>The name of the project</small>
-          </div>
-          <div
-            className={
-              "flex"
-            }
-          >
-            <ToggleButton isActive Icon={FileIcon} label={"Pages"} placement="bottom" />
-            <ToggleButton Icon={BlocksIcon} label={"Blocks"} placement="bottom" />
-            <ToggleButton Icon={BrushIcon} label={"Theme"} placement="bottom" />
-            <ToggleButton Icon={SettingsIcon} label={"Site settings"} placement="bottom" />
-          </div>
+        <div className={"w-full flex items-center justify-center"}>
+          <ToggleButton isActive Icon={FileIcon} label={"Pages"} placement="bottom" />
+          <ToggleButton Icon={BlocksIcon} label={"Blocks"} placement="bottom" />
+          <ToggleButton Icon={BrushIcon} label={"Theme"} placement="bottom" />
+          <ToggleButton Icon={SettingsIcon} label={"Site settings"} placement="bottom" />
         </div>
         <div className={"flex items-center gap-default"}>
           <Avatar src="https://i.pravatar.cc/150?u=a042581f4e29026024d" />

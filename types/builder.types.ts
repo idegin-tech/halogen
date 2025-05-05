@@ -1,8 +1,8 @@
-
 export type ProjectData = {
   id: string;
   name: string;
   description?: string;
+  thumbnail?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -10,9 +10,10 @@ export type ProjectData = {
 export type PageData = {
   id: string;
   name: string;
-  slug: string;
-  route: string;
-  project: ProjectData;
+  path?: string;
+  slug?: string;
+  route?: string;
+  project?: ProjectData;
   createdAt: string;
   updatedAt: string;
 }

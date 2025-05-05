@@ -4,6 +4,7 @@ import { useBuilderContext } from '@/context/builder.context';
 import { BlockInstance } from '@/types/block.types';
 import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
+import AddBlock from '../components/AddBlock';
 
 type BlockRendererProps = {
   pageId?: string;
@@ -36,6 +37,7 @@ export default function BlockRenderer({ pageId }: BlockRendererProps) {
           isSelected={state.selectedBlockId === block.id}
         />
       ))}
+      <AddBlock />
     </div>
   );
 }

@@ -19,7 +19,7 @@ export default function PageBuilderPreview({}: Props) {
       {
         show && (
           <Frame
-            className='min-h-screen w-full'
+            className='h-body w-full max-h-body'
             initialContent={`
                     <!DOCTYPE html>
                     <html>
