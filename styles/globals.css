@@ -1,3 +1,9 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+    --header-height: 3.5rem !important;
+    --body-height: calc(100vh - var(--header-height)) !important;
+    --panel-body-height: calc(100vh - (var(--header-height) * 2));
+}

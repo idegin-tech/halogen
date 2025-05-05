@@ -1,11 +1,9 @@
-import React from 'react'
+import PageBuilder from "@/components/page-builder/PageBuilder";
 
-export default function page() {
+export default function Page() {
   return (
-    <div>
-      <a href="/projects/12345/builder">
-        <h1>Projects</h1>
-      </a>
-    </div>
-  )
+    <>
+      <PageBuilder />
+    </>
+  );
 }
