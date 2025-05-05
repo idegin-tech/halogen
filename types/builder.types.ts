@@ -13,6 +13,7 @@ export type PageData = {
   path?: string;
   slug?: string;
   route?: string;
+  isStatic?: boolean;
   project?: ProjectData;
   createdAt: string;
   updatedAt: string;

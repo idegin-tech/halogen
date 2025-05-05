@@ -8,6 +8,7 @@ import {
   DropdownItem,
 } from "@heroui/react";
 import { ToggleButton } from "../components/ToggleBtn";
+import TopPanelToggler from "../components/top-panel/TopPanelToggler";
 
 
 export default function BuilderHeader() {
@@ -15,16 +16,11 @@ export default function BuilderHeader() {
     <>
       <header
         className={
-          "bg-content1 h-14 bg-card flex justify-between border-b border-divider items-center"
+          "bg-content1 h-14 bg-card flex justify-between border-b border-divider items-center relative z-[100]"
         }
       >
         <ToggleButton Icon={ArrowLeft} label={"Go back"} />
-        <div className={"w-full flex items-center justify-center"}>
-          <ToggleButton isActive Icon={FileIcon} label={"Pages"} placement="bottom" />
-          <ToggleButton Icon={BlocksIcon} label={"Blocks"} placement="bottom" />
-          <ToggleButton Icon={BrushIcon} label={"Theme"} placement="bottom" />
-          <ToggleButton Icon={SettingsIcon} label={"Site settings"} placement="bottom" />
-        </div>
+        <TopPanelToggler/>
         <div className={"flex items-center gap-default"}>
           <Avatar src="https://i.pravatar.cc/150?u=a042581f4e29026024d" />
           <Dropdown>

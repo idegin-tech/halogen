@@ -1,3 +1,4 @@
+import { cn } from "@/lib/utils";
 import { Tooltip } from "@heroui/tooltip";
 import { LucideIcon } from "lucide-react";
 
@@ -6,10 +7,12 @@ export const ToggleButton = ({
     isActive,
     label,
     placement = "right",
+    onClick
   }: {
     Icon: LucideIcon;
     label: string;
     isActive?: boolean;
+    onClick?: () => void;
     placement?:
       | "top"
       | "bottom"
@@ -27,8 +30,12 @@ export const ToggleButton = ({
       <>
         <Tooltip content={label} placement={placement}>
           <div
+            onClick={onClick}
+            data-active={isActive}
             className={
-              "min-w-[3.5rem] w-[3.5rem] cursor-pointer hover:text-foreground hover:bg-content2 border-divider text-content4 h-header flex items-center justify-center"
+              cn("min-w-[3.5rem] w-[3.5rem] cursor-pointer hover:text-foreground hover:bg-content2 border-divider text-content4 h-header flex items-center justify-center", {
+                "bg-content2 text-foreground": isActive,
+              })
             }
           >
             <Icon />

@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useEffect, useMemo, useCallback } from "react";
 import { useBuilderContext } from "./builder.context";
 import { debounce } from "lodash";
+import { PageData } from "@/types/builder.types";
 
 interface SyncContextInterface {
   isLoading: boolean;
@@ -24,7 +25,6 @@ export function SyncProvider({
   const [isSaving, setIsSaving] = React.useState(false);
   const [lastSaved, setLastSaved] = React.useState<Date | null>(null);
 
-  // Load state from session storage on initial render
   useEffect(() => {
     if (!projectId) return;
     
@@ -45,15 +45,15 @@ export function SyncProvider({
     }
   }, [projectId]);
 
-  // Create a default home page if needed
   const createDefaultPage = useCallback(() => {
     const hasPages = state.pages && state.pages.length > 0;
     
     if (!hasPages) {
-      const homePage = {
+      const homePage: PageData = {
         id: "home",
         name: "Home",
         path: "/",
+        isStatic: true,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };
@@ -65,7 +65,6 @@ export function SyncProvider({
     }
   }, [state.pages, updateBuilderState]);
 
-  // Save to session storage with debounce
   const debouncedSave = useMemo(
     () =>
       debounce((data) => {
@@ -84,7 +83,6 @@ export function SyncProvider({
     [projectId]
   );
 
-  // Listen for state changes and save to session storage
   useEffect(() => {
     if (isLoading) return;
     debouncedSave(state);
