@@ -1,4 +1,4 @@
-import PropertyForm from "@/components/page-builder/right-panel/block-config-form/PropertyForm";
+import BlockConfigForm from "./block-config-form/BlockConfigForm";
 
 export default function RightPanel() {
   return (
@@ -8,7 +8,7 @@ export default function RightPanel() {
           "w-[400px] border-l border-divider h-[calc(100vh-4rem)] bg-content1"
         }
       >
-        <PropertyForm />
+        <BlockConfigForm />
       </aside>
     </>
   );

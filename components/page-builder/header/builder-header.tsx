@@ -1,5 +1,5 @@
 import { Avatar, Button } from "@heroui/react";
-import { ArrowLeft, DownloadIcon, MenuIcon, SaveIcon } from "lucide-react";
+import { ArrowLeft, BlocksIcon, BrushIcon, DownloadIcon, FileIcon, MenuIcon, MoonIcon, SaveIcon, SettingsIcon } from "lucide-react";
 import { InfoIcon } from "@heroui/shared-icons";
 import {
   Dropdown,
@@ -7,8 +7,8 @@ import {
   DropdownMenu,
   DropdownItem,
 } from "@heroui/react";
+import { ToggleButton } from "../ToggleBtn";
 
-import { ToggleButton } from "@/components/page-builder/left-panel/left-panel";
 
 export default function BuilderHeader() {
   return (
@@ -19,7 +19,7 @@ export default function BuilderHeader() {
         }
       >
         <ToggleButton Icon={ArrowLeft} label={"Go back"} />
-        <div className={"w-full flex items-center justify-center"}>
+        <div className={"w-full flex items-center justify-between"}>
           <div
             className={
               "flex items-center text-content4 gap-sm cursor-pointer hover:text-foreground hover:bg-content2 p-sm rounded-xl"
@@ -27,6 +27,16 @@ export default function BuilderHeader() {
           >
             <InfoIcon />
             <small>The name of the project</small>
+          </div>
+          <div
+            className={
+              "flex"
+            }
+          >
+            <ToggleButton isActive Icon={FileIcon} label={"Pages"} placement="bottom" />
+            <ToggleButton Icon={BlocksIcon} label={"Blocks"} placement="bottom" />
+            <ToggleButton Icon={BrushIcon} label={"Theme"} placement="bottom" />
+            <ToggleButton Icon={SettingsIcon} label={"Site settings"} placement="bottom" />
           </div>
         </div>
         <div className={"flex items-center gap-default"}>

@@ -1,5 +1,38 @@
-export type BlockData = {
-  block_id: string;
-};
 
-export type FontSize = "h1" | "h2" | "h3" | "h4" | "h5" | "h6" | "p" | "small";
+export type ProjectData = {
+  id: string;
+  name: string;
+  description?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type PageData = {
+  id: string;
+  name: string;
+  slug: string;
+  route: string;
+  project: ProjectData;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type VariableSet = {
+  id: string;
+  name: string;
+  slug: string;
+  project: ProjectData;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type Variable = {
+  id: string;
+  name: string;
+  slug: string;
+  type: "color" | "text" | "number" | "boolean";
+  value: string;
+  variableSet: VariableSet;
+  createdAt: string;
+  updatedAt: string;
+}
