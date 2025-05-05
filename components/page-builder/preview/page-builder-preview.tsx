@@ -30,10 +30,6 @@ export default function PageBuilderPreview({}: Props) {
                         <style type="text/tailwindcss">
                           @layer base {
                             :root {
-                              --header-height: 3.5rem;
-                              --body-height: calc(100vh - var(--header-height));
-                              --panel-body-height: calc(100vh - (var(--header-height) * 2));
-                              
                               --background: 0 0% 100%;
                               --foreground: 240 10% 3.9%;
                               

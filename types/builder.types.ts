@@ -22,19 +22,21 @@ export type PageData = {
 export type VariableSet = {
   id: string;
   name: string;
-  slug: string;
-  project: ProjectData;
-  createdAt: string;
-  updatedAt: string;
+  key: string;
+  project?: string | ProjectData;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export type Variable = {
   id: string;
   name: string;
-  slug: string;
+  key: string;
   type: "color" | "text" | "number" | "boolean";
-  value: string;
-  variableSet: VariableSet;
-  createdAt: string;
-  updatedAt: string;
+  project?: string | ProjectData;
+  primaryValue: string;
+  secondaryValue: string;
+  variableSet: VariableSet | string;
+  createdAt?: string;
+  updatedAt?: string;
 }
