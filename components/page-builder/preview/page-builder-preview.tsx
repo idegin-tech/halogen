@@ -36,9 +36,6 @@ export default function PageBuilderPreview({}: Props) {
                               --card: 0 0% 100%;
                               --card-foreground: 240 10% 3.9%;
                               
-                              --popover: 0 0% 100%;
-                              --popover-foreground: 240 10% 3.9%;
-                              
                               --primary: 261 69% 61%;
                               --primary-foreground: 0 0% 98%;
                               
@@ -67,9 +64,6 @@ export default function PageBuilderPreview({}: Props) {
                               
                               --card: 240 10% 3.9%;
                               --card-foreground: 0 0% 98%;
-                              
-                              --popover: 240 10% 3.9%;
-                              --popover-foreground: 0 0% 98%;
                               
                               --primary: 261 69% 61%;
                               --primary-foreground: 0 0% 98%;
@@ -105,8 +99,6 @@ export default function PageBuilderPreview({}: Props) {
                             --color-accent-foreground: hsl(var(--accent-foreground));
                             --color-card: hsl(var(--card));
                             --color-card-foreground: hsl(var(--card-foreground));
-                            --color-popover: hsl(var(--popover));
-                            --color-popover-foreground: hsl(var(--popover-foreground));
                             --color-destructive: hsl(var(--destructive));
                             --color-destructive-foreground: hsl(var(--destructive-foreground));
                             --color-border: hsl(var(--border));

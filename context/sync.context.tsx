@@ -4,6 +4,7 @@ import React, { createContext, useContext, useEffect, useMemo, useCallback } fro
 import { useBuilderContext } from "./builder.context";
 import { debounce } from "lodash";
 import { PageData } from "@/types/builder.types";
+import { colorVariables, variableSets } from "@/config/variables";
 
 interface SyncContextInterface {
   isLoading: boolean;
@@ -27,15 +28,14 @@ export function SyncProvider({
 
   useEffect(() => {
     if (!projectId) return;
-    
+
     try {
       const savedState = sessionStorage.getItem(`halogen_project_${projectId}`);
-      
+
       if (savedState) {
         const parsedState = JSON.parse(savedState);
         updateBuilderState(parsedState);
       } else {
-        // Create a default home page if none exists
         createDefaultPage();
       }
     } catch (error) {
@@ -47,29 +47,29 @@ export function SyncProvider({
 
   const createDefaultPage = useCallback(() => {
     const hasPages = state.pages && state.pages.length > 0;
-    
-    if (!hasPages) {
-      const homePage: PageData = {
-        id: "home",
-        name: "Home",
-        path: "/",
-        isStatic: true,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
-      
-      updateBuilderState({
-        pages: [homePage],
-        selectedPageId: homePage.id
-      });
-    }
+    const hasVariables = state.variableSets.length > 0 && state.variables.length > 0;
+
+    const homePage: PageData = {
+      id: "home",
+      name: "Home",
+      path: "/",
+      isStatic: true,
+      //todo: Add a project ID here and make sure it's required
+    };
+
+    updateBuilderState({
+      pages: hasPages ? state.pages : [homePage],
+      variables: hasVariables ? state.variables : [...colorVariables],
+      variableSets: hasVariables ? state.variableSets: [...variableSets],
+      selectedPageId: hasPages ? state?.pages[0]?.id : homePage.id
+    });
   }, [state.pages, updateBuilderState]);
 
   const debouncedSave = useMemo(
     () =>
       debounce((data) => {
         if (!projectId) return;
-        
+
         setIsSaving(true);
         try {
           sessionStorage.setItem(`halogen_project_${projectId}`, JSON.stringify(data));

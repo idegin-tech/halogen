@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, ReactNode, useCallback } from "react";
-import { PageData, ProjectData } from "@/types/builder.types";
+import { PageData, ProjectData, Variable, VariableSet } from "@/types/builder.types";
 import { BlockInstance } from "@/types/block.types";
 
 type BuilderState = {
@@ -10,6 +10,9 @@ type BuilderState = {
   blocks: BlockInstance[];
   selectedPageId: string | null;
   selectedBlockId: string | null;
+
+  variableSets: VariableSet[];
+  variables: Variable[]
 };
 
 interface BuilderContextInterface {
@@ -26,6 +29,9 @@ export function BuilderProvider({ children }: { children: ReactNode }) {
     blocks: [],
     selectedPageId: null,
     selectedBlockId: null,
+
+    variables: [],
+    variableSets: []
   });
 
   const updateBuilderState = useCallback((updates: Partial<BuilderState>) => {

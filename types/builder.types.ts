@@ -15,8 +15,8 @@ export type PageData = {
   route?: string;
   isStatic?: boolean;
   project?: ProjectData;
-  createdAt: string;
-  updatedAt: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export type VariableSet = {
@@ -32,7 +32,7 @@ export type Variable = {
   id: string;
   name: string;
   key: string;
-  type: "color" | "text" | "number" | "boolean";
+  type: "color" | "text" | "uom" | "boolean";
   project?: string | ProjectData;
   primaryValue: string;
   secondaryValue: string;
