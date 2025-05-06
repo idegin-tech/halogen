@@ -21,7 +21,7 @@ export default function BlockConfigForm() {
       }
 
       try {
-        const componentPath = `@/blocks/${selectedBlock.folderName}/${selectedBlock.fileName.replace('.tsx', '')}`;
+        const componentPath = `@/blocks/${selectedBlock.folderName}/${selectedBlock.subFolder}/_block`;
         const module = await import(componentPath);
         const properties: BlockProperties = module.properties;
         

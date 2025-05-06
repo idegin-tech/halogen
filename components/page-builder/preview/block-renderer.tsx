@@ -61,12 +61,12 @@ function BlockComponent({ block, isSelected }: BlockComponentProps) {
   useEffect(() => {
     const importComponent = async () => {
       try {
-        const componentPath = `@/blocks/${block.folderName}/${block.fileName.replace('.tsx', '')}`;
+        const componentPath = `@/blocks/${block.folderName}/${block.subFolder}/_block`;
         
         const module = await import(componentPath);
         
         const component = module.default || (
-          module[block.fileName.split('.')[0]] || 
+          module._block || 
           Object.values(module).find(exportedItem => 
             typeof exportedItem === 'function' && 
             exportedItem.name && 
@@ -76,13 +76,13 @@ function BlockComponent({ block, isSelected }: BlockComponentProps) {
         
         setComponent(() => component);
       } catch (err) {
-        console.error(`Error loading component: ${block.folderName}/${block.fileName}`, err);
-        setError(`Failed to load component: ${block.folderName}/${block.fileName}`);
+        console.error(`Error loading component: ${block.folderName}/${block.subFolder}/_block`, err);
+        setError(`Failed to load component: ${block.folderName}/${block.subFolder}/_block`);
       }
     };
 
     importComponent();
-  }, [block.folderName, block.fileName]);
+  }, [block.folderName, block.subFolder]);
 
   if (error) {
     return <div className="block-error p-4 bg-red-50 border border-red-300 text-red-700">

@@ -33,7 +33,7 @@ export type BlockInstance = {
     index: number;
     page: PageData | string;
     folderName: string;
-    fileName: string;
+    subFolder: string;
 
     value: Record<string, any>;
 }

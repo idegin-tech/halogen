@@ -67,7 +67,6 @@ export default function PagesTopPanel({show, onHide}:{show: boolean, onHide: () 
         }
     };
 
-    // Updated to accept name parameter and return page ID
     const handleAddPage = (name?: string) => {
         const pageTitle = name || 'New Page';
         const newPage = addPage({ 

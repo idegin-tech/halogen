@@ -3,6 +3,8 @@
 import React, { createContext, useContext, useState, ReactNode, useCallback } from "react";
 import { PageData, ProjectData, Variable, VariableSet } from "@/types/builder.types";
 import { BlockInstance } from "@/types/block.types";
+import { blocks } from "@/__mock__/blocks.mock";
+import { pages } from "@/__mock__/page.mock";
 
 type BuilderState = {
   project: ProjectData | null;
@@ -25,9 +27,9 @@ const BuilderContext = createContext<BuilderContextInterface | undefined>(undefi
 export function BuilderProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<BuilderState>({
     project: null,
-    pages: [],
-    blocks: [],
-    selectedPageId: null,
+    pages: pages,
+    blocks: blocks,
+    selectedPageId: pages[0]?.id || null,
     selectedBlockId: null,
 
     variables: [],

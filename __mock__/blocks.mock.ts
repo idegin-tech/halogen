@@ -6,7 +6,7 @@ export const blocks:BlockInstance[] = [
         index: 0,
         page: "1",
         folderName: "hero",
-        fileName: "saas.tsx",
+        subFolder: "basic_saas_hero",
         value: {
             badgeText: {
               value: "Now available for all businesses"
@@ -51,7 +51,7 @@ export const blocks:BlockInstance[] = [
         index: 1,
         page: "1",
         folderName: "testimonials",
-        fileName: "basic.tsx",
+        subFolder: "simple_testimonial",
         value: {
             heading: {
               value: "Trusted by teams worldwide"

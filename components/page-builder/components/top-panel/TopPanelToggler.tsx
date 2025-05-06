@@ -3,6 +3,7 @@ import { BlocksIcon, BrushIcon, FileIcon, SettingsIcon } from "lucide-react";
 import { ToggleButton } from '../ToggleBtn';
 import PagesTopPanel from './PagesTopPanel';
 import ThemeTopPanel from './ThemeTopPanel';
+import BlocksTopPanel from './BlocksTopPanel';
 
 export default function TopPanelToggler() {
     const [activePanel, setActivePanel] = React.useState<string | null>(null);
@@ -33,6 +34,7 @@ export default function TopPanelToggler() {
             </div>
             <PagesTopPanel onHide={() => setActivePanel(null)} show={activePanel === 'pages'} />
             <ThemeTopPanel onHide={() => setActivePanel(null)} show={activePanel === 'theme'} />
+            <BlocksTopPanel onHide={() => setActivePanel(null)} show={activePanel === 'blocks'} />
         </>
     )
 }
