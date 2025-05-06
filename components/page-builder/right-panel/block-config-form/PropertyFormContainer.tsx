@@ -16,7 +16,7 @@ export default function PropertyFormContainer({
           <div className={"w-[50%] flex items-center"}>{leftComponent}</div>
           <div />
         </header>
-        <div className={"p-default h-panel-body max-h-panel-body overflow-y-auto space-y-default"}>
+        <div className={"p-default h-panel-body max-h-panel-body overflow-y-auto space-y-default select-none"}>
           {children}
         </div>
       </div>

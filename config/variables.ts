@@ -5,6 +5,11 @@ export const variableSets: VariableSet[] = [
         id: "set_colors",
         name: "Colors",
         key: "colors",
+    },
+    {
+        id: "set_radius",
+        name: "Border Radius",
+        key: "radius",
     }
 ]
 
@@ -161,5 +166,53 @@ export const colorVariables: Variable[] = [
         primaryValue: "261 69% 61%",
         secondaryValue: "261 69% 61%",
         variableSet: 'set_colors',
+    },
+];
+
+export const radiusVariables: Variable[] = [
+    {
+        id: '--radius-sm',
+        name: 'Small',
+        key: '--radius-sm',
+        type: 'size',
+        primaryValue: "0.125rem",
+        secondaryValue: "0.125rem",
+        variableSet: 'set_radius',
+    },
+    {
+        id: '--radius-md',
+        name: 'Medium',
+        key: '--radius-md',
+        type: 'size',
+        primaryValue: "0.25rem",
+        secondaryValue: "0.25rem",
+        variableSet: 'set_radius',
+    },
+    {
+        id: '--radius-lg',
+        name: 'Large',
+        key: '--radius-lg',
+        type: 'size',
+        primaryValue: "0.5rem",
+        secondaryValue: "0.5rem",
+        variableSet: 'set_radius',
+    },
+    {
+        id: '--radius-xl',
+        name: 'Extra Large',
+        key: '--radius-xl',
+        type: 'size',
+        primaryValue: "0.75rem",
+        secondaryValue: "0.75rem",
+        variableSet: 'set_radius',
+    },
+    {
+        id: '--radius-full',
+        name: 'Full',
+        key: '--radius-full',
+        type: 'size',
+        primaryValue: "9999px",
+        secondaryValue: "9999px",
+        variableSet: 'set_radius',
     },
 ];

@@ -424,7 +424,7 @@ export default function BlockConfigForm() {
 
   if (!selectedBlock || !blockProperties) {
     return (
-      <div className="h-full flex items-center justify-center text-center p-6 text-gray-500">
+      <div className="h-full flex items-center justify-center text-center p-6 text-content4 select-none">
         <div>
           <p className="mb-2 text-lg font-medium">No Block Selected</p>
           <p className="text-sm">Select a block in the preview to edit its properties</p>
@@ -438,7 +438,7 @@ export default function BlockConfigForm() {
       leftComponent={
         <div>
           <h3 className="text-md font-semibold">{blockProperties.name}</h3>
-          <p className="text-xs text-gray-500">{blockProperties.description}</p>
+          <p className="text-xs text-content4 select-none">{blockProperties.description}</p>
         </div>
       }
     >

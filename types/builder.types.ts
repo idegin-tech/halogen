@@ -32,7 +32,7 @@ export type Variable = {
   id: string;
   name: string;
   key: string;
-  type: "color" | "text" | "uom" | "boolean";
+  type: "color" | "text" | "size" | "boolean";
   project?: string | ProjectData;
   primaryValue: string;
   secondaryValue: string;

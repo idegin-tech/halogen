@@ -15,7 +15,7 @@ type Props = {
     activeSetId: string | null;
     children: React.ReactNode;
     onSetActiveSet: (id: string) => void;
-    onAddSet: (name?: string) => string; // Updated to accept name parameter and return ID
+    onAddSet?: (name?: string) => string; 
     onSetChange: (data:any) => void;
     onRemoveSet: (id: string) => void;
     onClose: () => void;
@@ -40,7 +40,6 @@ export default function TopPanelContainer(
     const [nameError, setNameError] = useState<string | null>(null);
     const newInputRef = useRef<HTMLInputElement>(null);
     
-    // Focus the input when creating a new set
     useEffect(() => {
         if (isAddingNew && newInputRef.current) {
             newInputRef.current.focus();
@@ -70,7 +69,7 @@ export default function TopPanelContainer(
     };
     
     const handleCreateNewSet = () => {
-        if (!newSetName.trim()) {
+        if (!newSetName.trim() || !onAddSet) {
             setIsAddingNew(false);
             return;
         }
@@ -112,7 +111,7 @@ export default function TopPanelContainer(
         <>
         {show && <div className='fixed left-0 right-0 bg-black/30 z-40 cursor-pointer h-body bottom-0' onClick={onClose} />}
         <div className={cn('h-[calc(var(--body-height)-3rem)] bg-content1-foreground max-w-[1200px] min-w-[900px] shadow-md top-[calc(var(--header-height)+10px)] z-50 left-1/2 transform -translate-x-3/4 absolute border-divider rounded-xl overflow-hidden flex flex-col transition-all duration-200', {
-            '-top-[90vh]': !show,
+            '-top-[95vh]': !show,
         })}>
             <div className='flex-1 bg-background flex'>
                 <div className='min-w-[35%] max-w-[35%] h-full bg-content2 border-r border-divider select-none'>
@@ -204,7 +203,7 @@ export default function TopPanelContainer(
                     <header className='h-header border-b border-divider flex justify-between items-center px-2'>
 
                     </header>
-                    <div className='flex-1 overflow-x-hidden overflow-y-auto p-2'>
+                    <div className='flex-1 overflow-x-hidden overflow-y-auto p-2 max-h-[calc(var(--body-height)-7rem)]'>
                         {children}
                     </div>
                 </div>

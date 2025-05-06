@@ -4,7 +4,7 @@ import React, { createContext, useContext, useEffect, useMemo, useCallback } fro
 import { useBuilderContext } from "./builder.context";
 import { debounce } from "lodash";
 import { PageData } from "@/types/builder.types";
-import { colorVariables, variableSets } from "@/config/variables";
+import { colorVariables, radiusVariables, variableSets } from "@/config/variables";
 
 interface SyncContextInterface {
   isLoading: boolean;
@@ -59,7 +59,7 @@ export function SyncProvider({
 
     updateBuilderState({
       pages: hasPages ? state.pages : [homePage],
-      variables: hasVariables ? state.variables : [...colorVariables],
+      variables: hasVariables ? state.variables : [...colorVariables, ...radiusVariables],
       variableSets: hasVariables ? state.variableSets: [...variableSets],
       selectedPageId: hasPages ? state?.pages[0]?.id : homePage.id
     });
