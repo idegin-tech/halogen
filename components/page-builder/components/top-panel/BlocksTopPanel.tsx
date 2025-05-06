@@ -19,11 +19,11 @@ type BlockSubFolder = {
     thumbnailPath?: string;
 }
 
-// Component for rendering a single block instance with minimal UI
-function UsedBlockItem({ block }: { block: any }) {
+function UsedBlockItem({ block, instanceCount }: { block: any, instanceCount: number }) {
     const [blockName, setBlockName] = useState(`${block.folderName}/${block.subFolder}`);
     const { selectedPageId } = usePage();
     const { state, updateBuilderState } = useBuilderContext();
+    const [blockDescription, setBlockDescription] = useState('');
     
     useEffect(() => {
         const loadBlockInfo = async () => {
@@ -31,6 +31,9 @@ function UsedBlockItem({ block }: { block: any }) {
                 const module = await import(`@/blocks/${block.folderName}/${block.subFolder}/_block`);
                 if (module.properties?.name) {
                     setBlockName(module.properties.name);
+                }
+                if (module.properties?.description) {
+                    setBlockDescription(module.properties.description);
                 }
             } catch (err) {
                 console.error(`Error loading block info:`, err);
@@ -46,25 +49,22 @@ function UsedBlockItem({ block }: { block: any }) {
         ThumbnailImage = '/placeholder.jpg';
     }
 
-    // Handle adding this block instance to the page
     const handleAddToPage = () => {
         if (!selectedPageId) {
             console.error("Cannot add block: No page selected");
             return;
         }
 
-        // Create a new block instance that references the original block
         const newBlock = {
             id: uuidv4(),
             index: state.blocks.length,
             page: selectedPageId,
             folderName: block.folderName,
             subFolder: block.subFolder,
-            value: null,  // Value is null when we're using an instance reference
-            instance: block.id // Store the ID of the referenced block
+            value: null,  
+            instance: block.id 
         };
 
-        // Add the new block to the state
         updateBuilderState({
             blocks: [...state.blocks, newBlock],
             selectedBlockId: newBlock.id
@@ -73,28 +73,36 @@ function UsedBlockItem({ block }: { block: any }) {
 
     return (
         <div className="relative overflow-hidden rounded-xl border border-divider bg-card transition-all duration-300 hover:border-primary/60 hover:shadow-lg hover:shadow-primary/10 select-none">
-            <div className="flex flex-row h-28">
-                <div className="relative w-40 h-28">
+            <div className="grid grid-cols-12 h-28">
+                <div className="relative col-span-6 h-28">
                     <Image
                         src={ThumbnailImage}
                         alt={blockName}
                         fill
                         className="object-cover"
                     />
-                </div>
-                <div className="p-2 flex-1 flex items-center justify-between">
-                    <h4 className="font-medium text-md">{blockName}</h4>
-                    {selectedPageId && (
-                        <Button
-                            size="sm"
-                            color="default"
-                            variant="flat"
-                            startContent={<PlusCircleIcon className="w-4 h-4" />}
-                            onClick={handleAddToPage}
-                        >
-                            Add
-                        </Button>
+                    {instanceCount > 0 && (
+                        <div className="absolute left-2 bottom-2 px-2 py-1 bg-primary text-white rounded-lg text-xs font-medium">
+                            {instanceCount} Duplicates
+                        </div>
                     )}
+                </div>
+                <div className="p-2 flex-1 flex items-center justify-between col-span-6">
+                    <div className='truncate'>
+                        <h4 className="font-medium text-md">{blockName}</h4>
+                        <p className="text-xs text-default-500 truncate mb-4">{blockDescription}</p>
+                        {selectedPageId && (
+                            <Button
+                                size="sm"
+                                color="default"
+                                variant="flat"
+                                startContent={<PlusCircleIcon className="min-w-4 min-h-4 w-4" />}
+                                onClick={handleAddToPage}
+                            >
+                                Add To Page
+                            </Button>
+                        )}
+                    </div>
                 </div>
             </div>
         </div>
@@ -105,25 +113,47 @@ export default function BlocksTopPanel({ show, onHide }: { show: boolean, onHide
     const { state, updateBuilderState } = useBuilderContext();
     const { selectedPageId } = usePage();
 
-    // State for tracking the selected block type folder and subfolder
     const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
     const [blockFolders, setBlockFolders] = useState<BlockFolder[]>([]);
     const [isLoadingThumbnails, setIsLoadingThumbnails] = useState(true);
 
-    // Use all individual blocks directly without grouping
     const usedBlocks = useMemo(() => {
-        // Return the blocks array directly, sorted by page and index
         return [...state.blocks].sort((a, b) => {
-            // First sort by page
             if (a.page !== b.page) {
                 return a.page < b.page ? -1 : 1;
             }
-            // Then by index within the page
             return a.index - b.index;
         });
     }, [state.blocks]);
 
-    // Simulate loading block folders (in a real app, this would be fetched from an API or filesystem)
+    const masterBlocks = useMemo(() => {
+        return state.blocks.filter(block => 
+            block.instance === null && 
+            block.value !== null
+        ).sort((a, b) => {
+            if (a.page !== b.page) {
+                return a.page < b.page ? -1 : 1;
+            }
+            return a.index - b.index;
+        });
+    }, [state.blocks]);
+    
+    const blockInstanceCounts = useMemo(() => {
+        const counts: Record<string, number> = {};
+        
+        masterBlocks.forEach(block => {
+            counts[block.id] = 0;
+        });
+        
+        state.blocks.forEach(block => {
+            if (block.instance !== null && block.value === null && counts[block.instance] !== undefined) {
+                counts[block.instance]++;
+            }
+        });
+        
+        return counts;
+    }, [state.blocks, masterBlocks]);
+
     useEffect(() => {
         const loadBlockFolders = async () => {
             setIsLoadingThumbnails(true);
@@ -138,7 +168,6 @@ export default function BlocksTopPanel({ show, onHide }: { show: boolean, onHide
                 }
             ];
 
-            // For each folder, load the subfolders and their properties
             for (const folder of folders) {
                 if (folder.name === "hero") {
                     try {
@@ -171,10 +200,7 @@ export default function BlocksTopPanel({ show, onHide }: { show: boolean, onHide
 
             setBlockFolders(folders);
 
-            // Set default selected folder if none is selected
-            // Only set default if there are no used blocks or if no folder is selected
             if ((!selectedFolder || selectedFolder === 'used-blocks') && folders.length > 0) {
-                // If we have used blocks, set to used-blocks, otherwise set to first folder
                 setSelectedFolder(usedBlocks.length > 0 ? 'used-blocks' : folders[0].name);
             }
 
@@ -185,15 +211,12 @@ export default function BlocksTopPanel({ show, onHide }: { show: boolean, onHide
     }, [selectedFolder, usedBlocks.length]);
 
     const handleAddBlockFolder = (name?: string) => {
-        // In a real app, this would create a new block folder
-        // For now, just log the request
         const folderName = name || "New Block Type";
         console.log(`Create new block folder: ${folderName}`);
         return folderName.toLowerCase().replace(/\s+/g, '-');
     };
 
     const handleRemoveBlockFolder = (id: string) => {
-        // In a real app, this would remove a block folder
         console.log(`Remove block folder: ${id}`);
         if (selectedFolder === id) {
             setSelectedFolder(null);
@@ -204,21 +227,18 @@ export default function BlocksTopPanel({ show, onHide }: { show: boolean, onHide
         console.log('Block folder change:', data);
     };
 
-    // Get the current folder's subfolders
     const currentFolderSubfolders = useMemo(() => {
         if (!selectedFolder || selectedFolder === 'used-blocks') return [];
         const folder = blockFolders.find(f => f.name === selectedFolder);
         return folder ? folder.subFolders : [];
     }, [selectedFolder, blockFolders]);
 
-    // Handle adding a block to the page
     const handleAddBlockToPage = (folderName: string, subFolder: string, properties: BlockProperties) => {
         if (!selectedPageId) {
             console.error("Cannot add block: No page selected");
             return;
         }
 
-        // Create a new block instance
         const newBlock = {
             id: uuidv4(),
             index: state.blocks.length,
@@ -229,37 +249,31 @@ export default function BlocksTopPanel({ show, onHide }: { show: boolean, onHide
                 acc[key] = { value: field.defaultValue };
                 return acc;
             }, {} as Record<string, any>),
-            instance: null // No instance reference for new blocks
+            instance: null 
         };
 
-        // Add the new block to the state
         updateBuilderState({
             blocks: [...state.blocks, newBlock],
             selectedBlockId: newBlock.id
         });
 
-        // Close the panel after adding
         onHide();
     };
 
-    // Build the set list with Used Blocks at the top
     const panelSetList = useMemo(() => {
         const result = [];
 
-        // Always add Used Blocks section if there are any blocks in the project
-        if (usedBlocks.length > 0) {
+        if (masterBlocks.length > 0) {
             result.push({
                 id: 'used-blocks',
-                name: 'Used Blocks',
+                name: 'Master Blocks',
                 icon: <LayoutIcon />,
                 isLocked: false
             });
         }
         
-        // Add divider
         result.push("BLOCK TYPES");
         
-        // Add all block folders
         result.push(...blockFolders.map((folder) => ({
             id: folder.name,
             name: folder.name.charAt(0).toUpperCase() + folder.name.slice(1),
@@ -268,24 +282,27 @@ export default function BlocksTopPanel({ show, onHide }: { show: boolean, onHide
         })));
         
         return result;
-    }, [blockFolders, usedBlocks]);
+    }, [blockFolders, masterBlocks]);
 
-    // Render function for used blocks section - now showing individual blocks
     const renderUsedBlocks = () => {
-        if (usedBlocks.length === 0) {
+        if (masterBlocks.length === 0) {
             return (
                 <div className="flex flex-col items-center justify-center h-64 text-center p-8 text-muted-foreground border border-dashed border-default-300 rounded-lg">
                     <LayoutIcon className="w-10 h-10 mb-4 text-default-400" />
-                    <p className="mb-1 font-medium">No blocks in this project</p>
-                    <p className="text-sm">Add some blocks to your pages first</p>
+                    <p className="mb-1 font-medium">No master blocks in this project</p>
+                    <p className="text-sm">Create some blocks with unique values first</p>
                 </div>
             );
         }
 
         return (
             <div className="grid grid-cols-1 gap-3">
-                {usedBlocks.map((block) => (
-                    <UsedBlockItem key={block.id} block={block} />
+                {masterBlocks.map((block) => (
+                    <UsedBlockItem 
+                        key={block.id} 
+                        block={block} 
+                        instanceCount={blockInstanceCounts[block.id] || 0} 
+                    />
                 ))}
             </div>
         );
@@ -305,7 +322,7 @@ export default function BlocksTopPanel({ show, onHide }: { show: boolean, onHide
                 onSetChange={handleSetChange}
                 subPageHeading={
                     selectedFolder === 'used-blocks' 
-                        ? "All used blocks" 
+                        ? "Master Blocks" 
                         : selectedFolder 
                             ? `${selectedFolder.charAt(0).toUpperCase() + selectedFolder.slice(1)} Blocks` 
                             : "Select a block type"
@@ -318,16 +335,7 @@ export default function BlocksTopPanel({ show, onHide }: { show: boolean, onHide
                         </div>
                     ) : selectedFolder ? (
                         <div className="p-2">
-                            <div className="flex items-center justify-between mb-4">
-                                <h3 className="text-lg font-medium">
-                                    {selectedFolder.charAt(0).toUpperCase() + selectedFolder.slice(1)} Blocks
-                                </h3>
-                                {selectedPageId && (
-                                    <Badge color="primary" variant="flat" className="px-2 py-1">
-                                        Page selected
-                                    </Badge>
-                                )}
-                            </div>
+                           
 
                             {isLoadingThumbnails ? (
                                 <div className="grid grid-cols-1 gap-6 animate-pulse">
@@ -360,7 +368,6 @@ export default function BlocksTopPanel({ show, onHide }: { show: boolean, onHide
                                                             console.log("Error loading thumbnail");
                                                         }}
                                                     />
-                                                    {/* Show "Used on this page" badge if this block type is used on the current page */}
                                                     {usedBlocks.some(ub => 
                                                         ub.folderName === selectedFolder && ub.subFolder === subFolder.name
                                                     ) && (

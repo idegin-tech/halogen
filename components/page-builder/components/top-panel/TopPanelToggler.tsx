@@ -1,5 +1,5 @@
 import React from 'react'
-import { BlocksIcon, BrushIcon, FileIcon, FolderIcon, SettingsIcon } from "lucide-react";
+import { BlocksIcon, BrushIcon, Database, FileIcon, FolderIcon, SettingsIcon } from "lucide-react";
 import { ToggleButton } from '../ToggleBtn';
 import PagesTopPanel from './PagesTopPanel';
 import ThemeTopPanel from './ThemeTopPanel';
@@ -39,6 +39,13 @@ export default function TopPanelToggler() {
                     placement="bottom"
                     onClick={() => setActiveTopPanel('assets')}
                     isActive={activeTopPanel === 'assets'}
+                />
+                <ToggleButton
+                    Icon={Database}
+                    label={"Database"}
+                    placement="bottom"
+                    onClick={() => setActiveTopPanel('database')}
+                    isActive={activeTopPanel === 'database'}
                 />
                 <ToggleButton
                     Icon={SettingsIcon}

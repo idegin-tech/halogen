@@ -1,17 +1,18 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import TopPanelContainer from './TopPanelContainer'
 import { BrushIcon, PaletteIcon, CircleIcon } from 'lucide-react'
-import { Input, Button, Accordion, AccordionItem } from '@heroui/react'
+import { Input, Button, Popover, PopoverTrigger, PopoverContent } from '@heroui/react'
 import { useBuilderContext } from '@/context/builder.context'
 import { Variable, VariableSet } from '@/types/builder.types'
+import ColorPicker from 'react-pick-color'
 
 export default function ThemeTopPanel({show, onHide}:{show: boolean, onHide: () => void}) {
     const { state, updateBuilderState } = useBuilderContext();
     
     const [selectedVariableSetId, setSelectedVariableSetId] = useState<string | null>('set_colors');
     const [variableSetName, setVariableSetName] = useState('');
+    const [colorPickerVisible, setColorPickerVisible] = useState<{[key: string]: boolean}>({});
     
-    // Group variables by their variableSet
     const variablesBySet = useMemo(() => {
         const groups: Record<string, Variable[]> = {};
         
@@ -30,12 +31,10 @@ export default function ThemeTopPanel({show, onHide}:{show: boolean, onHide: () 
         return groups;
     }, [state.variables]);
     
-    // Get the current variable set
     const currentVariableSet = useMemo(() => {
         return state.variableSets.find(set => set.id === selectedVariableSetId) || null;
     }, [selectedVariableSetId, state.variableSets]);
     
-    // Get variables for the current set
     const currentVariables = useMemo(() => {
         if (!selectedVariableSetId) return [];
         
@@ -48,7 +47,6 @@ export default function ThemeTopPanel({show, onHide}:{show: boolean, onHide: () 
         }
     }, [currentVariableSet]);
 
-    // Handle variable value change
     const handleVariableChange = (variableId: string, value: string, isDark: boolean = false) => {
         const updatedVariables = state.variables.map(variable => {
             if (variable.id === variableId) {
@@ -63,12 +61,21 @@ export default function ThemeTopPanel({show, onHide}:{show: boolean, onHide: () 
         updateBuilderState({ variables: updatedVariables });
     };
     
-    // Convert HSL string to hex for color inputs
+    const handleColorChange = (color: { hex: string }, variableId: string, isDark: boolean = false) => {
+        handleVariableChange(variableId, hexToHsl(color.hex), isDark);
+    };
+    
+    const toggleColorPicker = (variableId: string) => {
+        setColorPickerVisible(prev => ({
+            ...prev,
+            [variableId]: !prev[variableId]
+        }));
+    };
+    
     const hslToHex = (hslString: string): string => {
         if (!hslString || typeof hslString !== 'string') return '#000000';
         
         try {
-            // Parse the HSL string (format: "261 69% 61%")
             const parts = hslString.trim().split(' ');
             if (parts.length !== 3) return '#000000';
             
@@ -76,7 +83,6 @@ export default function ThemeTopPanel({show, onHide}:{show: boolean, onHide: () 
             const s = parseInt(parts[1]) / 100;
             const l = parseInt(parts[2]) / 100;
             
-            // HSL to RGB conversion
             const c = (1 - Math.abs(2 * l - 1)) * s;
             const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
             const m = l - c / 2;
@@ -93,7 +99,6 @@ export default function ThemeTopPanel({show, onHide}:{show: boolean, onHide: () 
             g = Math.round((g + m) * 255);
             b = Math.round((b + m) * 255);
             
-            // Convert to hex
             const toHex = (c: number) => {
                 const hex = c.toString(16);
                 return hex.length === 1 ? '0' + hex : hex;
@@ -106,13 +111,10 @@ export default function ThemeTopPanel({show, onHide}:{show: boolean, onHide: () 
         }
     };
     
-    // Convert hex to HSL string
     const hexToHsl = (hex: string): string => {
         try {
-            // Remove the # if present
             hex = hex.replace(/^#/, '');
             
-            // Parse the hex values
             let r = 0, g = 0, b = 0;
             if (hex.length === 3) {
                 r = parseInt(hex[0] + hex[0], 16);
@@ -124,7 +126,6 @@ export default function ThemeTopPanel({show, onHide}:{show: boolean, onHide: () 
                 b = parseInt(hex.substring(4, 6), 16);
             }
             
-            // Convert RGB to HSL
             r /= 255;
             g /= 255;
             b /= 255;
@@ -144,7 +145,6 @@ export default function ThemeTopPanel({show, onHide}:{show: boolean, onHide: () 
                 h *= 60;
             }
             
-            // Format as "261 69% 61%"
             return `${Math.round(h)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
         } catch (error) {
             console.error('Error converting hex to HSL:', error);
@@ -186,11 +186,9 @@ export default function ThemeTopPanel({show, onHide}:{show: boolean, onHide: () 
             key: setName.toLowerCase().replace(/\s+/g, '-'),
         };
         
-        // Get the variable set type from the selected set (defaults to color variables)
         const currentSetType = currentVariableSet?.key === 'radius' ? 'radius' : 'colors';
         const templateSetId = currentSetType === 'radius' ? 'set_radius' : 'set_colors';
         
-        // Clone the variables for the new set
         const templateVariables = state.variables.filter(v => {
             const setId = typeof v.variableSet === 'string' ? v.variableSet : v.variableSet.id;
             return setId === templateSetId;
@@ -211,7 +209,6 @@ export default function ThemeTopPanel({show, onHide}:{show: boolean, onHide: () 
     };
     
     const handleRemoveVariableSet = (id: string) => {
-        // Don't delete the default variable sets
         if (id === 'set_colors' || id === 'set_radius') return;
         
         const updatedVariableSets = state.variableSets.filter(set => set.id !== id);
@@ -233,27 +230,29 @@ export default function ThemeTopPanel({show, onHide}:{show: boolean, onHide: () 
     };
     
     const handleSetChange = (data: any) => {
-        // Implementation as needed
     };
     
-    // Map variable sets to format required by TopPanelContainer
     const mappedVariableSets = useMemo(() => {
         return state.variableSets.map(set => ({
             id: set.id,
             name: set.name,
             icon: set.key === 'radius' ? <CircleIcon /> : <PaletteIcon />,
-            isLocked: set.id === 'set_colors' || set.id === 'set_radius' // Lock the default sets
+            isLocked: set.id === 'set_colors' || set.id === 'set_radius'
         }));
     }, [state.variableSets]);
     
-    // Check if the current variable set contains color variables
     const hasColorVariables = useMemo(() => {
         return currentVariables.some(v => v.type === 'color');
     }, [currentVariables]);
     
-    // Check if the current variable set contains size variables (radius)
     const hasSizeVariables = useMemo(() => {
         return currentVariables.some(v => v.type === 'size');
+    }, [currentVariables]);
+    
+    const colorVariables = useMemo(() => {
+        return currentVariables
+            .filter(v => v.type === 'color')
+            .sort((a, b) => a.name.localeCompare(b.name));
     }, [currentVariables]);
     
     return (
@@ -287,58 +286,68 @@ export default function ThemeTopPanel({show, onHide}:{show: boolean, onHide: () 
                             </div>
                             
                             {hasColorVariables && (
-                                <Accordion>
-                                    <AccordionItem key="light" title="Light Mode Colors">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            {currentVariables
-                                                .filter(v => v.type === 'color')
-                                                .map((variable) => (
-                                                    <div key={`${variable.id}-light`}>
-                                                        <label className="block text-sm mb-1">{variable.name}</label>
-                                                        <div className="flex items-center space-x-2">
-                                                            <Input 
-                                                                type="color" 
-                                                                value={hslToHex(variable.primaryValue)}
-                                                                onChange={(e) => handleVariableChange(variable.id, hexToHsl(e.target.value))}
-                                                                className="w-12 h-10 p-1"
-                                                            />
-                                                            <Input 
-                                                                value={variable.primaryValue}
-                                                                onChange={(e) => handleVariableChange(variable.id, e.target.value)}
-                                                                size="sm"
-                                                                className="flex-1"
-                                                            />
+                                <div className="space-y-4">
+                                    <h3 className="text-md font-medium">Color Variables</h3>
+                                    <div className="rounded-lg border border-divider overflow-hidden">
+                                        <div className="grid grid-cols-10 bg-default-50 px-3 py-2 border-b border-divider">
+                                            <div className="col-span-4 text-sm font-medium text-default-700">Variable Name</div>
+                                            <div className="col-span-3 text-sm font-medium text-default-700">Light Mode</div>
+                                            <div className="col-span-3 text-sm font-medium text-default-700">Dark Mode</div>
+                                        </div>
+                                        <div className="divide-y divide-divider">
+                                            {colorVariables.map((variable) => (
+                                                <div key={variable.id} className="grid grid-cols-10 py-3 px-3 items-center hover:bg-default-50 transition-colors">
+                                                    <div className="col-span-4 pr-4">
+                                                        <div className="font-medium text-sm">{variable.name}</div>
+                                                        <div className="text-xs text-default-500">{`---${variable.key}`}</div>
+                                                    </div>
+                                                    <div className="col-span-3 flex items-center gap-2">
+                                                        <Popover>
+                                                            <PopoverTrigger>
+                                                                <div 
+                                                                    className="w-8 h-8 rounded-md border border-divider cursor-pointer flex-shrink-0"
+                                                                    style={{ backgroundColor: hslToHex(variable.primaryValue) }}
+                                                                />
+                                                            </PopoverTrigger>
+                                                            <PopoverContent className="p-0 border-none">
+                                                                <div className="p-1">
+                                                                    <ColorPicker 
+                                                                        color={hslToHex(variable.primaryValue)}
+                                                                        onChange={(color) => handleColorChange(color, variable.id)}
+                                                                    />
+                                                                </div>
+                                                            </PopoverContent>
+                                                        </Popover>
+                                                        <div className="flex-1 bg-content1 rounded-md px-2 py-1 text-sm">
+                                                            {variable.primaryValue}
                                                         </div>
                                                     </div>
-                                            ))}
-                                        </div>
-                                    </AccordionItem>
-                                    <AccordionItem key="dark" title="Dark Mode Colors">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            {currentVariables
-                                                .filter(v => v.type === 'color')
-                                                .map((variable) => (
-                                                    <div key={`${variable.id}-dark`}>
-                                                        <label className="block text-sm mb-1">{variable.name}</label>
-                                                        <div className="flex items-center space-x-2">
-                                                            <Input 
-                                                                type="color" 
-                                                                value={hslToHex(variable.secondaryValue)}
-                                                                onChange={(e) => handleVariableChange(variable.id, hexToHsl(e.target.value), true)}
-                                                                className="w-12 h-10 p-1"
-                                                            />
-                                                            <Input 
-                                                                value={variable.secondaryValue}
-                                                                onChange={(e) => handleVariableChange(variable.id, e.target.value, true)}
-                                                                size="sm"
-                                                                className="flex-1"
-                                                            />
+                                                    <div className="col-span-3 flex items-center gap-2">
+                                                        <Popover>
+                                                            <PopoverTrigger>
+                                                                <div 
+                                                                    className="w-8 h-8 rounded-md border border-divider cursor-pointer flex-shrink-0"
+                                                                    style={{ backgroundColor: hslToHex(variable.secondaryValue) }}
+                                                                />
+                                                            </PopoverTrigger>
+                                                            <PopoverContent className="p-0 border-none">
+                                                                <div className="p-1">
+                                                                    <ColorPicker 
+                                                                        color={hslToHex(variable.secondaryValue)}
+                                                                        onChange={(color) => handleColorChange(color, variable.id, true)}
+                                                                    />
+                                                                </div>
+                                                            </PopoverContent>
+                                                        </Popover>
+                                                        <div className="flex-1 bg-content1 rounded-md px-2 py-1 text-sm">
+                                                            {variable.secondaryValue}
                                                         </div>
                                                     </div>
+                                                </div>
                                             ))}
                                         </div>
-                                    </AccordionItem>
-                                </Accordion>
+                                    </div>
+                                </div>
                             )}
                             
                             {hasSizeVariables && (
