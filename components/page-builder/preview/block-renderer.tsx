@@ -50,7 +50,7 @@ type BlockComponentProps = {
 function BlockComponent({ block, isSelected }: BlockComponentProps) {
   const [Component, setComponent] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
-  const { updateBuilderState } = useBuilderContext();
+  const { updateBuilderState, state } = useBuilderContext();
   
   const handleBlockClick = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -61,7 +61,10 @@ function BlockComponent({ block, isSelected }: BlockComponentProps) {
   useEffect(() => {
     const importComponent = async () => {
       try {
-        const componentPath = `@/blocks/${block.folderName}/${block.subFolder}/_block`;
+        const folderName = block.folderName;
+        const subFolder = block.subFolder;
+        
+        const componentPath = `@/blocks/${folderName}/${subFolder}/_block`;
         
         const module = await import(componentPath);
         
@@ -94,6 +97,22 @@ function BlockComponent({ block, isSelected }: BlockComponentProps) {
     return <div className="block-loading p-4">Loading component...</div>;
   }
 
+  const getRootBlock = (currentBlock: BlockInstance): BlockInstance => {
+    if (currentBlock.instance === null) {
+      return currentBlock; 
+    }
+    
+    // Find the referenced block by ID in the state
+    const instanceBlock = state.blocks.find(b => b.id === currentBlock.instance);
+    
+    // If found, continue traversing the chain, otherwise return current block
+    return instanceBlock ? getRootBlock(instanceBlock) : currentBlock;
+  };
+  
+  const rootBlock = getRootBlock(block);
+  
+  const blockValues = rootBlock.value;
+
   const blockClassName = isSelected 
     ? "block-wrapper block-selected relative cursor-pointer" 
     : "block-wrapper relative cursor-pointer hover:outline hover:outline-2 hover:outline-blue-200";
@@ -103,7 +122,7 @@ function BlockComponent({ block, isSelected }: BlockComponentProps) {
       {isSelected && (
         <div className="absolute inset-0 outline-dashed outline-primary bg-primary/10 pointer-events-none z-50"></div>
       )}
-      <Component {...block.value} />
+      <Component {...blockValues} />
     </div>
   );
 }

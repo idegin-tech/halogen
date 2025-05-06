@@ -34,6 +34,6 @@ export type BlockInstance = {
     page: PageData | string;
     folderName: string;
     subFolder: string;
-
-    value: Record<string, any>;
+    value: Record<string, any> | null;
+    instance: string | null;
 }

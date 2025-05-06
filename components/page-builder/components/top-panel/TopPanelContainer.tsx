@@ -6,12 +6,15 @@ import { Dropdown, DropdownTrigger, DropdownMenu, DropdownItem } from "@heroui/d
 
 type Props = {
     heading: string;
-    setList: {
-        id: string;
-        name: string;
-        icon: React.ReactNode;
-        isLocked?: boolean;
-    }[];
+    setList: (
+        | {
+            id: string;
+            name: string;
+            icon: React.ReactNode;
+            isLocked?: boolean;
+        }
+        | string
+    )[];
     activeSetId: string | null;
     children: React.ReactNode;
     onSetActiveSet: (id: string) => void;
@@ -20,6 +23,8 @@ type Props = {
     onRemoveSet: (id: string) => void;
     onClose: () => void;
     show?: boolean;
+    subPageHeading?: string;
+    subPageDescription?: string;
 };
 export default function TopPanelContainer(
     {
@@ -32,7 +37,9 @@ export default function TopPanelContainer(
         setList,
         onSetChange,
         show = false,
-        onClose
+        onClose,
+        subPageHeading,
+        subPageDescription
     }: Props
 ) {
     const [isAddingNew, setIsAddingNew] = useState(false);
@@ -57,8 +64,8 @@ export default function TopPanelContainer(
             return "Name cannot be empty";
         }
 
-        const exists = setList.some(set =>
-            set.name.toLowerCase() === name.trim().toLowerCase()
+        const exists = setList.some(set => 
+            typeof set === 'object' && set.name.toLowerCase() === name.trim().toLowerCase()
         );
 
         if (exists) {
@@ -125,7 +132,21 @@ export default function TopPanelContainer(
                         </header>
                         <div className='flex-1 overflow-x-hidden overflow-y-auto p-2 space-y-2'>
                             {
-                                setList.map((set) => {
+                                setList.map((set, index) => {
+                                    // Render a divider if the set item is a string
+                                    if (typeof set === 'string') {
+                                        return (
+                                            <div 
+                                                key={`divider-${index}`} 
+                                                className="px-2 py-1"
+                                            >
+                                                <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{set}</div>
+                                                <div className="h-px bg-border mt-1"></div>
+                                            </div>
+                                        );
+                                    }
+                                    
+                                    // Otherwise render the normal set item
                                     return (
                                         <div
                                             key={set.id}
@@ -167,7 +188,7 @@ export default function TopPanelContainer(
                                                 </DropdownMenu>
                                             </Dropdown>
                                         </div>
-                                    )
+                                    );
                                 })
                             }
 
@@ -203,7 +224,7 @@ export default function TopPanelContainer(
                     </div>
                     <div className='flex-1 h-full bg-content1 flex flex-col'>
                         <header className='h-header border-b border-divider flex justify-between items-center px-2'>
-
+                            <p className='font-bold text-lg'>{subPageHeading}</p>
                         </header>
                         <div className='flex-1 overflow-x-hidden overflow-y-auto p-2 max-h-[calc(var(--body-height)-7rem)]'>
                             {children}
