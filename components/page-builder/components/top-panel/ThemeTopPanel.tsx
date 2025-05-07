@@ -47,12 +47,14 @@ export default function ThemeTopPanel({show, onHide}:{show: boolean, onHide: () 
         }
     }, [currentVariableSet]);
 
-    const handleVariableChange = (variableId: string, value: string, isDark: boolean = false) => {
+    const handleVariableChange = (variableId: string, value: string) => {
         const updatedVariables = state.variables.map(variable => {
             if (variable.id === variableId) {
                 return {
                     ...variable,
-                    [isDark ? 'secondaryValue' : 'primaryValue']: value
+                    primaryValue: value,
+                    // Keep secondaryValue in sync with primaryValue for compatibility
+                    secondaryValue: value
                 };
             }
             return variable;
@@ -61,8 +63,8 @@ export default function ThemeTopPanel({show, onHide}:{show: boolean, onHide: () 
         updateBuilderState({ variables: updatedVariables });
     };
     
-    const handleColorChange = (color: { hex: string }, variableId: string, isDark: boolean = false) => {
-        handleVariableChange(variableId, hexToHsl(color.hex), isDark);
+    const handleColorChange = (color: { hex: string }, variableId: string) => {
+        handleVariableChange(variableId, color.hex);
     };
     
     const toggleColorPicker = (variableId: string) => {
@@ -74,6 +76,11 @@ export default function ThemeTopPanel({show, onHide}:{show: boolean, onHide: () 
     
     const hslToHex = (hslString: string): string => {
         if (!hslString || typeof hslString !== 'string') return '#000000';
+        
+        // If the value is already hex, return it
+        if (hslString.startsWith('#')) {
+            return hslString;
+        }
         
         try {
             const parts = hslString.trim().split(' ');
@@ -112,6 +119,11 @@ export default function ThemeTopPanel({show, onHide}:{show: boolean, onHide: () 
     };
     
     const hexToHsl = (hex: string): string => {
+        // If the hex value is already stored, return it
+        if (hex.startsWith('#')) {
+            return hex;
+        }
+        
         try {
             hex = hex.replace(/^#/, '');
             
@@ -194,11 +206,21 @@ export default function ThemeTopPanel({show, onHide}:{show: boolean, onHide: () 
             return setId === templateSetId;
         });
         
-        const newVariables = templateVariables.map(variable => ({
-            ...variable,
-            id: `${variable.id}_${Date.now()}`, 
-            variableSet: newSetId
-        }));
+        const newVariables = templateVariables.map(variable => {
+            // Convert HSL to hex for color variables
+            let primaryValue = variable.primaryValue;
+            if (variable.type === 'color' && !variable.primaryValue.startsWith('#')) {
+                primaryValue = hslToHex(variable.primaryValue);
+            }
+            
+            return {
+                ...variable,
+                id: `${variable.id}_${Date.now()}`,
+                primaryValue,
+                secondaryValue: primaryValue, // Keep them in sync
+                variableSet: newSetId
+            };
+        });
         
         updateBuilderState({ 
             variableSets: [...state.variableSets, newVariableSet],
@@ -255,6 +277,25 @@ export default function ThemeTopPanel({show, onHide}:{show: boolean, onHide: () 
             .sort((a, b) => a.name.localeCompare(b.name));
     }, [currentVariables]);
     
+    // Convert all existing color variables to hex on component mount
+    useEffect(() => {
+        if (hasColorVariables) {
+            const updatedVariables = state.variables.map(variable => {
+                if (variable.type === 'color' && !variable.primaryValue.startsWith('#')) {
+                    const hexValue = hslToHex(variable.primaryValue);
+                    return {
+                        ...variable,
+                        primaryValue: hexValue,
+                        secondaryValue: hexValue // Keep them in sync
+                    };
+                }
+                return variable;
+            });
+            
+            updateBuilderState({ variables: updatedVariables });
+        }
+    }, []); // Run once on mount
+    
     return (
         <>
             <TopPanelContainer
@@ -289,30 +330,29 @@ export default function ThemeTopPanel({show, onHide}:{show: boolean, onHide: () 
                                 <div className="space-y-4">
                                     <h3 className="text-md font-medium">Color Variables</h3>
                                     <div className="rounded-lg border border-divider overflow-hidden">
-                                        <div className="grid grid-cols-10 bg-default-50 px-3 py-2 border-b border-divider">
+                                        <div className="grid grid-cols-7 bg-default-50 px-3 py-2 border-b border-divider">
                                             <div className="col-span-4 text-sm font-medium text-default-700">Variable Name</div>
-                                            <div className="col-span-3 text-sm font-medium text-default-700">Light Mode</div>
-                                            <div className="col-span-3 text-sm font-medium text-default-700">Dark Mode</div>
+                                            <div className="col-span-3 text-sm font-medium text-default-700">Color Value</div>
                                         </div>
                                         <div className="divide-y divide-divider">
                                             {colorVariables.map((variable) => (
-                                                <div key={variable.id} className="grid grid-cols-10 py-3 px-3 items-center hover:bg-default-50 transition-colors">
+                                                <div key={variable.id} className="grid grid-cols-7 py-3 px-3 items-center hover:bg-default-50 transition-colors">
                                                     <div className="col-span-4 pr-4">
                                                         <div className="font-medium text-sm">{variable.name}</div>
-                                                        <div className="text-xs text-default-500">{`---${variable.key}`}</div>
+                                                        <div className="text-xs text-default-500">{`${variable.key}`}</div>
                                                     </div>
                                                     <div className="col-span-3 flex items-center gap-2">
                                                         <Popover>
                                                             <PopoverTrigger>
                                                                 <div 
                                                                     className="w-8 h-8 rounded-md border border-divider cursor-pointer flex-shrink-0"
-                                                                    style={{ backgroundColor: hslToHex(variable.primaryValue) }}
+                                                                    style={{ backgroundColor: variable.primaryValue }}
                                                                 />
                                                             </PopoverTrigger>
                                                             <PopoverContent className="p-0 border-none">
                                                                 <div className="p-1">
                                                                     <ColorPicker 
-                                                                        color={hslToHex(variable.primaryValue)}
+                                                                        color={variable.primaryValue}
                                                                         onChange={(color) => handleColorChange(color, variable.id)}
                                                                     />
                                                                 </div>
@@ -320,27 +360,6 @@ export default function ThemeTopPanel({show, onHide}:{show: boolean, onHide: () 
                                                         </Popover>
                                                         <div className="flex-1 bg-content1 rounded-md px-2 py-1 text-sm">
                                                             {variable.primaryValue}
-                                                        </div>
-                                                    </div>
-                                                    <div className="col-span-3 flex items-center gap-2">
-                                                        <Popover>
-                                                            <PopoverTrigger>
-                                                                <div 
-                                                                    className="w-8 h-8 rounded-md border border-divider cursor-pointer flex-shrink-0"
-                                                                    style={{ backgroundColor: hslToHex(variable.secondaryValue) }}
-                                                                />
-                                                            </PopoverTrigger>
-                                                            <PopoverContent className="p-0 border-none">
-                                                                <div className="p-1">
-                                                                    <ColorPicker 
-                                                                        color={hslToHex(variable.secondaryValue)}
-                                                                        onChange={(color) => handleColorChange(color, variable.id, true)}
-                                                                    />
-                                                                </div>
-                                                            </PopoverContent>
-                                                        </Popover>
-                                                        <div className="flex-1 bg-content1 rounded-md px-2 py-1 text-sm">
-                                                            {variable.secondaryValue}
                                                         </div>
                                                     </div>
                                                 </div>
