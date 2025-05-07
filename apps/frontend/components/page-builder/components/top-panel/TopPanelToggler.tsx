@@ -4,6 +4,7 @@ import { ToggleButton } from '../ToggleBtn'
 import PagesTopPanel from './PagesTopPanel'
 import ThemeTopPanel from './ThemeTopPanel'
 import BlocksTopPanel from './BlocksTopPanel'
+import FilesTopPanel from './FilesTopPanel'
 import { useTopPanelContext } from '@/context/top-panel.context'
 
 export default function TopPanelToggler() {
@@ -35,17 +36,17 @@ export default function TopPanelToggler() {
                 />
                 <ToggleButton
                     Icon={FolderIcon}
-                    label={"Assets"}
+                    label={"Files"}
                     placement="bottom"
-                    onClick={() => setActiveTopPanel('assets')}
-                    isActive={activeTopPanel === 'assets'}
+                    onClick={() => setActiveTopPanel('files')}
+                    isActive={activeTopPanel === 'files'}
                 />
                 <ToggleButton
                     Icon={Database}
-                    label={"Database"}
+                    label={"CMS"}
                     placement="bottom"
-                    onClick={() => setActiveTopPanel('database')}
-                    isActive={activeTopPanel === 'database'}
+                    onClick={() => setActiveTopPanel('cms')}
+                    isActive={activeTopPanel === 'cms'}
                 />
                 <ToggleButton
                     Icon={SettingsIcon}
@@ -64,6 +65,10 @@ export default function TopPanelToggler() {
             <BlocksTopPanel
                 onHide={() => setActiveTopPanel(null)}
                 show={activeTopPanel === 'blocks'}
+            />
+            <FilesTopPanel
+                onHide={() => setActiveTopPanel(null)}
+                show={activeTopPanel === 'files'}
             />
         </>
     )

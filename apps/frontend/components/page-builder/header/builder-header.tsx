@@ -23,7 +23,7 @@ export default function BuilderHeader() {
     <>
       <header
         className={
-          "bg-card h-14 flex justify-between border-b border-border items-center relative z-[100]"
+          "bg-background px-2 h-14 flex justify-between border-b border-border items-center relative z-50"
         }
       >
         <div className="w-[450px]">

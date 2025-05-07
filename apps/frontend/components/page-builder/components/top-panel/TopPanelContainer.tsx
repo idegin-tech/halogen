@@ -48,6 +48,8 @@ type Props = {
     subPageHeading?: string;
     subPageDescription?: string;
     breadcrumbs?: BreadcrumbItem[];
+    withoutFirstColumn?: boolean;
+    secondColumnHeaderContent?: React.ReactNode;
 };
 export default function TopPanelContainer(
     {
@@ -63,7 +65,9 @@ export default function TopPanelContainer(
         onClose,
         subPageHeading,
         subPageDescription,
-        breadcrumbs = [] // Add default empty array for breadcrumbs
+        breadcrumbs = [], // Add default empty array for breadcrumbs
+        withoutFirstColumn = false,
+        secondColumnHeaderContent
     }: Props
 ) {
     const [isAddingNew, setIsAddingNew] = useState(false);
@@ -147,145 +151,161 @@ export default function TopPanelContainer(
                 })}
             >
                 <div className='flex-1 bg-background flex'>
-                    <div className='min-w-[35%] max-w-[35%] h-full border-r border-border select-none bg-sidebar'>
-                        <header className='h-[var(--header-height)] border-b border-border flex justify-between items-center px-2'>
-                            <p className='font-bold text-xl text-muted-foreground'>{heading}</p>
-                            <Button variant='ghost' size='sm' className="h-8 w-8 p-0" onClick={handleAddClick}>
-                                <PlusIcon className="h-4 w-4" />
-                            </Button>
-                        </header>
-                        <div className='flex-1 overflow-x-hidden overflow-y-auto p-2 space-y-2'>
-                            {
-                                setList.map((set, index) => {
-                                    if (typeof set === 'string') {
+                    {!withoutFirstColumn && (
+                        <div className='min-w-[35%] max-w-[35%] h-full border-r border-border select-none bg-sidebar'>
+                            <header className='h-[var(--header-height)] border-b border-border flex justify-between items-center px-2 select-none'>
+                                <p className='font-bold text-xl text-muted-foreground'>{heading}</p>
+                                <Button variant='ghost' size='sm' className="h-8 w-8 p-0" onClick={handleAddClick}>
+                                    <PlusIcon className="h-4 w-4" />
+                                </Button>
+                            </header>
+                            <div className='flex-1 overflow-x-hidden overflow-y-auto p-2 space-y-2'>
+                                {
+                                    setList.map((set, index) => {
+                                        if (typeof set === 'string') {
+                                            return (
+                                                <div
+                                                    key={`divider-${index}`}
+                                                    className="px-2 py-1"
+                                                >
+                                                    <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{set}</div>
+                                                    <div className="h-px bg-border mt-1"></div>
+                                                </div>
+                                            );
+                                        }
+
                                         return (
                                             <div
-                                                key={`divider-${index}`}
-                                                className="px-2 py-1"
+                                                key={set.id}
+                                                className={cn(
+                                                    'flex items-center gap-2 p-2 hover:bg-accent cursor-pointer rounded-md',
+                                                    activeSetId === set.id && 'bg-accent hover:bg-accent',
+                                                    activeSetId !== set.id && 'opacity-70 hover:opacity-100',
+                                                )}
+                                                onClick={() => onSetActiveSet(set.id)}
                                             >
-                                                <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{set}</div>
-                                                <div className="h-px bg-border mt-1"></div>
+                                                <div className='text-sm'>
+                                                    {
+                                                        set.isLocked ?
+                                                            <LockIcon className="h-5 w-5" /> :
+                                                            React.isValidElement(set.icon)
+                                                                ? React.cloneElement(set.icon, { className: 'h-5 w-5' })
+                                                                : null
+                                                    }
+
+                                                </div>
+                                                <p className='text-sm flex-1 truncate'>{set.name}</p>
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button variant="ghost" size='sm' className="h-8 w-8 p-0">
+                                                            <Ellipsis className="h-4 w-4" />
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end">
+                                                        <DropdownMenuItem onSelect={() => console.log('Edit')}>
+                                                            Edit
+                                                        </DropdownMenuItem>
+                                                        {!set.isLocked && (
+                                                            <DropdownMenuItem
+                                                                className="text-destructive focus:bg-destructive/10 focus:text-destructive"
+                                                                onSelect={(e) => {
+                                                                    e.stopPropagation();
+                                                                    onRemoveSet(set.id);
+                                                                }}
+                                                            >
+                                                                Delete
+                                                            </DropdownMenuItem>
+                                                        )}
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
                                             </div>
                                         );
-                                    }
+                                    })
+                                }
 
-                                    return (
-                                        <div
-                                            key={set.id}
-                                            className={cn(
-                                                'flex items-center gap-2 p-2 hover:bg-accent cursor-pointer rounded-md',
-                                                activeSetId === set.id && 'bg-accent hover:bg-accent',
-                                                activeSetId !== set.id && 'opacity-70 hover:opacity-100',
-                                            )}
-                                            onClick={() => onSetActiveSet(set.id)}
-                                        >
+                                {isAddingNew && (
+                                    <div className={cn(
+                                        'flex flex-col gap-1 p-2',
+                                        'bg-muted/70 rounded-md',
+                                        nameError && 'border border-destructive'
+                                    )}>
+                                        <div className="flex items-center gap-2">
                                             <div className='text-sm'>
-                                                {
-                                                    set.isLocked ?
-                                                        <LockIcon className="h-5 w-5" /> :
-                                                        React.isValidElement(set.icon)
-                                                            ? React.cloneElement(set.icon, { className: 'h-5 w-5' })
-                                                            : null
-                                                }
-
+                                                <PlusIcon className="h-5 w-5" />
                                             </div>
-                                            <p className='text-sm flex-1 truncate'>{set.name}</p>
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button variant="ghost" size='sm' className="h-8 w-8 p-0">
-                                                        <Ellipsis className="h-4 w-4" />
-                                                    </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end">
-                                                    <DropdownMenuItem onSelect={() => console.log('Edit')}>
-                                                        Edit
-                                                    </DropdownMenuItem>
-                                                    {!set.isLocked && (
-                                                        <DropdownMenuItem
-                                                            className="text-destructive focus:bg-destructive/10 focus:text-destructive"
-                                                            onSelect={(e) => {
-                                                                e.stopPropagation();
-                                                                onRemoveSet(set.id);
-                                                            }}
-                                                        >
-                                                            Delete
-                                                        </DropdownMenuItem>
-                                                    )}
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
+                                            <input
+                                                ref={newInputRef}
+                                                type="text"
+                                                className={cn(
+                                                    'text-sm flex-1 bg-transparent border-none outline-none focus:ring-0'
+                                                )}
+                                                placeholder="Enter name and press Enter"
+                                                value={newSetName}
+                                                onChange={handleInputChange}
+                                                onBlur={handleCreateNewSet}
+                                                onKeyDown={handleKeyDown}
+                                            />
                                         </div>
-                                    );
-                                })
-                            }
-
-                            {isAddingNew && (
-                                <div className={cn(
-                                    'flex flex-col gap-1 p-2',
-                                    'bg-muted/70 rounded-md',
-                                    nameError && 'border border-destructive'
-                                )}>
-                                    <div className="flex items-center gap-2">
-                                        <div className='text-sm'>
-                                            <PlusIcon className="h-5 w-5" />
-                                        </div>
-                                        <input
-                                            ref={newInputRef}
-                                            type="text"
-                                            className={cn(
-                                                'text-sm flex-1 bg-transparent border-none outline-none focus:ring-0'
-                                            )}
-                                            placeholder="Enter name and press Enter"
-                                            value={newSetName}
-                                            onChange={handleInputChange}
-                                            onBlur={handleCreateNewSet}
-                                            onKeyDown={handleKeyDown}
-                                        />
+                                        {nameError && (
+                                            <p className="text-xs text-destructive ml-7">{nameError}</p>
+                                        )}
                                     </div>
-                                    {nameError && (
-                                        <p className="text-xs text-destructive ml-7">{nameError}</p>
-                                    )}
-                                </div>
-                            )}
+                                )}
+                            </div>
                         </div>
-                    </div>
-                    <div className='flex-1 h-full bg-background flex flex-col'>
-                        <header className='h-[var(--header-height)] border-b border-border flex justify-between items-center px-4'>
-                            <Breadcrumb>
-                                <BreadcrumbList>
-                                    {breadcrumbs.length > 0 ? (
-                                        breadcrumbs.map((item, index) => (
-                                            <React.Fragment key={index}>
-                                                <BreadcrumbItem>
-                                                    {index === breadcrumbs.length - 1 ? (
-                                                        <BreadcrumbPage>{item.label}</BreadcrumbPage>
-                                                    ) : (
-                                                        <BreadcrumbLink href={item.href || "#"}>{item.label}</BreadcrumbLink>
-                                                    )}
-                                                </BreadcrumbItem>
-                                                {index < breadcrumbs.length - 1 && <BreadcrumbSeparator />}
-                                            </React.Fragment>
-                                        ))
-                                    ) : (
-                                        <>
-                                            <BreadcrumbItem>
-                                                <BreadcrumbLink href="/">{heading}</BreadcrumbLink>
-                                            </BreadcrumbItem>
-                                            {subPageHeading && (
-                                                <>
-                                                    <BreadcrumbSeparator />
+                    )}
+                    <div className={cn('h-full bg-background flex flex-col', {
+                        'flex-1': !withoutFirstColumn,
+                        'w-full': withoutFirstColumn
+                    })}>
+                        <header className='h-[var(--header-height)] border-b border-border flex justify-between items-center px-4 select-none'>
+                            <div className="flex items-center">
+                                <Breadcrumb>
+                                    <BreadcrumbList>
+                                        {breadcrumbs.length > 0 ? (
+                                            breadcrumbs.map((item, index) => (
+                                                <React.Fragment key={index}>
                                                     <BreadcrumbItem>
-                                                        <BreadcrumbPage>{subPageHeading}</BreadcrumbPage>
+                                                        {index === breadcrumbs.length - 1 ? (
+                                                            <BreadcrumbPage>{item.label}</BreadcrumbPage>
+                                                        ) : (
+                                                            <BreadcrumbLink href={item.href || "#"}>{item.label}</BreadcrumbLink>
+                                                        )}
                                                     </BreadcrumbItem>
-                                                </>
-                                            )}
-                                        </>
-                                    )}
-                                </BreadcrumbList>
-                            </Breadcrumb>
+                                                    {index < breadcrumbs.length - 1 && <BreadcrumbSeparator />}
+                                                </React.Fragment>
+                                            ))
+                                        ) : (
+                                            <>
+                                                <BreadcrumbItem>
+                                                    <BreadcrumbLink href="/">{heading}</BreadcrumbLink>
+                                                </BreadcrumbItem>
+                                                {subPageHeading && (
+                                                    <>
+                                                        <BreadcrumbSeparator />
+                                                        <BreadcrumbItem>
+                                                            <BreadcrumbPage>{subPageHeading}</BreadcrumbPage>
+                                                        </BreadcrumbItem>
+                                                    </>
+                                                )}
+                                            </>
+                                        )}
+                                    </BreadcrumbList>
+                                </Breadcrumb>
 
-                            <p className='font-bold text-lg'>{subPageHeading}</p>
-                            {subPageDescription && (
-                                <p className="text-sm text-muted-foreground">{subPageDescription}</p>
+                                {!secondColumnHeaderContent && (
+                                    <>
+                                        <p className='font-bold text-lg ml-4'>{subPageHeading}</p>
+                                        {subPageDescription && (
+                                            <p className="text-sm text-muted-foreground">{subPageDescription}</p>
+                                        )}
+                                    </>
+                                )}
+                            </div>
+                            {secondColumnHeaderContent && (
+                                <div className="flex items-center gap-2">
+                                    {secondColumnHeaderContent}
+                                </div>
                             )}
                         </header>
                         <div className='flex-1 overflow-x-hidden overflow-y-auto p-2 max-h-[calc(var(--body-height)-7rem)]'>

@@ -7,6 +7,6 @@
     "access": "public"
   },
   "scripts": {
-    "dev": "echo \"No active development for typescript-config\" && exit 0"
+    "deev": "echo \"No active development for typescript-config\" && exit 0"
   }
 }

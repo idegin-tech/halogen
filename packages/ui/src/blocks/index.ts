@@ -8,7 +8,10 @@ export interface BlockRegistryItem {
   properties: BlockProperties;
 }
 
-const blockRegistry: Record<string, BlockRegistryItem> = {};
+const blockRegistry: Record<string, BlockRegistryItem> = {}
+
+// Create a collection to store dynamic exports
+export const dynamicComponents: Record<string, React.ComponentType<unknown>> = {};
 
 interface WebpackContext {
   keys(): string[];
@@ -48,13 +51,16 @@ blocksContext.keys().forEach((path: string) => {
         const properties = module.properties as BlockProperties;
         
         if (component && properties) {
+          const typedComponent = component as React.ComponentType<unknown>;
+          
           blockRegistry[registryPath] = {
-            component: component as React.ComponentType<unknown>,
+            component: typedComponent,
             properties
           };
           
-          if (typeof component === 'function' && 'name' in component) {
-            exports[(component as { name: string }).name] = component;
+          // Only add named components to our dynamicComponents collection
+          if (typeof component === 'function' && 'name' in component && component.name) {
+            dynamicComponents[component.name] = typedComponent;
           }
         } else {
           console.warn(`Block at ${path} doesn't export both a component and properties`);
@@ -85,6 +91,7 @@ Object.entries(blockRegistry).forEach(([path, item]) => {
   blockProperties[path as BlockPath] = item.properties;
 });
 
+// Export individual components directly
 export { SaasHeroSection } from './hero/basic_saas_hero/_block';
 export { BasicTestimonials } from './testimonials/simple_testimonial/_block';
 export { BasicFooter } from './footer/basic_footer/_block';
