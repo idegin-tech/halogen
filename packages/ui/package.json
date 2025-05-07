@@ -1,0 +1,31 @@
+{
+  "name": "@repo/ui",
+  "version": "0.0.0",
+  "private": true,
+  "exports": {
+    "./*": "./src/*.tsx",
+    "./blocks": "./src/blocks/index.ts"
+  },
+  "scripts": {
+    "lint": "eslint . --max-warnings 0",
+    "generate:component": "turbo gen react-component",
+    "check-types": "tsc --noEmit",
+    "build": "tsc --project tsconfig.json --outDir dist --declaration",
+    "dev": "tsc --project tsconfig.json --outDir dist --declaration --watch"
+  },
+  "devDependencies": {
+    "@repo/eslint-config": "*",
+    "@repo/typescript-config": "*",
+    "@turbo/gen": "^2.5.0",
+    "@types/node": "^22.15.3",
+    "@types/react": "19.1.0",
+    "@types/react-dom": "19.1.1",
+    "eslint": "^9.26.0",
+    "typescript": "5.8.2"
+  },
+  "dependencies": {
+    "@halogen/common": "*",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  }
+}
