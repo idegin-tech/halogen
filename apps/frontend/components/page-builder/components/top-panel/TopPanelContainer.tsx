@@ -144,7 +144,7 @@ export default function TopPanelContainer(
 
     return (
         <>
-            {show && <div className='fixed left-0 right-0 bg-black/80 z-40 cursor-pointer h-[var(--body-height)] bottom-0' onClick={onClose} />}
+            {show && <div className='fixed left-0 right-0 bg-black/10 z-40 cursor-pointer h-[var(--body-height)] bottom-0' onClick={onClose} />}
             <div
                 className={cn('h-[calc(var(--body-height)-3rem)] bg-background max-w-[1200px] min-w-[900px] shadow-md top-[calc(var(--header-height)+10px)] z-50 left-1/2 transform -translate-x-2/4 absolute border rounded-xl overflow-hidden flex flex-col transition-all duration-200', {
                     '-top-[95vh]': !show,

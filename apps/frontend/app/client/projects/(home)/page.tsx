@@ -1,18 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { Button, Card, CardBody, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Input, Textarea } from "@heroui/react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 import { PlusIcon } from "lucide-react";
-import { useBuilderContext } from "@/context/builder.context";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { AlertDialog, AlertDialogContent, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 
 export default function HomePage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [projectName, setProjectName] = useState("");
   const [projectDescription, setProjectDescription] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const { state, updateBuilderState } = useBuilderContext();
   const router = useRouter();
 
   const handleCreateProject = () => {
@@ -32,11 +33,6 @@ export default function HomePage() {
       thumbnail: `https://source.unsplash.com/random/300x200?website,${encodeURIComponent(projectName)}`
     };
     
-    // Update context with new project
-    updateBuilderState({
-      project: newProject
-    });
-    
     // Reset form and close modal
     setProjectName("");
     setProjectDescription("");
@@ -48,7 +44,7 @@ export default function HomePage() {
   };
   
   // Placeholder data for projects
-  const projects = state.project ? [state.project] : [];
+  const projects:any[] = [];
   
   // Add demo projects if no projects exist
   const demoProjects = [
@@ -80,13 +76,52 @@ export default function HomePage() {
           <p className="text-muted-foreground">Manage your website projects</p>
         </div>
         
-        <Button 
-          color="primary" 
-          startContent={<PlusIcon className="h-4 w-4" />}
-          onClick={() => setIsModalOpen(true)}
-        >
-          Create Project
-        </Button>
+        <AlertDialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+          <AlertDialogTrigger asChild>
+            <Button className="flex items-center gap-2">
+              <PlusIcon className="h-4 w-4" />
+              Create Project
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Create New Project</AlertDialogTitle>
+            </AlertDialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <label htmlFor="project-name" className="text-sm font-medium leading-none">Project Name</label>
+                <Input
+                  id="project-name"
+                  placeholder="Enter project name"
+                  value={projectName}
+                  onChange={(e) => setProjectName(e.target.value)}
+                  autoFocus
+                />
+              </div>
+              <div className="grid gap-2">
+                <label htmlFor="project-desc" className="text-sm font-medium leading-none">Description</label>
+                <Textarea
+                  id="project-desc"
+                  placeholder="Enter project description (optional)"
+                  value={projectDescription}
+                  onChange={(e) => setProjectDescription(e.target.value)}
+                  className="min-h-[100px]"
+                />
+              </div>
+            </div>
+            <AlertDialogFooter>
+              <Button variant="outline" onClick={() => setIsModalOpen(false)}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleCreateProject}
+                disabled={isLoading}
+              >
+                {isLoading ? "Creating..." : "Create Project"}
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
       
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -96,11 +131,10 @@ export default function HomePage() {
               <img
                 src={`${project.thumbnail}`}
                 alt={project.name}
-                // fill
-                className="object-cover"
+                className="object-cover w-full h-full"
               />
             </div>
-            <CardBody className="p-4">
+            <CardContent className="p-4">
               <div className="space-y-2">
                 <h3 className="text-lg font-medium">{project.name}</h3>
                 <p className="text-sm text-muted-foreground line-clamp-2">{project.description}</p>
@@ -110,65 +144,30 @@ export default function HomePage() {
                   </span>
                   <Button 
                     size="sm" 
-                    color="primary" 
-                    variant="flat"
                     onClick={() => router.push(`/client/projects/${project.id}/builder`)}
                   >
                     Edit
                   </Button>
                 </div>
               </div>
-            </CardBody>
+            </CardContent>
           </Card>
         ))}
         
         {/* Create project card */}
         <Card 
           className="overflow-hidden border-dashed border-2 hover:border-primary/50 transition-colors cursor-pointer flex items-center justify-center"
-          isPressable
           onClick={() => setIsModalOpen(true)}
         >
-          <CardBody className="p-8 flex flex-col items-center justify-center text-center h-full">
+          <CardContent className="p-8 flex flex-col items-center justify-center text-center h-full">
             <div className="rounded-full bg-primary/10 p-3 mb-4">
               <PlusIcon className="h-6 w-6 text-primary" />
             </div>
             <h3 className="text-lg font-medium">Create New Project</h3>
             <p className="text-sm text-muted-foreground">Start building your new website</p>
-          </CardBody>
+          </CardContent>
         </Card>
       </div>
-      
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
-        <ModalContent>
-          <ModalHeader className="flex flex-col gap-1">Create New Project</ModalHeader>
-          <ModalBody>
-            <Input
-              autoFocus
-              label="Project Name"
-              placeholder="Enter project name"
-              variant="bordered"
-              value={projectName}
-              onChange={(e) => setProjectName(e.target.value)}
-            />
-            <Textarea
-              label="Description"
-              placeholder="Enter project description (optional)"
-              variant="bordered"
-              value={projectDescription}
-              onChange={(e) => setProjectDescription(e.target.value)}
-              className="mt-4"
-            />
-          </ModalBody>
-          <ModalFooter>
-            <Button variant="flat" onClick={() => setIsModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button color="primary" onClick={handleCreateProject} isLoading={isLoading}>
-              Create Project
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
     </div>
   );
 }

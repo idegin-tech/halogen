@@ -2,12 +2,30 @@
 
 import type React from "react"
 import { useState, useEffect } from "react"
-import { Logo } from "@/components/icons"
-import { ThemeSwitch } from "@/components/theme-switch"
-import { Button, Avatar, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Progress } from "@heroui/react"
-import { Menu, X, Bell, User, Settings, LogOut, Home, LayoutGrid, ScrollText, LineChart } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { 
+  Menu,
+  X,
+  Bell,
+  User,
+  Settings,
+  LogOut,
+  Home,
+  LayoutGrid,
+  ScrollText,
+  LineChart 
+} from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { 
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem
+} from "@/components/ui/dropdown-menu"
+import { Avatar, AvatarImage } from "@/components/ui/avatar"
+import { Progress } from "../../components/ui/progress"
+import { ModeToggle } from "../../components/mode-toggle"
 
 type SideNavItem = {
   title: string
@@ -23,7 +41,7 @@ const sideNavItems: SideNavItem[] = [
   },
   {
     title: "Projects",
-    href: "/client/projects",
+    href: "/client/projects", 
     icon: <LayoutGrid className="h-5 w-5" />,
   },
   {
@@ -87,22 +105,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       />
 
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex flex-col border-r border-divider transition-all duration-300 ease-in-out bg-background ${
+        className={`fixed inset-y-0 left-0 z-50 flex flex-col border-r border-border transition-all duration-300 ease-in-out bg-background ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         } ${sidebarCollapsed ? "w-20" : "w-64"} md:relative md:translate-x-0`}
       >
-        <div className="flex h-14 items-center justify-between border-b border-divider px-4">
+        <div className="flex h-14 items-center justify-between border-b border-border px-4">
           <Link
             href="/client"
             className={`flex items-center gap-2 ${sidebarCollapsed && !isMobileView ? "justify-center" : ""}`}
           >
-            <Logo className="h-8 w-8 text-primary" />
+            <div className="h-8 w-8 bg-primary rounded-md" />
             {(!sidebarCollapsed || isMobileView) && (
               <span className="text-xl font-semibold text-foreground">Halogen</span>
             )}
           </Link>
           {(!sidebarCollapsed || isMobileView) && (
-            <Button isIconOnly variant="light" size="sm" className="md:flex" onClick={toggleSidebar}>
+            <Button variant="ghost" size="sm" className="md:flex" onClick={toggleSidebar}>
               <Menu className="h-5 w-5" />
             </Button>
           )}
@@ -126,7 +144,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </ul>
         </nav>
 
-        <div className="border-t border-divider p-4">
+        <div className="border-t border-border p-4">
           <div
             className={`flex ${sidebarCollapsed && !isMobileView ? "justify-center" : "items-center gap-3"} rounded-lg px-3 py-2`}
           >
@@ -135,7 +153,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <LineChart className="h-5 w-5 text-primary" />
                 <div className="flex-1">
                   <div className="text-xs text-muted-foreground">Storage</div>
-                  <Progress value={49} className="h-1.5 my-1" color="primary" />
+                  <Progress value={49} className="h-1.5 my-1" />
                   <div className="flex justify-between text-xs">
                     <span>24.5GB</span>
                     <span>50GB</span>
@@ -150,8 +168,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         {sidebarCollapsed && (
           <Button
-            isIconOnly
-            variant="light"
+            variant="ghost"
             size="sm"
             className="absolute -right-3 top-20 hidden h-6 w-6 rounded-full border shadow-sm md:flex"
             onClick={toggleSidebar}
@@ -162,11 +179,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </aside>
 
       <div className="flex flex-1 flex-col overflow-hidden">
-        <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-divider bg-card/50 px-4 backdrop-blur">
+        <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-border bg-card/50 px-4 backdrop-blur">
           <div className="flex items-center">
             <Button
-              isIconOnly
-              variant="light"
+              variant="ghost"
               size="sm"
               className="md:hidden"
               onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -178,44 +194,44 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </h1>
           </div>
           <div className="flex items-center gap-3">
-            {mounted && <ThemeSwitch />}
+            {mounted && <ModeToggle />}
 
-            <Button isIconOnly variant="light" className="rounded-full">
+            <Button variant="ghost" size="icon">
               <Bell className="h-5 w-5" />
             </Button>
 
-            <Dropdown>
-              <DropdownTrigger>
-                <Button isIconOnly variant="light" className="rounded-full">
-                  <Avatar src="https://i.pravatar.cc/150?u=a042581f4e29026024d" />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src="https://i.pravatar.cc/150?u=a042581f4e29026024d" alt="User avatar" />
+                  </Avatar>
                 </Button>
-              </DropdownTrigger>
-              <DropdownMenu aria-label="User menu">
-                <DropdownItem key="profile-info" className="h-14 gap-2" textValue="Profile info">
-                  <div className="flex items-center gap-2">
-                    <Avatar src="https://i.pravatar.cc/150?u=a042581f4e29026024d" className="h-9 w-9" />
-                    <div>
-                      <p className="text-sm font-medium">Sarah Connor</p>
-                      <p className="text-xs text-muted-foreground">sarah@skynet.com</p>
-                    </div>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <div className="flex items-center p-2">
+                  <Avatar className="h-9 w-9">
+                    <AvatarImage src="https://i.pravatar.cc/150?u=a042581f4e29026024d" alt="User avatar" />
+                  </Avatar>
+                  <div className="ml-2">
+                    <p className="text-sm font-medium">Sarah Connor</p>
+                    <p className="text-xs text-muted-foreground">sarah@skynet.com</p>
                   </div>
-                </DropdownItem>
-                <DropdownItem key="profile" textValue="Profile" startContent={<User className="h-4 w-4" />}>
+                </div>
+                <DropdownMenuItem>
+                  <User className="mr-2 h-4 w-4" />
                   Profile
-                </DropdownItem>
-                <DropdownItem key="settings" textValue="Settings" startContent={<Settings className="h-4 w-4" />}>
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <Settings className="mr-2 h-4 w-4" />
                   Settings
-                </DropdownItem>
-                <DropdownItem
-                  key="logout"
-                  textValue="Logout"
-                  startContent={<LogOut className="h-4 w-4" />}
-                  className="text-danger"
-                >
+                </DropdownMenuItem>
+                <DropdownMenuItem className="text-destructive">
+                  <LogOut className="mr-2 h-4 w-4" />
                   Logout
-                </DropdownItem>
-              </DropdownMenu>
-            </Dropdown>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </header>
 
