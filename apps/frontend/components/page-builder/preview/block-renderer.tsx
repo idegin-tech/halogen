@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import AddBlock from '../components/AddBlock';
 import { getBlockFromRegistry } from '@/lib/block-registry';
+import { CheckIcon } from 'lucide-react';
 
 type BlockRendererProps = {
   pageId?: string;
@@ -110,7 +111,9 @@ function BlockComponent({ block, isSelected }: BlockComponentProps) {
   return (
     <div className={blockClassName} onClick={handleBlockClick}>
       {isSelected && (
-        <div className="absolute inset-0 outline-dashed outline-primary bg-primary/10 pointer-events-none z-50"></div>
+        <div className="absolute inset-0 outline-dashed outline-[#8A2BE2] pointer-events-none z-50">
+          <small className='px-2 py-1 bg-[#8A2BE2] text-white rounded-lg shadow-md z-10 left-2 top-2 absolute flex items-center gap-1'><CheckIcon className='h-4 w-4'/> Selected</small>
+        </div>
       )}
       <Component {...blockValues} />
     </div>

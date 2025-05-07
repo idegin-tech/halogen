@@ -3,7 +3,7 @@ import Image from "next/image"
 
 export function BasicTestimonials(fields: typeof properties.fields) {
   return (
-    <section className="bg-muted/30 py-16 md:py-24">
+    <section className="bg-muted py-16 md:py-24">
       <div className="container mx-auto px-4 sm:px-6">
         <div className="mx-auto max-w-2xl text-center">
           {fields?.heading?.value && (

@@ -3,7 +3,7 @@ import Image from "next/image"
 
 export function SaasHeroSection(fields: typeof properties.fields) {
   return (
-    <section className="relative overflow-hidden bg-muted/30 py-16 md:py-24 ">
+    <section className="relative overflow-hidden bg-muted py-16 md:py-24 ">
       <div
         className="absolute inset-0 bg-grid-slate-100/50 [mask-image:linear-gradient(0deg,#fff,rgba(255,255,255,0.6))] dark:bg-grid-slate-700/50"
         aria-hidden="true"

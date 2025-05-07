@@ -10,7 +10,6 @@ export default function PageBuilderPreview({ }: Props) {
   const [show, setShow] = useState(false);
   const { state } = useBuilderContext();
 
-  // Find the currently active color set
   const activeColorSet = state.variableSets.find(set => set.key === 'colors' || set.id === 'set_colors');
   
   const colorVariables = state.variables.filter(v => {
@@ -30,7 +29,7 @@ export default function PageBuilderPreview({ }: Props) {
   const frameKey = JSON.stringify(colorVariables);
 
   return (
-    <main className="h-[var(--body-height)] bg-white flex-1 overflow-hidden grid grid-cols-1">
+    <main className="h-[var(--body-height)] max-h-[var(--body-height)] bg-white flex-1 overflow-hidden grid grid-cols-1">
       {
         show && (
           <Frame
@@ -68,7 +67,7 @@ export default function PageBuilderPreview({ }: Props) {
                             }
                         </style>
                       </head>
-                      <body>
+                      <body class="bg-background text-foreground antialiased">
                         <div id="mountHere"></div>
                       </body>
                     </html>
