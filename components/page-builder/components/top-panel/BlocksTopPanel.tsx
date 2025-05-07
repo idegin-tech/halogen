@@ -24,7 +24,7 @@ function UsedBlockItem({ block, instanceCount }: { block: any, instanceCount: nu
     const { selectedPageId } = usePage();
     const { state, updateBuilderState } = useBuilderContext();
     const [blockDescription, setBlockDescription] = useState('');
-    
+
     useEffect(() => {
         const loadBlockInfo = async () => {
             try {
@@ -61,8 +61,8 @@ function UsedBlockItem({ block, instanceCount }: { block: any, instanceCount: nu
             page: selectedPageId,
             folderName: block.folderName,
             subFolder: block.subFolder,
-            value: null,  
-            instance: block.id 
+            value: null,
+            instance: block.id
         };
 
         updateBuilderState({
@@ -127,8 +127,8 @@ export default function BlocksTopPanel({ show, onHide }: { show: boolean, onHide
     }, [state.blocks]);
 
     const masterBlocks = useMemo(() => {
-        return state.blocks.filter(block => 
-            block.instance === null && 
+        return state.blocks.filter(block =>
+            block.instance === null &&
             block.value !== null
         ).sort((a, b) => {
             if (a.page !== b.page) {
@@ -137,20 +137,20 @@ export default function BlocksTopPanel({ show, onHide }: { show: boolean, onHide
             return a.index - b.index;
         });
     }, [state.blocks]);
-    
+
     const blockInstanceCounts = useMemo(() => {
         const counts: Record<string, number> = {};
-        
+
         masterBlocks.forEach(block => {
             counts[block.id] = 0;
         });
-        
+
         state.blocks.forEach(block => {
             if (block.instance !== null && block.value === null && counts[block.instance] !== undefined) {
                 counts[block.instance]++;
             }
         });
-        
+
         return counts;
     }, [state.blocks, masterBlocks]);
 
@@ -165,12 +165,16 @@ export default function BlocksTopPanel({ show, onHide }: { show: boolean, onHide
                 {
                     name: "testimonials",
                     subFolders: []
+                },
+                {
+                    name: "footer",
+                    subFolders: []
                 }
             ];
 
             for (const folder of folders) {
-                if (folder.name === "hero") {
-                    try {
+                try {
+                    if (folder.name === "hero") {
                         const subFolderName = "basic_saas_hero";
                         const module = await import(`@/blocks/${folder.name}/${subFolderName}/_block`);
 
@@ -179,11 +183,7 @@ export default function BlocksTopPanel({ show, onHide }: { show: boolean, onHide
                             properties: module.properties,
                             thumbnailPath: `/_next/static/media/blocks.${folder.name}.${subFolderName}.thumbnail.png`
                         });
-                    } catch (err) {
-                        console.error(`Error loading hero block properties:`, err);
-                    }
-                } else if (folder.name === "testimonials") {
-                    try {
+                    } else if (folder.name === "testimonials") {
                         const subFolderName = "simple_testimonial";
                         const module = await import(`@/blocks/${folder.name}/${subFolderName}/_block`);
 
@@ -192,9 +192,18 @@ export default function BlocksTopPanel({ show, onHide }: { show: boolean, onHide
                             properties: module.properties,
                             thumbnailPath: `/_next/static/media/blocks.${folder.name}.${subFolderName}.thumbnail.png`
                         });
-                    } catch (err) {
-                        console.error(`Error loading testimonial block properties:`, err);
+                    } else if (folder.name === "footer") {
+                        const subFolderName = "basic_footer";
+                        const module = await import(`@/blocks/${folder.name}/${subFolderName}/_block`);
+
+                        folder.subFolders.push({
+                            name: subFolderName,
+                            properties: module.properties,
+                            thumbnailPath: `/_next/static/media/blocks.${folder.name}.${subFolderName}.thumbnail.png`
+                        });
                     }
+                } catch (err) {
+                    console.error(`Error loading ${folder.name} block properties:`, err);
                 }
             }
 
@@ -249,7 +258,7 @@ export default function BlocksTopPanel({ show, onHide }: { show: boolean, onHide
                 acc[key] = { value: field.defaultValue };
                 return acc;
             }, {} as Record<string, any>),
-            instance: null 
+            instance: null
         };
 
         updateBuilderState({
@@ -271,16 +280,16 @@ export default function BlocksTopPanel({ show, onHide }: { show: boolean, onHide
                 isLocked: false
             });
         }
-        
+
         result.push("BLOCK TYPES");
-        
+
         result.push(...blockFolders.map((folder) => ({
             id: folder.name,
             name: folder.name.charAt(0).toUpperCase() + folder.name.slice(1),
             icon: <BlocksIcon />,
             isLocked: false,
         })));
-        
+
         return result;
     }, [blockFolders, masterBlocks]);
 
@@ -298,10 +307,10 @@ export default function BlocksTopPanel({ show, onHide }: { show: boolean, onHide
         return (
             <div className="grid grid-cols-1 gap-3">
                 {masterBlocks.map((block) => (
-                    <UsedBlockItem 
-                        key={block.id} 
-                        block={block} 
-                        instanceCount={blockInstanceCounts[block.id] || 0} 
+                    <UsedBlockItem
+                        key={block.id}
+                        block={block}
+                        instanceCount={blockInstanceCounts[block.id] || 0}
                     />
                 ))}
             </div>
@@ -321,10 +330,10 @@ export default function BlocksTopPanel({ show, onHide }: { show: boolean, onHide
                 onSetActiveSet={setSelectedFolder}
                 onSetChange={handleSetChange}
                 subPageHeading={
-                    selectedFolder === 'used-blocks' 
-                        ? "Master Blocks" 
-                        : selectedFolder 
-                            ? `${selectedFolder.charAt(0).toUpperCase() + selectedFolder.slice(1)} Blocks` 
+                    selectedFolder === 'used-blocks'
+                        ? "Master Blocks"
+                        : selectedFolder
+                            ? `${selectedFolder.charAt(0).toUpperCase() + selectedFolder.slice(1)} Blocks`
                             : "Select a block type"
                 }
             >
@@ -335,7 +344,7 @@ export default function BlocksTopPanel({ show, onHide }: { show: boolean, onHide
                         </div>
                     ) : selectedFolder ? (
                         <div className="p-2">
-                           
+
 
                             {isLoadingThumbnails ? (
                                 <div className="grid grid-cols-1 gap-6 animate-pulse">
@@ -354,66 +363,79 @@ export default function BlocksTopPanel({ show, onHide }: { show: boolean, onHide
                                         }
 
                                         return (
-                                            <div
-                                                key={subFolder.name}
-                                                className="group relative overflow-hidden rounded-xl border border-border bg-card transition-all duration-300 hover:border-primary/60 hover:shadow-lg hover:shadow-primary/10 select-none"
-                                            >
-                                                <div className="relative w-full h-56 overflow-hidden">
-                                                    <Image
-                                                        src={ThumbnailImage}
-                                                        alt={subFolder.properties.name}
-                                                        fill
-                                                        className="object-cover transition-transform duration-500 group-hover:scale-105"
-                                                        onError={() => {
-                                                            console.log("Error loading thumbnail");
-                                                        }}
-                                                    />
-                                                    {usedBlocks.some(ub => 
-                                                        ub.folderName === selectedFolder && ub.subFolder === subFolder.name
-                                                    ) && (
-                                                        <div className='px-2 bg-green-500 text-white rounded-lg flex items-center gap-1 absolute right-2 top-2 text-sm z-10'>
-                                                            <CheckIcon className='h-4 w-4' /> Used in project
-                                                        </div>
-                                                    )}
+                                            <div key={subFolder.name} className='rounded-xl overflow-hidden'>
+                                                <div
 
-                                                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 flex flex-col justify-end p-5">
-                                                        <div className="space-y-3 select-none">
-                                                            <div>
-                                                                <h4 className="font-medium text-lg text-white mb-1">{subFolder.properties.name}</h4>
-                                                                <p className="text-sm text-white/80">
-                                                                    {subFolder.properties.description}
-                                                                </p>
-                                                            </div>
-
-                                                            {selectedPageId ? (
-                                                                <Button
-                                                                    size="md"
-                                                                    color="primary"
-                                                                    variant="solid"
-                                                                    className="w-full transform translate-y-full opacity-0 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300"
-                                                                    startContent={<PlusCircleIcon className="w-4 h-4" />}
-                                                                    onClick={() => handleAddBlockToPage(
-                                                                        selectedFolder,
-                                                                        subFolder.name,
-                                                                        subFolder.properties
-                                                                    )}
-                                                                >
-                                                                    Add to page
-                                                                </Button>
-                                                            ) : (
-                                                                <Button
-                                                                    size="md"
-                                                                    variant="bordered"
-                                                                    color="default"
-                                                                    className="w-full backdrop-blur-sm border-white/30 text-white transform translate-y-full opacity-0 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300"
-                                                                >
-                                                                    Preview block
-                                                                </Button>
+                                                    className="z-0 group relative overflow-hidden rounded-xl border border-divider bg-card transition-all duration-300 hover:border-primary/60 hover:shadow-lg hover:shadow-primary/10 select-none"
+                                                >
+                                                    <div className="relative w-full min-h-40 flex items-center overflow-hidden justify-center">
+                                                        <Image
+                                                            src={ThumbnailImage}
+                                                            alt={subFolder.properties.name}
+                                                            fill
+                                                            className="z-[3] shadow-lg w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                                                            onError={() => {
+                                                                console.log("Error loading thumbnail");
+                                                            }}
+                                                        />
+                                                        <div className='w-full h-full bg-black/50 backdrop-blur-sm rounded-xl z-[4] absolute' />
+                                                        <Image
+                                                            src={ThumbnailImage}
+                                                            alt={subFolder.properties.name}
+                                                            width={400}
+                                                            height={300}
+                                                            className="z-[5] shadow-lg w-full rounded-md object-cover transition-transform duration-500 group-hover:scale-105"
+                                                            onError={() => {
+                                                                console.log("Error loading thumbnail");
+                                                            }}
+                                                        />
+                                                        {usedBlocks.some(ub =>
+                                                            ub.folderName === selectedFolder && ub.subFolder === subFolder.name
+                                                        ) && (
+                                                                <div className='px-2 bg-green-500 text-white rounded-lg flex items-center gap-1 absolute right-2 top-2 text-sm z-10'>
+                                                                    <CheckIcon className='h-4 w-4' /> Used in project
+                                                                </div>
                                                             )}
+
+                                                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 flex flex-col justify-end p-5 z-40">
+                                                            <div className="space-y-3 select-none">
+                                                                <div>
+                                                                    <h4 className="font-medium text-lg text-white mb-1">{subFolder.properties.name}</h4>
+                                                                    <p className="text-sm text-white/80">
+                                                                        {subFolder.properties.description}
+                                                                    </p>
+                                                                </div>
+
+                                                                {selectedPageId ? (
+                                                                    <Button
+                                                                        size="md"
+                                                                        color="primary"
+                                                                        variant="solid"
+                                                                        className="w-full transform translate-y-full opacity-0 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300"
+                                                                        startContent={<PlusCircleIcon className="w-4 h-4" />}
+                                                                        onClick={() => handleAddBlockToPage(
+                                                                            selectedFolder,
+                                                                            subFolder.name,
+                                                                            subFolder.properties
+                                                                        )}
+                                                                    >
+                                                                        Add to page
+                                                                    </Button>
+                                                                ) : (
+                                                                    <Button
+                                                                        size="md"
+                                                                        variant="bordered"
+                                                                        color="default"
+                                                                        className="w-full backdrop-blur-sm border-white/30 text-white transform translate-y-full opacity-0 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300"
+                                                                    >
+                                                                        Preview block
+                                                                    </Button>
+                                                                )}
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                </div>
 
+                                                </div>
                                             </div>
                                         );
                                     })}
