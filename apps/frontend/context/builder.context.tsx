@@ -1,8 +1,8 @@
 "use client";
 
 import React, { createContext, useContext, useState, ReactNode, useCallback } from "react";
-import { PageData, ProjectData, Variable, VariableSet } from "@/types/builder.types";
-import { BlockInstance } from "@/types/block.types";
+import { PageData, ProjectData, Variable, VariableSet } from "@halogen/common";
+import { BlockInstance } from "@halogen/common";
 
 
 type BuilderState = {

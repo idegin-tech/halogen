@@ -1,14 +1,4 @@
-export type PageData = {
-  id: string;
-  name: string;
-  path?: string;
-  slug?: string;
-  route?: string;
-  isStatic?: boolean;
-  project?: any;
-  createdAt?: string;
-  updatedAt?: string;
-}
+import { PageData } from "./builder.types"
 
 export type BlockFieldConfig = {
     type: "text" | "textarea" | "select" | "checkbox" | "radio" | "number" | "color" | "url" | "file" | "switch" | "list"
