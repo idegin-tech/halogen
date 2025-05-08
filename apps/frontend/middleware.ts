@@ -14,7 +14,7 @@ export function middleware(request: NextRequest) {
   
   const isAuthPage = path === '/' || path === '/register';
   if (isAuthPage && halogonSessionCookie) {
-    const redirectUrl = new URL('/client', request.url);
+    const redirectUrl = new URL('/client/projects', request.url);
     return NextResponse.redirect(redirectUrl);
   }
   

@@ -27,9 +27,17 @@ export class ProjectsService {
     static async createProject(userId: string, projectData: CreateProjectDTO): Promise<Project> {
         try {
             const subdomain = await this.generateUniqueSubdomain();
+            
+            // Extract pages data if provided
+            const { pages: pagesData, ...projectFields } = projectData;
+            
+            // Ensure project_id exists, or generate one if not provided
+            if (!projectFields.project_id) {
+                projectFields.project_id = `proj_${Date.now()}`;
+            }
 
             const newProject = new ProjectModel({
-                ...projectData,
+                ...projectFields,
                 subdomain,
                 user: userId
             });
@@ -44,14 +52,28 @@ export class ProjectsService {
 
             await projectUser.save();
             
-            const homePage = new PageModel({
-                name: 'Home',
-                path: '/',
-                isStatic: true,
-                project: savedProject._id
-            });
-            
-            await homePage.save();
+            // Create home page with page_id if pages not provided
+            if (!pagesData || pagesData.length === 0) {
+                const homePage = new PageModel({
+                    name: 'Home',
+                    path: '/',
+                    isStatic: true,
+                    project: savedProject._id,
+                    page_id: `page_${Date.now()}`
+                });
+                
+                await homePage.save();
+            } else {
+                // Create pages from provided data
+                for (const pageData of pagesData) {
+                    const page = new PageModel({
+                        ...pageData,
+                        project: savedProject._id
+                    });
+                    
+                    await page.save();
+                }
+            }
 
             const projectObj = savedProject.toObject();
             return {

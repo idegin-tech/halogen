@@ -3,6 +3,7 @@ export interface Project {
     name: string;
     subdomain: string;
     user: string;
+    project_id: string;
     thumbnail?: string;
     createdAt: Date;
     updatedAt: Date;

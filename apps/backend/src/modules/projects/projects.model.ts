@@ -12,6 +12,12 @@ const ProjectSchema: Schema = new Schema<Project>({
     required: true,
     trim: true
   },
+  project_id: {
+    type: String,
+    required: true,
+    unique: true,
+    trim: true
+  },
   subdomain: {
     type: String,
     required: true,
@@ -41,6 +47,7 @@ ProjectSchema.plugin(mongoosePaginate);
 
 ProjectSchema.index({ user: 1 });
 ProjectSchema.index({ subdomain: 1 }, { unique: true });
+ProjectSchema.index({ project_id: 1 }, { unique: true });
 ProjectSchema.index({ name: 'text' }, { weights: { name: 10 } });
 
 export default mongoose.model<ProjectDocument, mongoose.PaginateModel<ProjectDocument>>('Project', ProjectSchema);

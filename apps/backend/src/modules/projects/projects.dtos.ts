@@ -2,7 +2,15 @@ import { z } from 'zod';
 
 export const createProjectSchema = z.object({
   name: z.string().min(3, 'Project name must be at least 3 characters'),
-  thumbnail: z.string().optional()
+  description: z.string().optional(),
+  project_id: z.string().optional(),
+  thumbnail: z.string().optional(),
+  pages: z.array(z.object({
+    page_id: z.string(),
+    name: z.string(),
+    path: z.string(),
+    isStatic: z.boolean().optional()
+  })).optional()
 });
 
 export const updateProjectSchema = z.object({

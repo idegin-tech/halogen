@@ -35,11 +35,6 @@ type SideNavItem = {
 
 const sideNavItems: SideNavItem[] = [
   {
-    title: "Dashboard",
-    href: "/client",
-    icon: <Home className="h-5 w-5" />,
-  },
-  {
     title: "Projects",
     href: "/client/projects", 
     icon: <LayoutGrid className="h-5 w-5" />,
@@ -111,7 +106,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       >
         <div className="flex h-14 items-center justify-between border-b border-border px-4">
           <Link
-            href="/client"
+            href="/client/projects"
             className={`flex items-center gap-2 ${sidebarCollapsed && !isMobileView ? "justify-center" : ""}`}
           >
             <div className="h-8 w-8 bg-primary rounded-md" />
