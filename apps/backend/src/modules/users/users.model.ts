@@ -1,5 +1,5 @@
 import mongoose, { Schema, Document } from 'mongoose';
-import { User, UserRole } from '@halogen/common';
+import { User } from '@halogen/common';
 
 export type UserDocumentProps = Omit<User, '_id'>;
 
@@ -17,11 +17,6 @@ const UserSchema: Schema = new Schema<User>({
     unique: true,
     trim: true,
     lowercase: true
-  },
-  role: {
-    type: String,
-    enum: Object.values(UserRole),
-    default: UserRole.DEFAULT
   },
   isActive: {
     type: Boolean,

@@ -6,7 +6,7 @@ export type UserSecretDocumentProps = Omit<UserSecret, '_id'>;
 export interface UserSecretDocument extends UserSecretDocumentProps, Document {}
 
 const UserSecretSchema: Schema = new Schema({
-  userId: {
+  user: {
     type: Schema.Types.ObjectId,
     ref: 'User',
     required: true,
@@ -27,6 +27,6 @@ const UserSecretSchema: Schema = new Schema({
 });
 
 // Index for faster lookups
-UserSecretSchema.index({ userId: 1 });
+UserSecretSchema.index({ user: 1 });
 
 export default mongoose.model<UserSecretDocument>('UserSecret', UserSecretSchema);

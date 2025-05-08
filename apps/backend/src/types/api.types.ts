@@ -1,32 +1,44 @@
 export type ApiResponseStatus = 'success' | 'error';
 
-export interface ApiSuccessResponse<T> {
-  status: 'success';
-  data: T;
+export interface ApiResponse {
+  status: ApiResponseStatus;
+  message: string;
+  timestamp: string;
+  payload?: any;
 }
 
-export interface ApiErrorResponse {
+export interface ApiSuccessResponse<T = any> extends ApiResponse {
+  status: 'success';
+  payload: T;
+}
+
+export interface ApiErrorResponse extends ApiResponse {
   status: 'error';
-  message: string;
   errors?: Array<{
     field: string;
     message: string;
   }>;
 }
 
-export type ApiResponse<T> = ApiSuccessResponse<T> | ApiErrorResponse;
-
-export function createSuccessResponse<T>(data: T): ApiSuccessResponse<T> {
+export function createSuccessResponse<T>(payload: T, message = 'Operation successful'): ApiSuccessResponse<T> {
   return {
     status: 'success',
-    data
+    message,
+    timestamp: new Date().toISOString(),
+    payload
   };
 }
 
-export function createErrorResponse(message: string, errors?: Array<{ field: string; message: string }>): ApiErrorResponse {
+export function createErrorResponse(
+  message: string, 
+  errors?: Array<{ field: string; message: string }>,
+  payload?: any
+): ApiErrorResponse {
   return {
     status: 'error',
     message,
+    timestamp: new Date().toISOString(),
+    ...(payload && { payload }),
     ...(errors && { errors })
   };
 }

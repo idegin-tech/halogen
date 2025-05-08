@@ -1,8 +1,8 @@
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
-import { User, UserRole } from '@halogen/common';
-import UserModel, { UserDocument } from '../users/users.model';
-import UserSecretModel, { UserSecretDocument } from '../users/user-secret.model';
+import { User } from '@halogen/common';
+import UserModel from '../users/users.model';
+import UserSecretModel from '../users/user-secret.model';
 import { LoginDTO, RegisterDTO, ResetPasswordDTO, ResetPasswordRequestDTO, ChangePasswordDTO } from './auth.dtos';
 import { Types } from 'mongoose';
 import Logger from '../../config/logger.config';
@@ -22,7 +22,6 @@ export class AuthService {
       const newUser = new UserModel({
         displayName: userData.displayName,
         email,
-        role: userData.role || UserRole.DEFAULT,
         isActive: true
       });
       
@@ -31,7 +30,7 @@ export class AuthService {
       const passwordHash = await bcrypt.hash(userData.password, this.SALT_ROUNDS);
       
       const userSecret = new UserSecretModel({
-        userId: savedUser._id,
+        user: savedUser._id,
         passwordHash
       });
       
@@ -40,7 +39,7 @@ export class AuthService {
       const userObj = savedUser.toObject();
       const userToReturn: User = {
         ...userObj,
-        _id: userObj._id.toString()
+        _id: userObj._id as any
       };
       
       return userToReturn;
@@ -63,7 +62,7 @@ export class AuthService {
         throw new Error('Account is disabled. Please contact support');
       }
       
-      const userSecret = await UserSecretModel.findOne({ userId: user._id });
+      const userSecret = await UserSecretModel.findOne({ user: user._id });
       if (!userSecret) {
         throw new Error('User authentication data not found');
       }
@@ -79,7 +78,7 @@ export class AuthService {
       const userObj = user.toObject();
       const userToReturn: User = {
         ...userObj,
-        _id: userObj._id.toString()
+        _id: userObj._id as any
       };
       
       return {
@@ -104,7 +103,7 @@ export class AuthService {
       const userObj = user.toObject();
       const userToReturn: User = {
         ...userObj,
-        _id: userObj._id.toString()
+        _id: userObj._id as any
       };
       
       return userToReturn;
@@ -128,7 +127,7 @@ export class AuthService {
       resetTokenExpiry.setHours(resetTokenExpiry.getHours() + 1);
       
       await UserSecretModel.findOneAndUpdate(
-        { userId: user._id },
+        { user: user._id },
         {
           passwordResetToken: resetToken,
           passwordResetExpires: resetTokenExpiry
@@ -168,7 +167,7 @@ export class AuthService {
   
   static async changePassword(userId: string, data: ChangePasswordDTO): Promise<void> {
     try {
-      const userSecret = await UserSecretModel.findOne({ userId: new Types.ObjectId(userId) });
+      const userSecret = await UserSecretModel.findOne({ user: new Types.ObjectId(userId) });
       if (!userSecret) {
         throw new Error('User authentication data not found');
       }

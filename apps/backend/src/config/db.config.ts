@@ -7,23 +7,22 @@ class Database {
   private readonly options: mongoose.ConnectOptions;
   private reconnectAttempts: number = 0;
   private readonly maxReconnectAttempts: number = 5;
-  private readonly reconnectInterval: number = 5000; // 5 seconds
+  private readonly reconnectInterval: number = 5000;
 
   private constructor() {
     this.connectionString = process.env.MONGODB_URI || 'mongodb://localhost:27017/halogen';
     
-    // Production-ready connection options
     this.options = {
-      serverSelectionTimeoutMS: 5000, // Timeout for server selection
-      socketTimeoutMS: 45000, // Close sockets after 45 seconds of inactivity
-      connectTimeoutMS: 10000, // Give up initial connection after 10 seconds
-      maxPoolSize: 10, // Maintain up to 10 socket connections
-      minPoolSize: 5, // Maintain at least 5 socket connections
-      heartbeatFrequencyMS: 10000, // Check connection status every 10 seconds
-      retryWrites: true, // Retry failed writes
-      retryReads: true, // Retry failed reads
-      ssl: process.env.NODE_ENV === 'production', // Use SSL in production
-      authSource: process.env.MONGODB_AUTH_SOURCE || 'admin', // Authentication database
+      serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 45000,
+      connectTimeoutMS: 10000,
+      maxPoolSize: 10,
+      minPoolSize: 5,
+      heartbeatFrequencyMS: 10000,
+      retryWrites: true,
+      retryReads: true,
+      ssl: process.env.NODE_ENV === 'production',
+      authSource: process.env.MONGODB_AUTH_SOURCE || 'admin',
     };
     
     mongoose.set('strictQuery', true);
@@ -40,7 +39,7 @@ class Database {
     try {
       Logger.info('Connecting to MongoDB...');
       await mongoose.connect(this.connectionString, this.options);
-      this.reconnectAttempts = 0; // Reset reconnect attempts on successful connection
+      this.reconnectAttempts = 0;
       Logger.info('Connected to MongoDB successfully');
     } catch (error) {
       Logger.error(`Error connecting to MongoDB: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -63,7 +62,7 @@ class Database {
     
     mongoose.connection.on('reconnected', () => {
       Logger.info('MongoDB reconnected');
-      this.reconnectAttempts = 0; // Reset reconnect attempts on successful reconnection
+      this.reconnectAttempts = 0;
     });
     
     mongoose.connection.on('reconnectFailed', () => {
@@ -87,7 +86,7 @@ class Database {
   }
   
   private handleDisconnection(): void {
-    if (mongoose.connection.readyState === 0) { // 0 = disconnected
+    if (mongoose.connection.readyState === 0) {
       this.handleConnectionError(new Error('MongoDB disconnected'));
     }
   }
@@ -101,7 +100,6 @@ class Database {
     }
   }
   
-  // Get connection status for health checks
   public getStatus(): { status: string; details: Record<string, unknown> } {
     const states = ['disconnected', 'connected', 'connecting', 'disconnecting'];
     const readyState = mongoose.connection.readyState;

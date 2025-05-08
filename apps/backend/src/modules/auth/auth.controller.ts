@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { LoginDTO, RegisterDTO, ResetPasswordDTO, ResetPasswordRequestDTO, ChangePasswordDTO } from './auth.dtos';
-import { createSuccessResponse, createErrorResponse } from '../../types/api.types';
+import { ResponseHelper } from '../../lib/response.helper';
 
 export class AuthController {
   static async register(req: Request, res: Response): Promise<void> {
@@ -9,9 +9,13 @@ export class AuthController {
       const userData = req.body as RegisterDTO;
       const user = await AuthService.register(userData);
       
-      res.status(201).json(createSuccessResponse(user));
+      ResponseHelper.success(res, user, 'User registered successfully', 201);
     } catch (error) {
-      res.status(400).json(createErrorResponse(error instanceof Error ? error.message : 'Failed to register user'));
+      ResponseHelper.error(
+        res, 
+        error instanceof Error ? error.message : 'Failed to register user', 
+        400
+      );
     }
   }
   
@@ -22,12 +26,15 @@ export class AuthController {
       
       if (req.session && isNewSession) {
         req.session.userId = String(user._id);
-        req.session.userRole = user.role;
       }
       
-      res.status(200).json(createSuccessResponse(user));
+      ResponseHelper.success(res, user, 'Login successful');
     } catch (error) {
-      res.status(401).json(createErrorResponse(error instanceof Error ? error.message : 'Authentication failed'));
+      ResponseHelper.error(
+        res, 
+        error instanceof Error ? error.message : 'Authentication failed', 
+        401
+      );
     }
   }
   
@@ -35,21 +42,21 @@ export class AuthController {
     if (req.session) {
       req.session.destroy((err: Error | null) => {
         if (err) {
-          res.status(500).json(createErrorResponse('Failed to logout'));
+          ResponseHelper.error(res, 'Failed to logout', 500);
         } else {
           res.clearCookie('halogen.sid');
-          res.status(200).json(createSuccessResponse({ message: 'Logged out successfully' }));
+          ResponseHelper.success(res, null, 'Logged out successfully');
         }
       });
     } else {
-      res.status(200).json(createSuccessResponse({ message: 'Already logged out' }));
+      ResponseHelper.success(res, null, 'Already logged out');
     }
   }
   
   static async refreshToken(req: Request, res: Response): Promise<void> {
     try {
       if (!req.session || !req.session.userId) {
-        res.status(401).json(createErrorResponse('Not authenticated'));
+        ResponseHelper.unauthorized(res);
         return;
       }
       
@@ -58,36 +65,44 @@ export class AuthController {
       if (!user) {
         req.session.destroy((err: Error | null) => {
           res.clearCookie('halogen.sid');
-          res.status(401).json(createErrorResponse('User not found'));
+          ResponseHelper.error(res, 'User not found', 401);
         });
         return;
       }
       
       req.session.cookie.maxAge = 1000 * 60 * 60 * 24 * 2; // Reset to 2 days
       
-      res.status(200).json(createSuccessResponse({ message: 'Token refreshed successfully' }));
+      ResponseHelper.success(res, { userId: user._id }, 'Token refreshed successfully');
     } catch (error) {
-      res.status(500).json(createErrorResponse(error instanceof Error ? error.message : 'Failed to refresh token'));
+      ResponseHelper.error(
+        res, 
+        error instanceof Error ? error.message : 'Failed to refresh token', 
+        500
+      );
     }
   }
   
   static async getCurrentUser(req: Request, res: Response): Promise<void> {
     try {
       if (!req.session || !req.session.userId) {
-        res.status(401).json(createErrorResponse('Not authenticated'));
+        ResponseHelper.unauthorized(res);
         return;
       }
       
       const user = await AuthService.getCurrentUser(req.session.userId);
       
       if (!user) {
-        res.status(404).json(createErrorResponse('User not found'));
+        ResponseHelper.notFound(res, 'User');
         return;
       }
       
-      res.status(200).json(createSuccessResponse(user));
+      ResponseHelper.success(res, user, 'User retrieved successfully');
     } catch (error) {
-      res.status(500).json(createErrorResponse(error instanceof Error ? error.message : 'Failed to retrieve current user'));
+      ResponseHelper.error(
+        res, 
+        error instanceof Error ? error.message : 'Failed to retrieve current user', 
+        500
+      );
     }
   }
   
@@ -96,9 +111,13 @@ export class AuthController {
       const resetData = req.body as ResetPasswordRequestDTO;
       await AuthService.requestPasswordReset(resetData);
       
-      res.status(200).json(createSuccessResponse({ message: 'If your email exists in our system, you will receive a password reset link' }));
+      ResponseHelper.success(
+        res, 
+        { email: resetData.email }, 
+        'If your email exists in our system, you will receive a password reset link'
+      );
     } catch (error) {
-      res.status(500).json(createErrorResponse('Failed to process password reset request'));
+      ResponseHelper.error(res, 'Failed to process password reset request', 500);
     }
   }
   
@@ -107,25 +126,33 @@ export class AuthController {
       const resetData = req.body as ResetPasswordDTO;
       await AuthService.resetPassword(resetData);
       
-      res.status(200).json(createSuccessResponse({ message: 'Password has been reset successfully' }));
+      ResponseHelper.success(res, { token: resetData.token }, 'Password has been reset successfully');
     } catch (error) {
-      res.status(400).json(createErrorResponse(error instanceof Error ? error.message : 'Failed to reset password'));
+      ResponseHelper.error(
+        res, 
+        error instanceof Error ? error.message : 'Failed to reset password', 
+        400
+      );
     }
   }
   
   static async changePassword(req: Request, res: Response): Promise<void> {
     try {
       if (!req.session || !req.session.userId) {
-        res.status(401).json(createErrorResponse('Not authenticated'));
+        ResponseHelper.unauthorized(res);
         return;
       }
       
       const changeData = req.body as ChangePasswordDTO;
       await AuthService.changePassword(req.session.userId, changeData);
       
-      res.status(200).json(createSuccessResponse({ message: 'Password changed successfully' }));
+      ResponseHelper.success(res, { userId: req.session.userId }, 'Password changed successfully');
     } catch (error) {
-      res.status(400).json(createErrorResponse(error instanceof Error ? error.message : 'Failed to change password'));
+      ResponseHelper.error(
+        res, 
+        error instanceof Error ? error.message : 'Failed to change password', 
+        400
+      );
     }
   }
 }

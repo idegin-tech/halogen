@@ -1,4 +1,4 @@
-// Export block types
 export * from "./block.types";
-// Export user types
-export * from "./users";
+export * from "./users.types";
+export * from "./projects.types";
+export * from "./project-users.types";

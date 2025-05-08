@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { UserRole } from '@halogen/common';
 
 const passwordRegex = /^(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[!@#$%^&*]).{8,}$/;
 
@@ -17,8 +16,7 @@ export const registerSchema = z.object({
       passwordRegex,
       'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character'
     ),
-  role: z.enum([UserRole.ADMIN, UserRole.DEFAULT]).optional().default(UserRole.DEFAULT)
-});
+}).strict();
 
 export const resetPasswordRequestSchema = z.object({
   email: z.string().email('Invalid email format').trim().toLowerCase()

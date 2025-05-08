@@ -1,53 +1,93 @@
-import express, { Application, Request, Response } from 'express';
+import express, { Application, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
+import helmet from 'helmet';
+import compression from 'compression';
 import cookieParser from 'cookie-parser';
+import rateLimit from 'express-rate-limit';
+import mongoSanitize from 'express-mongo-sanitize';
+//@ts-ignore
+import xss from 'xss-clean';
+import hpp from 'hpp';
 import Logger from './config/logger.config';
 import Database from './config/db.config';
+import { validateEnv } from './config/env.config';
 import { SessionConfig } from './config/session.config';
 import { ErrorHandlerMiddleware } from './middleware/error.middleware';
 import authRoutes from './modules/auth/auth.routes';
+import { projectsRoutes } from './modules/projects';
 
-dotenv.config();
+declare module 'express' {
+  interface Request {
+    requestTime?: string;
+  }
+}
+
+const env = validateEnv();
 
 class App {
   public app: Application;
 
   constructor() {
     this.app = express();
-    this.configureMiddleware();
+    this.configureSecurityMiddleware();
+    this.configureStandardMiddleware();
     this.configureRoutes();
     this.configureErrorHandlers();
   }
 
-  private configureMiddleware(): void {
-    // Enable CORS with credentials support
+  private configureSecurityMiddleware(): void {
+    this.app.use(helmet());
+
+    const corsOrigins = env.CORS_ORIGIN.split(',');
     this.app.use(cors({
-      origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
-      credentials: true
+      origin: (origin, callback) => {
+        if (!origin) return callback(null, true);
+        if (corsOrigins.indexOf(origin) !== -1 || env.NODE_ENV === 'development') {
+          callback(null, true);
+        } else {
+          callback(new Error('Not allowed by CORS'));
+        }
+      },
+      credentials: true,
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'Authorization'],
+      maxAge: 86400
     }));
-    
-    // Parse JSON request bodies
-    this.app.use(express.json());
-    
-    // Parse URL-encoded request bodies
-    this.app.use(express.urlencoded({ extended: true }));
-    
-    // Parse cookies
+
+    const limiter = rateLimit({
+      max: env.RATE_LIMIT_MAX,
+      windowMs: env.RATE_LIMIT_WINDOW_MS,
+      message: 'Too many requests from this IP, please try again later',
+      standardHeaders: true,
+      legacyHeaders: false,
+    });
+
+    this.app.use(limiter);
+    this.app.use(mongoSanitize());
+    this.app.use(xss());
+    this.app.use(hpp({
+      whitelist: ['orderBy', 'fields', 'page', 'limit']
+    }));
+  }
+
+  private configureStandardMiddleware(): void {
+    this.app.use(express.json({ limit: '10kb' }));
+    this.app.use(express.urlencoded({ extended: true, limit: '10kb' }));
     this.app.use(cookieParser());
-    
-    // Configure session management with MongoDB storage
+    this.app.use(compression());
     SessionConfig.configure(this.app);
     
-    // Log HTTP requests
-    this.app.use((req: Request, res: Response, next) => {
-      Logger.http(`${req.method} ${req.url}`);
+    this.app.use((req: Request, res: Response, next: NextFunction) => {
+      req.requestTime = new Date().toISOString();
+      
+      if (!req.url.includes('/health')) {
+        Logger.http(`${req.method} ${req.url}`);
+      }
       next();
     });
   }
 
   private configureRoutes(): void {
-    // API health check
     this.app.get('/health', (req: Request, res: Response) => {
       const dbStatus = Database.getInstance().getStatus();
       
@@ -58,23 +98,26 @@ class App {
       });
     });
     
-    // API root
-    this.app.get('/', (req: Request, res: Response) => {
-      res.json({ message: 'Welcome to the Halogen API' });
+    const apiPrefix = '/api/v1';
+    
+    this.app.get(apiPrefix, (req: Request, res: Response) => {
+      res.json({ 
+        message: 'Welcome to the Halogen API',
+        version: '1.0.0',
+        environment: env.NODE_ENV
+      });
     });
     
-    // Auth routes
-    this.app.use('/api/auth', authRoutes);
+    this.app.use(`${apiPrefix}/auth`, authRoutes);
+    this.app.use(`${apiPrefix}/projects`, projectsRoutes);
   }
 
   private configureErrorHandlers(): void {
-    // Handle 404 errors
     this.app.use((req: Request, res: Response) => {
       ErrorHandlerMiddleware.handleNotFound(req, res);
     });
     
-    // Handle all other errors
-    this.app.use((err: any, req: Request, res: Response, next: any) => {
+    this.app.use((err: any, req: Request, res: Response, next: NextFunction) => {
       ErrorHandlerMiddleware.handleError(err, req, res, next);
     });
   }

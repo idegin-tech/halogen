@@ -13,7 +13,6 @@ import {
 
 const router = Router();
 
-// Public routes
 router.post('/register', 
   RequestValidation.validateBody(registerSchema),
   AuthController.register

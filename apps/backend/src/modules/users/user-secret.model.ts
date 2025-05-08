@@ -6,7 +6,7 @@ export type UserSecretDocumentProps = Omit<UserSecret, '_id'>;
 export interface UserSecretDocument extends UserSecretDocumentProps, Document {}
 
 const UserSecretSchema: Schema = new Schema({
-  userId: {
+  user: {
     type: Schema.Types.ObjectId,
     ref: 'User',
     required: true,

@@ -35,6 +35,7 @@ export type BlockProperties = {
     name: string
     description: string;
     fields: Record<string, BlockFieldConfig>;
+    theme: Record<string, BlockFieldConfig> | null;
 }
 
 export type BlockInstance = {
