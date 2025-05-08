@@ -1,9 +1,10 @@
-import { Project, ProjectUserRole } from '@halogen/common';
+import { Project, ProjectUserRole, PaginatedResponse, ProjectQueryOptions } from '@halogen/common';
 import { generateUsername } from 'unique-username-generator';
 import { CreateProjectDTO, UpdateProjectDTO } from './projects.dtos';
 import ProjectModel from './projects.model';
 import ProjectUserModel from '../project-users/project-users.model';
 import Logger from '../../config/logger.config';
+import mongoose from 'mongoose';
 
 export class ProjectsService {
     static async generateUniqueSubdomain(): Promise<string> {
@@ -29,8 +30,7 @@ export class ProjectsService {
             const newProject = new ProjectModel({
                 ...projectData,
                 subdomain,
-                user: userId,
-                isPublished: false
+                user: userId
             });
 
             const savedProject = await newProject.save();
@@ -86,20 +86,62 @@ export class ProjectsService {
         }
     }
 
-    static async getUserProjects(userId: string): Promise<Project[]> {
+    static async getUserProjects(
+        userId: string, 
+        options: ProjectQueryOptions = {}
+    ): Promise<PaginatedResponse<Project>> {
         try {
+            const { 
+                search, 
+                page = 1, 
+                limit = 10, 
+                sortBy = 'createdAt', 
+                sortOrder = 'desc' 
+            } = options;
+
             const projectUsers = await ProjectUserModel.find({ user: userId });
             const projectIds = projectUsers.map(pu => pu.project);
 
-            const projects = await ProjectModel.find({ _id: { $in: projectIds } });
+            const query: any = { _id: { $in: projectIds } };
+            
+            if (search) {
+                query.$or = [
+                    { name: { $regex: search, $options: 'i' } },
+                    { subdomain: { $regex: search, $options: 'i' } } 
+                ];
+                
+                if (mongoose.Types.ObjectId.isValid(search)) {
+                    query.$or.push({ _id: search });
+                }
+            }
 
-            return projects.map(project => {
-                const projectObj = project.toObject();
-                return {
-                    ...projectObj,
-                    _id: projectObj._id as string
-                };
-            });
+            const sort: any = {};
+            sort[sortBy] = sortOrder === 'asc' ? 1 : -1;
+
+            const paginateOptions = {
+                page: Number(page),
+                limit: Number(limit),
+                sort,
+                lean: true
+            };
+
+            const results = await ProjectModel.paginate(query, paginateOptions);
+            
+            return {
+                docs: results.docs.map(project => ({
+                    ...project,
+                    _id: project._id as any
+                })),
+                totalDocs: results.totalDocs,
+                limit: results.limit,
+                totalPages: results.totalPages,
+                page: results.page as any,
+                pagingCounter: results.pagingCounter,
+                hasPrevPage: results.hasPrevPage,
+                hasNextPage: results.hasNextPage,
+                prevPage: results.prevPage as any,
+                nextPage: results.nextPage as any
+            };
         } catch (error) {
             Logger.error(`Get user projects error: ${error instanceof Error ? error.message : 'Unknown error'}`);
             throw error;

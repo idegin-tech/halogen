@@ -1,5 +1,6 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { Project } from '@halogen/common';
+import mongoosePaginate from 'mongoose-paginate-v2';
 
 export type ProjectDocumentProps = Omit<Project, '_id'>;
 
@@ -9,10 +10,6 @@ const ProjectSchema: Schema = new Schema<Project>({
   name: {
     type: String,
     required: true,
-    trim: true
-  },
-  description: {
-    type: String,
     trim: true
   },
   subdomain: {
@@ -27,10 +24,6 @@ const ProjectSchema: Schema = new Schema<Project>({
     ref: 'User',
     required: true
   },
-  isPublished: {
-    type: Boolean,
-    default: false
-  },
   thumbnail: {
     type: String
   }
@@ -44,8 +37,12 @@ const ProjectSchema: Schema = new Schema<Project>({
   }
 });
 
+// Add pagination plugin
+ProjectSchema.plugin(mongoosePaginate);
+
 // Index for faster lookups
 ProjectSchema.index({ user: 1 });
 ProjectSchema.index({ subdomain: 1 }, { unique: true });
+ProjectSchema.index({ name: 'text' }, { weights: { name: 10 } });
 
-export default mongoose.model<ProjectDocument>('Project', ProjectSchema);
+export default mongoose.model<ProjectDocument, mongoose.PaginateModel<ProjectDocument>>('Project', ProjectSchema);

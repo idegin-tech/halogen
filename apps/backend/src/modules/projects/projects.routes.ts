@@ -2,20 +2,19 @@ import { Router } from 'express';
 import { ProjectsController } from './projects.controller';
 import { RequestValidation } from '../../middleware/request.middleware';
 import { AuthMiddleware } from '../auth/auth.middleware';
-import { createProjectSchema, updateProjectSchema } from './projects.dtos';
+import { createProjectSchema, updateProjectSchema, projectsQuerySchema } from './projects.dtos';
 
 const router = Router();
 
-// Authentication required for all routes
 router.use(AuthMiddleware.requireAuth);
 
-// Project CRUD operations
 router.post('/', 
   RequestValidation.validateBody(createProjectSchema),
   ProjectsController.createProject
 );
 
 router.get('/', 
+  RequestValidation.validateQuery(projectsQuerySchema),
   ProjectsController.getProjects
 );
 

@@ -1,11 +1,17 @@
 export interface Project {
     _id?: string;
     name: string;
-    description?: string;
     subdomain: string;
     user: string;
-    isPublished: boolean;
     thumbnail?: string;
     createdAt: Date;
     updatedAt: Date;
+}
+
+export interface ProjectQueryOptions {
+    search?: string;
+    page?: number;
+    limit?: number;
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
 }

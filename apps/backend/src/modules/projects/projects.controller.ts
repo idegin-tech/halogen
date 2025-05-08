@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { ProjectsService } from './projects.service';
 import { ResponseHelper } from '../../lib/response.helper';
 import { CreateProjectDTO, UpdateProjectDTO } from './projects.dtos';
+import { ProjectQueryOptions } from '@halogen/common';
 
 export class ProjectsController {
   static async createProject(req: Request, res: Response): Promise<void> {
@@ -35,9 +36,18 @@ export class ProjectsController {
         return;
       }
       
-      const projects = await ProjectsService.getUserProjects(userId);
+      // Extract query parameters
+      const queryOptions: ProjectQueryOptions = {
+        search: req.query.search as string,
+        page: req.query.page ? parseInt(req.query.page as string) : undefined,
+        limit: req.query.limit ? parseInt(req.query.limit as string) : undefined,
+        sortBy: req.query.sortBy as string,
+        sortOrder: (req.query.sortOrder as 'asc' | 'desc') || 'desc'
+      };
       
-      ResponseHelper.success(res, projects, 'Projects retrieved successfully');
+      const paginatedProjects = await ProjectsService.getUserProjects(userId, queryOptions);
+      
+      ResponseHelper.success(res, paginatedProjects, 'Projects retrieved successfully');
     } catch (error) {
       ResponseHelper.error(
         res, 

@@ -15,6 +15,7 @@ import { SessionConfig } from './config/session.config';
 import { ErrorHandlerMiddleware } from './middleware/error.middleware';
 import authRoutes from './modules/auth/auth.routes';
 import { projectsRoutes } from './modules/projects';
+import { projectUsersRoutes } from './modules/project-users';
 
 declare module 'express' {
   interface Request {
@@ -110,6 +111,7 @@ class App {
     
     this.app.use(`${apiPrefix}/auth`, authRoutes);
     this.app.use(`${apiPrefix}/projects`, projectsRoutes);
+    this.app.use(`${apiPrefix}/project-users`, projectUsersRoutes);
   }
 
   private configureErrorHandlers(): void {
