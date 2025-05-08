@@ -10,7 +10,7 @@ class Database {
   private readonly reconnectInterval: number = 5000;
 
   private constructor() {
-    this.connectionString = process.env.MONGODB_URI || 'mongodb://localhost:27017/halogen';
+    this.connectionString = process.env.MONGODB_URI as string;
     
     this.options = {
       serverSelectionTimeoutMS: 5000,

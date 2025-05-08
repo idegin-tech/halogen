@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useEffect, useMemo, useCallback } from "react";
 import { useBuilderContext } from "./builder.context";
 import { debounce } from "lodash";
-import { PageData } from "@/types/builder.types";
+import { generateId, PageData } from "@halogen/common";
 import { colorVariables, radiusVariables, variableSets } from "@/config/variables";
 
 interface SyncContextInterface {
@@ -50,20 +50,20 @@ export function SyncProvider({
     const hasVariables = state.variableSets.length > 0 && state.variables.length > 0;
 
     const homePage: PageData = {
-      id: "home",
+      page_id: generateId(9),
       name: "Home",
       path: "/",
       isStatic: true,
-      //todo: Add a project ID here and make sure it's required
+      project: projectId as any,
     };
 
     updateBuilderState({
       pages: hasPages ? state.pages : [homePage],
       variables: hasVariables ? state.variables : [...colorVariables, ...radiusVariables],
       variableSets: hasVariables ? state.variableSets: [...variableSets],
-      selectedPageId: hasPages ? state?.pages[0]?.id : homePage.id
+      selectedPageId: hasPages ? state?.pages[0]?.page_id : homePage.page_id
     });
-  }, [state.pages, updateBuilderState]);
+  }, [state.pages, updateBuilderState, projectId, state.variableSets, state.variables]);
 
   const debouncedSave = useMemo(
     () =>

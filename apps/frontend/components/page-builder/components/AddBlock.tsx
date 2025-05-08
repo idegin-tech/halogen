@@ -10,7 +10,7 @@ export default function AddBlock() {
     };
     
     return (
-        <div className='py-12'>
+        <div className='py-12 px-10'>
             <button 
                 className='group relative w-full border-2 border-dashed border-[#8A2BE2]/30 rounded-lg overflow-hidden transition-all duration-300 hover:border-[#8A2BE2] hover:shadow-lg hover:shadow-[#8A2BE2]/10 bg-gradient-to-b from-background to-background/80 cursor-pointer'
                 onClick={handleAddBlock}

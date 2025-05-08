@@ -1,6 +1,5 @@
 'use server';
 
-import { PaginatedResponse } from '@halogen/common/types';
 import { cookies } from 'next/headers';
 
 interface ApiResponse<T> {
@@ -39,36 +38,4 @@ export async function fetchFromApi<T>(
   
   const data: ApiResponse<T> = await response.json();
   return data.payload;
-}
-
-export interface ProjectData {
-  _id: string;
-  name: string;
-  description?: string;
-  project_id: string;
-  subdomain: string;
-  thumbnail?: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface ProjectQueryParams {
-  search?: string;
-  page?: number;
-  limit?: number;
-  sortBy?: 'name' | 'createdAt' | 'updatedAt' | 'subdomain';
-  sortOrder?: 'asc' | 'desc';
-}
-
-export async function getProjects(params: ProjectQueryParams = {}): Promise<PaginatedResponse<ProjectData>> {
-  const queryParams = new URLSearchParams();
-  
-  if (params.search) queryParams.set('search', params.search);
-  if (params.page) queryParams.set('page', params.page.toString());
-  if (params.limit) queryParams.set('limit', params.limit.toString());
-  if (params.sortBy) queryParams.set('sortBy', params.sortBy);
-  if (params.sortOrder) queryParams.set('sortOrder', params.sortOrder);
-  
-  const queryString = queryParams.toString() ? `?${queryParams.toString()}` : '';
-  return fetchFromApi<PaginatedResponse<ProjectData>>(`/projects${queryString}`);
 }

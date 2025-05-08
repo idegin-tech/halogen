@@ -30,14 +30,13 @@ export function CreateProjectModal({ onProjectCreated }: CreateProjectModalProps
     }
     
     try {
-      // Generate unique IDs for the project and home page
       const project_id = generateId(12);
       const homePageId = generateId(12);
       
       const projectData = {
         name: projectName.trim(),
         description: projectDescription.trim() || undefined,
-        project_id: project_id,
+        project_id: `proj_${project_id}`,
         pages: [{
           page_id: homePageId,
           name: 'Home',

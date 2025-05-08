@@ -4,7 +4,7 @@ import React from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ProjectData } from '@/lib/server-api';
+import { ProjectData } from '@halogen/common/types';
 
 interface ProjectCardProps {
   project: ProjectData;
@@ -14,7 +14,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
   const router = useRouter();
   
   const handleEditClick = () => {
-    router.push(`/client/projects/${project._id}/builder`);
+    router.push(`/client/projects/${project?._id}/builder`);
   };
 
   return (
