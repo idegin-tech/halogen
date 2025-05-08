@@ -1,9 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
-import { AnyZodObject, ZodError } from 'zod';
+import { AnyZodObject, ZodError, ZodType } from 'zod';
 import { createErrorResponse } from '../types/api.types';
 
 export class RequestValidation {
-  static validateBody = (schema: AnyZodObject) => {
+  static validateBody = (schema: ZodType<any, any, any>) => {
     return async (req: Request, res: Response, next: NextFunction) => {
       try {
         req.body = await schema.parseAsync(req.body);
@@ -23,7 +23,7 @@ export class RequestValidation {
     };
   };
 
-  static validateQuery = (schema: AnyZodObject) => {
+  static validateQuery = (schema: ZodType<any, any, any>) => {
     return async (req: Request, res: Response, next: NextFunction) => {
       try {
         req.query = await schema.parseAsync(req.query);
@@ -43,7 +43,7 @@ export class RequestValidation {
     };
   };
 
-  static validateParams = (schema: AnyZodObject) => {
+  static validateParams = (schema: ZodType<any, any, any>) => {
     return async (req: Request, res: Response, next: NextFunction) => {
       try {
         req.params = await schema.parseAsync(req.params);

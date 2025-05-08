@@ -9,7 +9,7 @@ export function validateEnv() {
   try {
     const env = cleanEnv(process.env, {
       NODE_ENV: str({ choices: ['development', 'production', 'test'], default: 'development' }),
-      PORT: port({ default: 3001 }),
+      PORT: port({ default: 8081 }),
       
       MONGODB_URI: str({ example: 'mongodb://localhost:27017/halogen' }),
       MONGODB_AUTH_SOURCE: str({ default: 'admin' }),

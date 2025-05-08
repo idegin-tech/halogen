@@ -26,6 +26,7 @@ export const syncProjectSchema = z.object({
     thumbnail: z.string().optional()
   }),
   pages: z.array(z.object({
+    page_id: z.string(),
     name: z.string(),
     path: z.string().optional(),
     slug: z.string().optional(),

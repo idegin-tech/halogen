@@ -8,7 +8,6 @@ export const loginSchema = z.object({
 });
 
 export const registerSchema = z.object({
-  displayName: z.string().min(3, 'Name must be at least 3 characters'),
   email: z.string().email('Invalid email format').trim().toLowerCase(),
   password: z.string()
     .min(8, 'Password must be at least 8 characters')
@@ -16,7 +15,12 @@ export const registerSchema = z.object({
       passwordRegex,
       'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character'
     ),
-}).strict();
+  confirmPassword: z.string()
+    .min(8, 'Password must be at least 8 characters')
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
+}).transform(({ confirmPassword, ...data }) => data); // Remove confirmPassword from the output
 
 export const resetPasswordRequestSchema = z.object({
   email: z.string().email('Invalid email format').trim().toLowerCase()

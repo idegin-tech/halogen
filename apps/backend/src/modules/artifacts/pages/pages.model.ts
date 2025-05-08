@@ -1,21 +1,17 @@
+import { PageData } from '@halogen/common';
 import mongoose, { Schema, Document } from 'mongoose';
 import mongoosePaginate from 'mongoose-paginate-v2';
 
-export interface Page {
-  _id?: string;
-  name: string;
-  path: string;
-  isStatic?: boolean;
-  project: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export type PageDocumentProps = Omit<Page, '_id'>;
+export type PageDocumentProps = Omit<PageData, '_id'>;
 
 export interface PageDocument extends PageDocumentProps, Document {}
 
-const PageSchema: Schema = new Schema<Page>({
+const PageSchema: Schema = new Schema<PageData>({
+  page_id: {
+    type: String,
+    required: true,
+    trim: true
+  },
   name: {
     type: String,
     required: true,

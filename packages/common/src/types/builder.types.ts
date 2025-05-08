@@ -1,5 +1,5 @@
 export type ProjectData = {
-  id: string;
+  project_id: string;
   name: string;
   description?: string;
   thumbnail?: string;
@@ -8,7 +8,7 @@ export type ProjectData = {
 }
 
 export type PageData = {
-  id: string;
+  page_id: string;
   name: string;
   path?: string;
   slug?: string;

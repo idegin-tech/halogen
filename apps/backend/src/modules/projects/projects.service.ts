@@ -240,11 +240,11 @@ export class ProjectsService {
             const syncedPages: Record<string, any> = {};
             if (data.pages && data.pages.length > 0) {
                 for (const pageData of data.pages) {
-                    const { id, ...pageFields } = pageData;
+                    const { page_id, ...pageFields } = pageData;
                     
                     const existingPage = await PageModel.findOne({ 
                         project: projectId,
-                        id: id
+                        id: page_id
                     });
                     
                     if (existingPage) {
@@ -256,15 +256,15 @@ export class ProjectsService {
                             },
                             { new: true }
                         );
-                        syncedPages[id] = updatedPage;
+                        syncedPages[page_id] = updatedPage;
                     } else {
                         const newPage = new PageModel({
                             ...pageFields,
-                            id: id,
+                            id: page_id,
                             project: projectId
                         });
                         const savedPage = await newPage.save();
-                        syncedPages[id] = savedPage;
+                        syncedPages[page_id] = savedPage;
                     }
                 }
             }
@@ -274,11 +274,11 @@ export class ProjectsService {
                 const VariableModel = mongoose.model('Variable');
                 
                 for (const variableData of data.variables) {
-                    const { id, ...variableFields } = variableData;
+                    const { variable_id, ...variableFields } = variableData;
                     
                     const existingVariable = await VariableModel.findOne({
                         project: projectId,
-                        id: id
+                        id: variable_id
                     });
                     
                     if (existingVariable) {
@@ -290,15 +290,15 @@ export class ProjectsService {
                             },
                             { new: true }
                         );
-                        syncedVariables[id] = updatedVariable;
+                        syncedVariables[variable_id] = updatedVariable;
                     } else {
                         const newVariable = new VariableModel({
                             ...variableFields,
-                            id: id,
+                            id: variable_id,
                             project: projectId
                         });
                         const savedVariable = await newVariable.save();
-                        syncedVariables[id] = savedVariable;
+                        syncedVariables[variable_id] = savedVariable;
                     }
                 }
             }
