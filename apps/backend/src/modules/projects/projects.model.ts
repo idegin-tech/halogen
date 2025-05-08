@@ -37,10 +37,8 @@ const ProjectSchema: Schema = new Schema<Project>({
   }
 });
 
-// Add pagination plugin
 ProjectSchema.plugin(mongoosePaginate);
 
-// Index for faster lookups
 ProjectSchema.index({ user: 1 });
 ProjectSchema.index({ subdomain: 1 }, { unique: true });
 ProjectSchema.index({ name: 'text' }, { weights: { name: 10 } });

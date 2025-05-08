@@ -38,13 +38,10 @@ const ProjectUserSchema: Schema = new Schema<ProjectUser>({
   }
 });
 
-// Add pagination plugin
 ProjectUserSchema.plugin(mongoosePaginate);
 
-// Compound index to ensure a user can have only one role per project
 ProjectUserSchema.index({ project: 1, user: 1 }, { unique: true });
 
-// Index for faster lookups
 ProjectUserSchema.index({ project: 1 });
 ProjectUserSchema.index({ user: 1 });
 ProjectUserSchema.index({ status: 1 });
