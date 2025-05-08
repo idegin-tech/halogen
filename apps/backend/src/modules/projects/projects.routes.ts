@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { ProjectsController } from './projects.controller';
 import { RequestValidation } from '../../middleware/request.middleware';
 import { AuthMiddleware } from '../auth/auth.middleware';
-import { createProjectSchema, updateProjectSchema, projectsQuerySchema } from './projects.dtos';
+import { createProjectSchema, updateProjectSchema, projectsQuerySchema, syncProjectSchema } from './projects.dtos';
 
 const router = Router();
 
@@ -33,6 +33,11 @@ router.put('/:id',
 
 router.delete('/:id', 
   ProjectsController.deleteProject
+);
+
+router.post('/:id/sync', 
+  RequestValidation.validateBody(syncProjectSchema),
+  ProjectsController.syncProject
 );
 
 export default router;

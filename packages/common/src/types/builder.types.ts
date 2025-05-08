@@ -20,7 +20,7 @@ export type PageData = {
 }
 
 export type VariableSet = {
-  id: string;
+  set_id: string;
   name: string;
   key: string;
   project?: string | ProjectData;
@@ -29,7 +29,7 @@ export type VariableSet = {
 }
 
 export type Variable = {
-  id: string;
+  variable_id: string;
   name: string;
   key: string;
   type: "color" | "text" | "size" | "boolean";

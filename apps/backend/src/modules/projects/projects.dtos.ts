@@ -19,6 +19,39 @@ export const projectsQuerySchema = z.object({
   sortOrder: z.enum(['asc', 'desc']).optional()
 });
 
+export const syncProjectSchema = z.object({
+  project: z.object({
+    name: z.string(),
+    description: z.string().optional(),
+    thumbnail: z.string().optional()
+  }),
+  pages: z.array(z.object({
+    name: z.string(),
+    path: z.string().optional(),
+    slug: z.string().optional(),
+    route: z.string().optional(),
+    isStatic: z.boolean().optional()
+  })).optional(),
+  variables: z.array(z.object({
+    variable_id: z.string(),
+    name: z.string(),
+    key: z.string(),
+    type: z.enum(["color", "text", "size", "boolean"]),
+    primaryValue: z.string(),
+    secondaryValue: z.string(),
+    variableSet: z.string()
+  })).optional(),
+  blocks: z.array(z.object({
+    index: z.number(),
+    page: z.string(),
+    folderName: z.string(),
+    subFolder: z.string(),
+    value: z.any().optional(),
+    instance: z.string().nullable().optional()
+  })).optional()
+}).strict();
+
 export type CreateProjectDTO = z.infer<typeof createProjectSchema>;
 export type UpdateProjectDTO = z.infer<typeof updateProjectSchema>;
 export type ProjectsQueryDTO = z.infer<typeof projectsQuerySchema>;
+export type SyncProjectDTO = z.infer<typeof syncProjectSchema>;

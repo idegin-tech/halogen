@@ -17,7 +17,7 @@ export interface VariableDocument extends Omit<VariableDocumentProps, 'id'>, Doc
 }
 
 const VariableSchema: Schema = new Schema<Variable>({
-  id: {
+  variable_id: {
     type: String,
     required: true,
     trim: true
@@ -65,14 +65,12 @@ const VariableSchema: Schema = new Schema<Variable>({
   }
 });
 
-// Create a compound index on project and key to ensure uniqueness
 VariableSchema.index({ project: 1, key: 1 }, { unique: true });
 VariableSchema.index({ project: 1 });
 VariableSchema.index({ variableSet: 1 });
 VariableSchema.index({ project: 1, variableSet: 1 });
 VariableSchema.index({ type: 1 });
 
-// Add pagination support
 VariableSchema.plugin(mongoosePaginate);
 
 export default mongoose.model<VariableDocument, mongoose.PaginateModel<VariableDocument>>('Variable', VariableSchema);

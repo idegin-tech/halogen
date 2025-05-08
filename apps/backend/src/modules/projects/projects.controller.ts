@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { ProjectsService } from './projects.service';
 import { ResponseHelper } from '../../lib/response.helper';
-import { CreateProjectDTO, UpdateProjectDTO } from './projects.dtos';
+import { CreateProjectDTO, UpdateProjectDTO, SyncProjectDTO } from './projects.dtos';
 import { ProjectQueryOptions } from '@halogen/common';
 
 export class ProjectsController {
@@ -36,7 +36,6 @@ export class ProjectsController {
         return;
       }
       
-      // Extract query parameters
       const queryOptions: ProjectQueryOptions = {
         search: req.query.search as string,
         page: req.query.page ? parseInt(req.query.page as string) : undefined,
@@ -138,6 +137,23 @@ export class ProjectsController {
         res, 
         error instanceof Error ? error.message : 'Failed to delete project', 
         500
+      );
+    }
+  }
+  
+  static async syncProject(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const syncData = req.body as SyncProjectDTO;
+      
+      const syncResult = await ProjectsService.syncProject(id, syncData);
+      
+      ResponseHelper.success(res, syncResult, 'Project synchronized successfully');
+    } catch (error) {
+      ResponseHelper.error(
+        res, 
+        error instanceof Error ? error.message : 'Failed to synchronize project data', 
+        400
       );
     }
   }

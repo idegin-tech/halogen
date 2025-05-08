@@ -1,10 +1,11 @@
 import { Project, ProjectUserRole, PaginatedResponse, ProjectQueryOptions } from '@halogen/common';
 import { generateUsername } from 'unique-username-generator';
-import { CreateProjectDTO, UpdateProjectDTO } from './projects.dtos';
+import { CreateProjectDTO, UpdateProjectDTO, SyncProjectDTO } from './projects.dtos';
 import ProjectModel from './projects.model';
 import ProjectUserModel from '../project-users/project-users.model';
 import Logger from '../../config/logger.config';
 import mongoose from 'mongoose';
+import PageModel from '../artifacts/pages/pages.model';
 
 export class ProjectsService {
     static async generateUniqueSubdomain(): Promise<string> {
@@ -42,6 +43,15 @@ export class ProjectsService {
             });
 
             await projectUser.save();
+            
+            const homePage = new PageModel({
+                name: 'Home',
+                path: '/',
+                isStatic: true,
+                project: savedProject._id
+            });
+            
+            await homePage.save();
 
             const projectObj = savedProject.toObject();
             return {
@@ -54,15 +64,31 @@ export class ProjectsService {
         }
     }
 
-    static async getProjectById(projectId: string): Promise<Project | null> {
+    static async getProjectById(projectId: string) {
         try {
             const project = await ProjectModel.findById(projectId);
             if (!project) return null;
             
             const projectObj = project.toObject();
+            
+            const projectUsers = await ProjectUserModel.find({ project: projectId })
+                .populate('user', 'displayName email')
+                .limit(10)
+                .lean();
+                
+            const pages = await PageModel.find({ project: projectId }).lean();
+            
+            const variables = await mongoose.model('Variable').find({ project: projectId }).lean();
+            
+            const blockInstances = await mongoose.model('BlockInstance').find({ project: projectId }).lean();
+            
             return {
                 ...projectObj,
-                _id: projectObj._id as string
+                _id: projectObj._id as string,
+                users: projectUsers as any[],
+                pages: pages,
+                variables: variables,
+                blockInstances: blockInstances
             };
         } catch (error) {
             Logger.error(`Get project error: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -193,6 +219,142 @@ export class ProjectsService {
             return true;
         } catch (error) {
             Logger.error(`Delete project error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            throw error;
+        }
+    }
+
+    static async syncProject(projectId: string, data: SyncProjectDTO): Promise<Record<string, any>> {
+        try {
+            const projectData = data.project;
+            if (projectData) {
+                await ProjectModel.findByIdAndUpdate(
+                    projectId, 
+                    { 
+                        ...projectData,
+                        updatedAt: new Date()
+                    },
+                    { new: true }
+                );
+            }
+            
+            const syncedPages: Record<string, any> = {};
+            if (data.pages && data.pages.length > 0) {
+                for (const pageData of data.pages) {
+                    const { id, ...pageFields } = pageData;
+                    
+                    const existingPage = await PageModel.findOne({ 
+                        project: projectId,
+                        id: id
+                    });
+                    
+                    if (existingPage) {
+                        const updatedPage = await PageModel.findByIdAndUpdate(
+                            existingPage._id,
+                            {
+                                ...pageFields,
+                                updatedAt: new Date()
+                            },
+                            { new: true }
+                        );
+                        syncedPages[id] = updatedPage;
+                    } else {
+                        const newPage = new PageModel({
+                            ...pageFields,
+                            id: id,
+                            project: projectId
+                        });
+                        const savedPage = await newPage.save();
+                        syncedPages[id] = savedPage;
+                    }
+                }
+            }
+            
+            const syncedVariables: Record<string, any> = {};
+            if (data.variables && data.variables.length > 0) {
+                const VariableModel = mongoose.model('Variable');
+                
+                for (const variableData of data.variables) {
+                    const { id, ...variableFields } = variableData;
+                    
+                    const existingVariable = await VariableModel.findOne({
+                        project: projectId,
+                        id: id
+                    });
+                    
+                    if (existingVariable) {
+                        const updatedVariable = await VariableModel.findByIdAndUpdate(
+                            existingVariable._id,
+                            {
+                                ...variableFields,
+                                updatedAt: new Date()
+                            },
+                            { new: true }
+                        );
+                        syncedVariables[id] = updatedVariable;
+                    } else {
+                        const newVariable = new VariableModel({
+                            ...variableFields,
+                            id: id,
+                            project: projectId
+                        });
+                        const savedVariable = await newVariable.save();
+                        syncedVariables[id] = savedVariable;
+                    }
+                }
+            }
+            
+            const syncedBlocks: Record<string, any> = {};
+            if (data.blocks && data.blocks.length > 0) {
+                const BlockInstanceModel = mongoose.model('BlockInstance');
+                
+                const existingBlocks = await BlockInstanceModel.find({ project: projectId });
+                const existingBlocksMap = new Map(
+                    existingBlocks.map(block => [
+                        `${block.page}-${block.index}-${block.folderName}-${block.subFolder}`,
+                        block
+                    ])
+                );
+                
+                for (const blockData of data.blocks) {
+                    const { page, index, folderName, subFolder, ...blockFields } = blockData;
+                    
+                    const blockKey = `${page}-${index}-${folderName}-${subFolder}`;
+                    
+                    if (existingBlocksMap.has(blockKey)) {
+                        const existingBlock = existingBlocksMap.get(blockKey);
+                        const updatedBlock = await BlockInstanceModel.findByIdAndUpdate(
+                            existingBlock._id,
+                            {
+                                ...blockFields,
+                                updatedAt: new Date()
+                            },
+                            { new: true }
+                        );
+                        syncedBlocks[blockKey] = updatedBlock;
+                    } else {
+                        const newBlock = new BlockInstanceModel({
+                            page,
+                            index,
+                            folderName,
+                            subFolder,
+                            ...blockFields,
+                            project: projectId
+                        });
+                        const savedBlock = await newBlock.save();
+                        syncedBlocks[blockKey] = savedBlock;
+                    }
+                }
+            }
+            
+            return {
+                message: 'Project data synchronized successfully',
+                projectId,
+                pages: syncedPages,
+                variables: syncedVariables,
+                blocks: syncedBlocks
+            };
+        } catch (error) {
+            Logger.error(`Project sync error: ${error instanceof Error ? error.message : 'Unknown error'}`);
             throw error;
         }
     }
