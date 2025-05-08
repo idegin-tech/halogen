@@ -1,13 +1,13 @@
-import { Variable, VariableSet } from "@/types/builder.types";
+import { Variable, VariableSet } from "@halogen/common/types";
 
 export const variableSets: VariableSet[] = [
     {
-        id: "set_colors",
+        set_id: "set_colors",
         name: "Colors",
         key: "colors",
     },
     {
-        id: "set_radius",
+        set_id: "set_radius",
         name: "Border Radius",
         key: "radius",
     }
@@ -15,7 +15,7 @@ export const variableSets: VariableSet[] = [
 
 export const colorVariables: Variable[] = [
     {
-        id: '--background',
+        variable_id: '--background',
         name: 'Background',
         key: '--background',
         type: 'color',
@@ -24,7 +24,7 @@ export const colorVariables: Variable[] = [
         variableSet: 'set_colors',
     },
     {
-        id: '--foreground',
+        variable_id: '--foreground',
         name: 'Foreground',
         key: '--foreground',
         type: 'color',
@@ -33,7 +33,7 @@ export const colorVariables: Variable[] = [
         variableSet: 'set_colors',
     },
     {
-        id: '--card',
+        variable_id: '--card',
         name: 'Card',
         key: '--card',
         type: 'color',
@@ -42,7 +42,7 @@ export const colorVariables: Variable[] = [
         variableSet: 'set_colors',
     },
     {
-        id: '--card-foreground',
+        variable_id: '--card-foreground',
         name: 'Card Foreground',
         key: '--card-foreground',
         type: 'color',
@@ -51,7 +51,7 @@ export const colorVariables: Variable[] = [
         variableSet: 'set_colors',
     },
     {
-        id: '--primary',
+        variable_id: '--primary',
         name: 'Primary',
         key: '--primary',
         type: 'color',
@@ -60,7 +60,7 @@ export const colorVariables: Variable[] = [
         variableSet: 'set_colors',
     },
     {
-        id: '--primary-foreground',
+        variable_id: '--primary-foreground',
         name: 'Primary Foreground',
         key: '--primary-foreground',
         type: 'color',
@@ -69,7 +69,7 @@ export const colorVariables: Variable[] = [
         variableSet: 'set_colors',
     },
     {
-        id: '--secondary',
+        variable_id: '--secondary',
         name: 'Secondary',
         key: '--secondary',
         type: 'color',
@@ -78,7 +78,7 @@ export const colorVariables: Variable[] = [
         variableSet: 'set_colors',
     },
     {
-        id: '--secondary-foreground',
+        variable_id: '--secondary-foreground',
         name: 'Secondary Foreground',
         key: '--secondary-foreground',
         type: 'color',
@@ -87,7 +87,7 @@ export const colorVariables: Variable[] = [
         variableSet: 'set_colors',
     },
     {
-        id: '--muted',
+        variable_id: '--muted',
         name: 'Muted',
         key: '--muted',
         type: 'color',
@@ -96,7 +96,7 @@ export const colorVariables: Variable[] = [
         variableSet: 'set_colors',
     },
     {
-        id: '--muted-foreground',
+        variable_id: '--muted-foreground',
         name: 'Muted Foreground',
         key: '--muted-foreground',
         type: 'color',
@@ -105,7 +105,7 @@ export const colorVariables: Variable[] = [
         variableSet: 'set_colors',
     },
     {
-        id: '--accent',
+        variable_id: '--accent',
         name: 'Accent',
         key: '--accent',
         type: 'color',
@@ -114,7 +114,7 @@ export const colorVariables: Variable[] = [
         variableSet: 'set_colors',
     },
     {
-        id: '--accent-foreground',
+        variable_id: '--accent-foreground',
         name: 'Accent Foreground',
         key: '--accent-foreground',
         type: 'color',
@@ -123,7 +123,7 @@ export const colorVariables: Variable[] = [
         variableSet: 'set_colors',
     },
     {
-        id: '--destructive',
+        variable_id: '--destructive',
         name: 'Destructive',
         key: '--destructive',
         type: 'color',
@@ -132,7 +132,7 @@ export const colorVariables: Variable[] = [
         variableSet: 'set_colors',
     },
     {
-        id: '--destructive-foreground',
+        variable_id: '--destructive-foreground',
         name: 'Destructive Foreground',
         key: '--destructive-foreground',
         type: 'color',
@@ -141,7 +141,7 @@ export const colorVariables: Variable[] = [
         variableSet: 'set_colors',
     },
     {
-        id: '--border',
+        variable_id: '--border',
         name: 'Border',
         key: '--border',
         type: 'color',
@@ -150,7 +150,7 @@ export const colorVariables: Variable[] = [
         variableSet: 'set_colors',
     },
     {
-        id: '--input',
+        variable_id: '--input',
         name: 'Input',
         key: '--input',
         type: 'color',
@@ -159,7 +159,7 @@ export const colorVariables: Variable[] = [
         variableSet: 'set_colors',
     },
     {
-        id: '--ring',
+        variable_id: '--ring',
         name: 'Ring',
         key: '--ring',
         type: 'color',
@@ -171,7 +171,7 @@ export const colorVariables: Variable[] = [
 
 export const radiusVariables: Variable[] = [
     {
-        id: '--radius-sm',
+        variable_id: '--radius-sm',
         name: 'Small',
         key: '--radius-sm',
         type: 'size',
@@ -180,7 +180,7 @@ export const radiusVariables: Variable[] = [
         variableSet: 'set_radius',
     },
     {
-        id: '--radius-md',
+        variable_id: '--radius-md',
         name: 'Medium',
         key: '--radius-md',
         type: 'size',
@@ -189,7 +189,7 @@ export const radiusVariables: Variable[] = [
         variableSet: 'set_radius',
     },
     {
-        id: '--radius-lg',
+        variable_id: '--radius-lg',
         name: 'Large',
         key: '--radius-lg',
         type: 'size',
@@ -198,7 +198,7 @@ export const radiusVariables: Variable[] = [
         variableSet: 'set_radius',
     },
     {
-        id: '--radius-xl',
+        variable_id: '--radius-xl',
         name: 'Extra Large',
         key: '--radius-xl',
         type: 'size',
@@ -207,7 +207,7 @@ export const radiusVariables: Variable[] = [
         variableSet: 'set_radius',
     },
     {
-        id: '--radius-full',
+        variable_id: '--radius-full',
         name: 'Full',
         key: '--radius-full',
         type: 'size',

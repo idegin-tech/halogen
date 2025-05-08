@@ -30,6 +30,7 @@ type Props = {
     heading: string;
     setList: (
         | {
+            _id: string;
             id: string;
             name: string;
             icon: IconElement;
@@ -176,7 +177,7 @@ export default function TopPanelContainer(
 
                                         return (
                                             <div
-                                                key={set.id}
+                                                key={set._id}
                                                 className={cn(
                                                     'flex items-center gap-2 p-2 hover:bg-accent cursor-pointer rounded-md',
                                                     activeSetId === set.id && 'bg-accent hover:bg-accent',

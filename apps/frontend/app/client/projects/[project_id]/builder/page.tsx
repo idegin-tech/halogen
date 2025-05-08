@@ -1,18 +1,35 @@
-"use client";
-
-import { useParams } from "next/navigation";
+import { fetchFromApi } from "@/lib/server-api";
 import PageBuilder from "@/components/page-builder/PageBuilder";
 import { BuilderProvider } from "@/context/builder.context";
 import { SyncProvider } from "@/context/sync.context";
+import { notFound } from "next/navigation";
 
-export default function BuilderPage() {
-  const params = useParams();
-  const projectId = params.project_id as string;
+export default async function BuilderPage({
+  params
+}: {
+  params: { project_id: string }
+}) {
+  const projectId = params.project_id;
+  
+  // Fetch project data
+  let projectData = null;
+  
+  try {
+    projectData = await fetchFromApi(`/projects/${projectId}`);
+    console.log('THE PROJECT DATA:', projectData);
+    
+    if (!projectData) {
+      notFound();
+    }
+  } catch (error) {
+    console.error('Failed to fetch project:', error);
+    notFound();
+  }
 
   return (
     <BuilderProvider>
       <SyncProvider projectId={projectId}>
-        <PageBuilder />
+        <PageBuilder projectData={projectData} />
       </SyncProvider>
     </BuilderProvider>
   );

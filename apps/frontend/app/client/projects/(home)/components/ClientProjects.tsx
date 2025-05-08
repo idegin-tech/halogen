@@ -7,12 +7,12 @@ import { ProjectCard } from './ProjectCard';
 import { ProjectsGridSkeleton } from './ProjectCardSkeleton';
 import { ProjectPagination } from './ProjectPagination';
 import { CreateProjectCard } from './CreateProjectCard';
-import { CreateProjectModal } from './CreateProjectModal';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle, PlusCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PaginatedResponse, ProjectData } from '@halogen/common/types';
 import { QueryParams } from '@/types/api.types';
+import Link from 'next/link';
 
 interface ClientProjectsProps {
   initialData: PaginatedResponse<ProjectData> | null;
@@ -23,14 +23,14 @@ interface ClientProjectsProps {
 export default function ClientProjects({ initialData, initialError, searchParams }: ClientProjectsProps) {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const router = useRouter();
-  
+
   const queryParams = new URLSearchParams();
   if (searchParams.search) queryParams.set('search', searchParams.search);
   if (searchParams.page) queryParams.set('page', searchParams.page.toString());
   if (searchParams.limit) queryParams.set('limit', searchParams.limit.toString());
   if (searchParams.sortBy) queryParams.set('sortBy', searchParams.sortBy);
   if (searchParams.sortOrder) queryParams.set('sortOrder', searchParams.sortOrder);
-  
+
   const { data: clientProjectsData, isLoading, error, refetch } = useQuery<PaginatedResponse<ProjectData>>(
     `/projects?${queryParams.toString()}`,
     undefined,
@@ -44,11 +44,11 @@ export default function ClientProjects({ initialData, initialError, searchParams
   const handleRefresh = () => {
     refetch();
   };
-  
+
   if (isLoading) {
     return <ProjectsGridSkeleton />;
   }
-  
+
   if (errorMessage && !projectsData) {
     return (
       <Alert variant="destructive" className="mb-6">
@@ -60,9 +60,9 @@ export default function ClientProjects({ initialData, initialError, searchParams
       </Alert>
     );
   }
-  
+
   const projects = projectsData?.docs || [];
-  
+
   return (
     <div className="space-y-6">
       {projects.length === 0 && !searchParams.search ? (
@@ -76,11 +76,16 @@ export default function ClientProjects({ initialData, initialError, searchParams
       ) : (
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           <CreateProjectCard onClick={() => setIsCreateModalOpen(true)} />
-          
-          {projects.map((project:any) => (
-            <ProjectCard key={project._id} project={project} />
+
+          {projects.map((project: any) => (
+            <Link
+              href={`/client/projects/${project._id}/builder`}
+              key={project._id}
+            >
+              <ProjectCard project={project} />
+            </Link>
           ))}
-          
+
           {projects.length === 0 && searchParams.search && (
             <div className="col-span-full text-center py-12">
               <p className="text-muted-foreground">No projects found matching "{searchParams.search}"</p>
@@ -91,7 +96,7 @@ export default function ClientProjects({ initialData, initialError, searchParams
           )}
         </div>
       )}
-      
+
       {projectsData && projectsData.totalPages > 1 && (
         <div className="flex justify-center mt-8">
           <ProjectPagination
@@ -102,8 +107,8 @@ export default function ClientProjects({ initialData, initialError, searchParams
           />
         </div>
       )}
-      
-      
+
+
     </div>
   );
 }

@@ -10,11 +10,11 @@ export default function PageBuilderPreview({ }: Props) {
   const [show, setShow] = useState(false);
   const { state } = useBuilderContext();
 
-  const activeColorSet = state.variableSets.find(set => set.key === 'colors' || set.id === 'set_colors');
+  const activeColorSet = state.variableSets.find(set => set.key === 'colors' || set.set_id === 'set_colors');
   
   const colorVariables = state.variables.filter(v => {
-    const setId = typeof v.variableSet === 'string' ? v.variableSet : v.variableSet.id;
-    return v.type === 'color' && setId === activeColorSet?.id;
+    const setId = typeof v.variableSet === 'string' ? v.variableSet : v.variableSet.set_id;
+    return v.type === 'color' && setId === activeColorSet?.set_id;
   });
   
   const cssVariables = colorVariables.map(v => {

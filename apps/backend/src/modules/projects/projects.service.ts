@@ -6,6 +6,9 @@ import ProjectUserModel from '../project-users/project-users.model';
 import Logger from '../../config/logger.config';
 import mongoose from 'mongoose';
 import PageModel from '../artifacts/pages/pages.model';
+// Import Variable and BlockInstance models
+import VariableModel from '../artifacts/variables/variables.model';
+import BlockInstanceModel from '../artifacts/block-instance/block-instances.model';
 
 export class ProjectsService {
     static async generateUniqueSubdomain(): Promise<string> {
@@ -100,9 +103,9 @@ export class ProjectsService {
                 
             const pages = await PageModel.find({ project: projectId }).lean();
             
-            const variables = await mongoose.model('Variable').find({ project: projectId }).lean();
+            const variables = await VariableModel.find({ project: projectId }).lean();
             
-            const blockInstances = await mongoose.model('BlockInstance').find({ project: projectId }).lean();
+            const blockInstances = await BlockInstanceModel.find({ project: projectId }).lean();
             
             return {
                 ...projectObj,
@@ -259,14 +262,37 @@ export class ProjectsService {
                 );
             }
             
+            // ----- Pages Synchronization -----
             const syncedPages: Record<string, any> = {};
+            const deletedPages: string[] = [];
+            
+            // Get all existing pages for this project
+            const allExistingPages = await PageModel.find({ project: projectId });
+            
+            // Create a map of pages from incoming data
+            const incomingPageIds = new Set(
+                (data.pages || []).map(page => page.page_id)
+            );
+            
+            // Identify pages that need to be deleted (exist in DB but not in incoming data)
+            const pagesToDelete = allExistingPages.filter(
+                page => !incomingPageIds.has(page.page_id)
+            );
+            
+            // Delete the pages that are no longer in the data
+            for (const pageToDelete of pagesToDelete) {
+                await PageModel.findByIdAndDelete(pageToDelete._id);
+                deletedPages.push(pageToDelete.page_id);
+            }
+            
+            // Process the pages from the incoming data
             if (data.pages && data.pages.length > 0) {
                 for (const pageData of data.pages) {
                     const { page_id, ...pageFields } = pageData;
                     
                     const existingPage = await PageModel.findOne({ 
                         project: projectId,
-                        id: page_id
+                        page_id: page_id
                     });
                     
                     if (existingPage) {
@@ -282,7 +308,7 @@ export class ProjectsService {
                     } else {
                         const newPage = new PageModel({
                             ...pageFields,
-                            id: page_id,
+                            page_id: page_id,
                             project: projectId
                         });
                         const savedPage = await newPage.save();
@@ -291,16 +317,37 @@ export class ProjectsService {
                 }
             }
             
+            // ----- Variables Synchronization -----
             const syncedVariables: Record<string, any> = {};
+            const deletedVariables: string[] = [];
+            
+            // Get all existing variables for this project
+            const allExistingVariables = await VariableModel.find({ project: projectId });
+            
+            // Create a map of variables from incoming data
+            const incomingVariableIds = new Set(
+                (data.variables || []).map(variable => variable.variable_id)
+            );
+            
+            // Identify variables that need to be deleted
+            const variablesToDelete = allExistingVariables.filter(
+                variable => !incomingVariableIds.has(variable.variable_id)
+            );
+            
+            // Delete variables that are no longer in the data
+            for (const variableToDelete of variablesToDelete) {
+                await VariableModel.findByIdAndDelete(variableToDelete._id);
+                deletedVariables.push(variableToDelete.variable_id);
+            }
+            
+            // Process variables from incoming data
             if (data.variables && data.variables.length > 0) {
-                const VariableModel = mongoose.model('Variable');
-                
                 for (const variableData of data.variables) {
                     const { variable_id, ...variableFields } = variableData;
                     
                     const existingVariable = await VariableModel.findOne({
                         project: projectId,
-                        id: variable_id
+                        variable_id: variable_id
                     });
                     
                     if (existingVariable) {
@@ -316,7 +363,7 @@ export class ProjectsService {
                     } else {
                         const newVariable = new VariableModel({
                             ...variableFields,
-                            id: variable_id,
+                            variable_id: variable_id,
                             project: projectId
                         });
                         const savedVariable = await newVariable.save();
@@ -325,26 +372,51 @@ export class ProjectsService {
                 }
             }
             
+            // ----- BlockInstances Synchronization -----
             const syncedBlocks: Record<string, any> = {};
+            const deletedBlocks: string[] = [];
+            
+            // Get all existing blocks for this project
+            const allExistingBlocks = await BlockInstanceModel.find({ project: projectId });
+            
+            // For blocks, we need a composite key since they don't have a single ID field
+            const generateBlockKey = (block: any) => 
+                `${block.page}-${block.index}-${block.folderName}-${block.subFolder}`;
+            
+            // Create a set of block keys from incoming data
+            const incomingBlockKeys = new Set(
+                (data.blocks || []).map(block => generateBlockKey(block))
+            );
+            
+            // Identify blocks that need to be deleted
+            const blocksToDelete = allExistingBlocks.filter(
+                block => !incomingBlockKeys.has(generateBlockKey(block))
+            );
+            
+            // Delete blocks that are no longer in the data
+            for (const blockToDelete of blocksToDelete) {
+                const blockKey = generateBlockKey(blockToDelete);
+                await BlockInstanceModel.findByIdAndDelete(blockToDelete._id);
+                deletedBlocks.push(blockKey);
+            }
+            
+            // Process blocks from incoming data
             if (data.blocks && data.blocks.length > 0) {
-                const BlockInstanceModel = mongoose.model('BlockInstance');
-                
-                const existingBlocks = await BlockInstanceModel.find({ project: projectId });
                 const existingBlocksMap = new Map(
-                    existingBlocks.map(block => [
-                        `${block.page}-${block.index}-${block.folderName}-${block.subFolder}`,
+                    allExistingBlocks.map(block => [
+                        generateBlockKey(block),
                         block
                     ])
                 );
                 
                 for (const blockData of data.blocks) {
                     const { page, index, folderName, subFolder, ...blockFields } = blockData;
-                    
-                    const blockKey = `${page}-${index}-${folderName}-${subFolder}`;
+                    const blockKey = generateBlockKey(blockData);
                     
                     if (existingBlocksMap.has(blockKey)) {
                         const existingBlock = existingBlocksMap.get(blockKey);
                         const updatedBlock = await BlockInstanceModel.findByIdAndUpdate(
+                            //@ts-ignore
                             existingBlock._id,
                             {
                                 ...blockFields,
@@ -371,9 +443,21 @@ export class ProjectsService {
             return {
                 message: 'Project data synchronized successfully',
                 projectId,
-                pages: syncedPages,
-                variables: syncedVariables,
-                blocks: syncedBlocks
+                pages: {
+                    updated: Object.keys(syncedPages).length,
+                    deleted: deletedPages.length,
+                    items: syncedPages
+                },
+                variables: {
+                    updated: Object.keys(syncedVariables).length,
+                    deleted: deletedVariables.length,
+                    items: syncedVariables
+                },
+                blocks: {
+                    updated: Object.keys(syncedBlocks).length,
+                    deleted: deletedBlocks.length,
+                    items: syncedBlocks
+                }
             };
         } catch (error) {
             Logger.error(`Project sync error: ${error instanceof Error ? error.message : 'Unknown error'}`);
