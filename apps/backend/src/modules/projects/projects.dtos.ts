@@ -51,6 +51,8 @@ export const syncProjectSchema = z.object({
     variableSet: z.string()
   })).optional(),
   blocks: z.array(z.object({
+    instance_id: z.string().optional(),
+    page_id: z.string(), // Add page_id field
     index: z.number(),
     page: z.string(),
     folderName: z.string(),

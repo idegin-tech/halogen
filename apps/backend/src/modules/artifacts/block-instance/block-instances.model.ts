@@ -5,6 +5,8 @@ import mongoosePaginate from 'mongoose-paginate-v2';
 export interface BlockInstance extends Omit<CommonBlockInstance, 'page'> {
   page: string;
   project: string;
+  instance_id: string;
+  page_id: string; // Add frontend page_id field
 }
 
 export type BlockInstanceDocumentProps = Omit<BlockInstance, '_id'>;
@@ -12,6 +14,16 @@ export type BlockInstanceDocumentProps = Omit<BlockInstance, '_id'>;
 export interface BlockInstanceDocument extends Omit<BlockInstanceDocumentProps, 'id'>, Document {}
 
 const BlockInstanceSchema: Schema = new Schema<BlockInstance>({
+  instance_id: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  page_id: { // Add page_id field to schema
+    type: String,
+    required: true,
+    trim: true
+  },
   index: {
     type: Number,
     required: true
@@ -57,8 +69,10 @@ const BlockInstanceSchema: Schema = new Schema<BlockInstance>({
 
 BlockInstanceSchema.index({ project: 1 });
 BlockInstanceSchema.index({ page: 1 });
+BlockInstanceSchema.index({ page_id: 1 }); // Add index for page_id
 BlockInstanceSchema.index({ project: 1, page: 1 });
 BlockInstanceSchema.index({ instance: 1 });
+BlockInstanceSchema.index({ instance_id: 1 }, { unique: true });
 
 BlockInstanceSchema.plugin(mongoosePaginate);
 

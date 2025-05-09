@@ -5,10 +5,12 @@ import { useBuilderContext } from '@/context/builder.context'
 import { usePage } from '@/hooks/usePage'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { PageData } from '@/types/builder.types'
+import { PageData } from '@halogen/common/types'
+import { generateId } from '@halogen/common'
+
 
 export default function PagesTopPanel({show, onHide}:{show: boolean, onHide: () => void}) {
-    const { state, updateBuilderState } = useBuilderContext();
+    const { state } = useBuilderContext();
     const { 
         selectedPageId, 
         setActivePage, 
@@ -20,7 +22,19 @@ export default function PagesTopPanel({show, onHide}:{show: boolean, onHide: () 
 
     const [pageName, setPageName] = useState('');
     const [currentPage, setCurrentPage] = useState<PageData | null>(null);
-    const [activePage, setActivePageState] = useState<string | null>(selectedPageId);
+
+    useEffect(() => {
+        if (selectedPageId) {
+            const page = state.pages.find(p => p.page_id === selectedPageId);
+            if (page) {
+                setPageName(page.name);
+                setCurrentPage(page);
+            }
+        } else {
+            setPageName('');
+            setCurrentPage(null);
+        }
+    }, [selectedPageId, state.pages]);
 
     const generatedRoute = useMemo(() => {
         if (!pageName) return '';
@@ -31,12 +45,12 @@ export default function PagesTopPanel({show, onHide}:{show: boolean, onHide: () 
     const validation = useMemo(() => {
         const duplicateName = state.pages.find(p => 
             p.name.toLowerCase() === pageName.toLowerCase() && 
-            p.id !== selectedPageId
+            p.page_id !== selectedPageId
         );
         
         const duplicateRoute = state.pages.find(p => 
             p.path === generatedRoute && 
-            p.id !== selectedPageId
+            p.page_id !== selectedPageId
         );
         
         return {
@@ -44,14 +58,6 @@ export default function PagesTopPanel({show, onHide}:{show: boolean, onHide: () 
             routeExists: !!duplicateRoute
         };
     }, [pageName, generatedRoute, state.pages, selectedPageId]);
-
-    useEffect(() => {
-        const activePage = getActivePage();
-        if (activePage) {
-            setPageName(activePage.name);
-            setCurrentPage(activePage);
-        }
-    }, [selectedPageId, getActivePage]);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -71,11 +77,16 @@ export default function PagesTopPanel({show, onHide}:{show: boolean, onHide: () 
 
     const handleAddPage = (name?: string) => {
         const pageTitle = name || 'New Page';
+        const pageId = generateId(9);
         const newPage = addPage({ 
+            page_id: pageId,
             name: pageTitle, 
-            path: '/' + pageTitle.toLowerCase().replace(/\s+/g, '-')
+            path: '/' + pageTitle.toLowerCase().replace(/\s+/g, '-'),
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
         });
-        return newPage.id; // Return the new page ID
+        console.log('New page added:', newPage);
+        return newPage.page_id;
     };
 
     const handleRemovePage = (id: string) => {
@@ -86,21 +97,20 @@ export default function PagesTopPanel({show, onHide}:{show: boolean, onHide: () 
         console.log('Set change', data);
     };
 
-    // Generate breadcrumbs based on the selected page
     const breadcrumbs = useMemo(() => {
         const items: {label: string, href?: string}[] = [
             { label: "Pages", href: "#" }
         ];
         
-        if (activePage) {
-            const page = state.pages.find(p => p.id === activePage);
+        if (selectedPageId) {
+            const page = state.pages.find(p => p.page_id === selectedPageId);
             if (page) {
                 items.push({ label: page.name });
             }
         }
         
         return items;
-    }, [activePage, state.pages]);
+    }, [selectedPageId, state.pages]);
 
     return (
         <>
@@ -109,7 +119,7 @@ export default function PagesTopPanel({show, onHide}:{show: boolean, onHide: () 
                 onClose={onHide}
                 show={show}
                 setList={state.pages.map((page) => ({
-                    id: page.id,
+                    id: page.page_id,
                     name: page.name,
                     icon: <FileIcon />,
                     isLocked: page.isStatic,
@@ -182,8 +192,8 @@ export default function PagesTopPanel({show, onHide}:{show: boolean, onHide: () 
                                 variant="secondary"
                                 className="mt-4"
                                 onClick={() => {
-                                    const newId = handleAddPage();
-                                    setActivePage(newId);
+                                    const newPageId = handleAddPage();
+                                    setActivePage(newPageId);
                                 }}
                             >
                                 Create New Page

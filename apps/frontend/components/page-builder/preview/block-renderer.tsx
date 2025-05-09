@@ -20,8 +20,9 @@ export default function BlockRenderer({ pageId }: BlockRendererProps) {
     const targetPageId = pageId || state.selectedPageId;
     
     if (targetPageId) {
+      // Filter blocks by page_id (frontend ID) instead of MongoDB page reference
       const filteredBlocks = state.blocks
-        .filter(block => block.page === targetPageId)
+        .filter(block => block.page_id === targetPageId)
         .sort((a, b) => a.index - b.index);
       
       setBlocksToRender(filteredBlocks);
@@ -34,9 +35,9 @@ export default function BlockRenderer({ pageId }: BlockRendererProps) {
     <div className="block-renderer">
       {blocksToRender.map(block => (
         <BlockComponent 
-          key={block.id}
+          key={block.instance_id}
           block={block}
-          isSelected={state.selectedBlockId === block.id}
+          isSelected={state.selectedBlockId === block.instance_id}
         />
       ))}
       <AddBlock />
@@ -57,8 +58,8 @@ function BlockComponent({ block, isSelected }: BlockComponentProps) {
   const handleBlockClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    updateBuilderState({ selectedBlockId: block.id });
-  };
+    updateBuilderState({ selectedBlockId: block.instance_id });
+};
   
   useEffect(() => {
     const importComponent = async () => {
@@ -93,10 +94,8 @@ function BlockComponent({ block, isSelected }: BlockComponentProps) {
       return currentBlock; 
     }
     
-    // Find the referenced block by ID in the state
-    const instanceBlock = state.blocks.find(b => b.id === currentBlock.instance);
+    const instanceBlock = state.blocks.find(b => b.instance_id === currentBlock.instance);
     
-    // If found, continue traversing the chain, otherwise return current block
     return instanceBlock ? getRootBlock(instanceBlock) : currentBlock;
   };
   
@@ -115,7 +114,11 @@ function BlockComponent({ block, isSelected }: BlockComponentProps) {
           <small className='px-2 py-1 bg-[#8A2BE2] text-white rounded-lg shadow-md z-10 left-2 top-2 absolute flex items-center gap-1'><CheckIcon className='h-4 w-4'/> Selected</small>
         </div>
       )}
-      <Component {...blockValues} />
+      {Component && (
+        <div key={`block-content-${block.instance_id}`}>
+          <Component {...blockValues} />
+        </div>
+      )}
     </div>
   );
 }

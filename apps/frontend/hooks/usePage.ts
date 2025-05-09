@@ -1,5 +1,6 @@
 import { useBuilderContext } from "@/context/builder.context";
-import { PageData } from "@/types/builder.types";
+import { PageData } from "@halogen/common/types";
+import { generateId } from "@halogen/common";
 import { useCallback } from "react";
 
 export const usePage = () => {
@@ -11,18 +12,22 @@ export const usePage = () => {
 
   const addPage = useCallback((page: Partial<PageData>) => {
     const newPage: PageData = {
-      id: `page_${Date.now()}`,
+      // Spread the passed page data first so it won't be overwritten by defaults
+      ...page,
+      // Then set defaults only if not provided
+      page_id: page.page_id || generateId(9),
       name: page.name || "New Page",
       path: page.path || `/${page.name?.toLowerCase().replace(/\s+/g, "-") || "new-page"}`,
-      isStatic: false,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      ...page,
+      isStatic: page.isStatic ?? false,
+      createdAt: page.createdAt || new Date().toISOString(),
+      updatedAt: page.updatedAt || new Date().toISOString(),
     };
+
+    console.log('THE NEW PAGE:::', newPage)
 
     updateBuilderState({
       pages: [...state.pages, newPage],
-      selectedPageId: newPage.id,
+      selectedPageId: newPage.page_id,
     });
 
     return newPage;
@@ -30,7 +35,7 @@ export const usePage = () => {
 
   const updatePage = useCallback((pageId: string, updates: Partial<PageData>) => {
     const updatedPages = state.pages.map((page) => {
-      if (page.id === pageId) {
+      if (page.page_id === pageId) {
         return {
           ...page,
           ...updates,
@@ -44,13 +49,13 @@ export const usePage = () => {
   }, [state.pages, updateBuilderState]);
 
   const removePage = useCallback((pageId: string) => {
-    const filteredPages = state.pages.filter((page) => page.id !== pageId);
+    const filteredPages = state.pages.filter((page) => page.page_id !== pageId);
     const updatedState: Partial<Parameters<typeof updateBuilderState>[0]> = {
       pages: filteredPages,
     };
 
     if (state.selectedPageId === pageId && filteredPages.length > 0) {
-      updatedState.selectedPageId = filteredPages[0].id;
+      updatedState.selectedPageId = filteredPages[0].page_id;
     } else if (filteredPages.length === 0) {
       updatedState.selectedPageId = null;
     }
@@ -59,11 +64,11 @@ export const usePage = () => {
   }, [state.pages, state.selectedPageId, updateBuilderState]);
 
   const getPageById = useCallback((pageId: string) => {
-    return state.pages.find((page) => page.id === pageId) || null;
+    return state.pages.find((page) => page.page_id === pageId) || null;
   }, [state.pages]);
 
   const getActivePage = useCallback(() => {
-    return state.pages.find((page) => page.id === state.selectedPageId) || null;
+    return state.pages.find((page) => page.page_id === state.selectedPageId) || null;
   }, [state.pages, state.selectedPageId]);
 
   return {

@@ -9,6 +9,7 @@ export type ProjectData = {
 }
 
 export type PageData = {
+  _id?: string;
   page_id: string;
   name: string;
   path?: string;

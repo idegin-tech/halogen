@@ -11,22 +11,26 @@ export default function PageBuilderPreview({ }: Props) {
   const { state } = useBuilderContext();
 
   const activeColorSet = state.variableSets.find(set => set.key === 'colors' || set.set_id === 'set_colors');
-  
+
   const colorVariables = state.variables.filter(v => {
     const setId = typeof v.variableSet === 'string' ? v.variableSet : v.variableSet.set_id;
     return v.type === 'color' && setId === activeColorSet?.set_id;
   });
-  
+
   const cssVariables = colorVariables.map(v => {
     const varName = v.key.startsWith('--') ? v.key : `--${v.key}`;
     return `${varName}: ${v.primaryValue};`;
   }).join('\n                              ');
 
   useEffect(() => {
-    setShow(true);
-  }, []);
+    if (state.selectedPageId && state.pages.length > 0 && state.project && cssVariables.length > 0) {
+      setTimeout(() => {
+        setShow(true);
+      }, 600);
+    }
+  }, [state.selectedPageId, state.pages, state.project, cssVariables]);
 
-  const frameKey = JSON.stringify(colorVariables);
+  const frameKey = JSON.stringify({...colorVariables, show});
 
   return (
     <main className="h-[var(--body-height)] max-h-[var(--body-height)] bg-white flex-1 overflow-hidden grid grid-cols-1">

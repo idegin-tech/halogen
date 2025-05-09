@@ -30,7 +30,6 @@ type Props = {
     heading: string;
     setList: (
         | {
-            _id: string;
             id: string;
             name: string;
             icon: IconElement;
@@ -163,6 +162,7 @@ export default function TopPanelContainer(
                             <div className='flex-1 overflow-x-hidden overflow-y-auto p-2 space-y-2'>
                                 {
                                     setList.map((set, index) => {
+                                        // Handle string dividers (for backward compatibility)
                                         if (typeof set === 'string') {
                                             return (
                                                 <div
@@ -174,10 +174,24 @@ export default function TopPanelContainer(
                                                 </div>
                                             );
                                         }
+                                        
+                                        // Handle items with isHeader property
+                                        if ('isHeader' in set && set.isHeader) {
+                                            return (
+                                                <div
+                                                    key={set.id}
+                                                    className="px-2 py-1"
+                                                >
+                                                    <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{set.name}</div>
+                                                    <div className="h-px bg-border mt-1"></div>
+                                                </div>
+                                            );
+                                        }
 
+                                        // Handle regular items
                                         return (
                                             <div
-                                                key={set._id}
+                                                key={set.id}
                                                 className={cn(
                                                     'flex items-center gap-2 p-2 hover:bg-accent cursor-pointer rounded-md',
                                                     activeSetId === set.id && 'bg-accent hover:bg-accent',

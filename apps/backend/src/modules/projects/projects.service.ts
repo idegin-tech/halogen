@@ -6,7 +6,6 @@ import ProjectUserModel from '../project-users/project-users.model';
 import Logger from '../../config/logger.config';
 import mongoose from 'mongoose';
 import PageModel from '../artifacts/pages/pages.model';
-// Import Variable and BlockInstance models
 import VariableModel from '../artifacts/variables/variables.model';
 import BlockInstanceModel from '../artifacts/block-instance/block-instances.model';
 
@@ -31,10 +30,8 @@ export class ProjectsService {
         try {
             const subdomain = await this.generateUniqueSubdomain();
             
-            // Extract pages data if provided
             const { pages: pagesData, ...projectFields } = projectData;
             
-            // Ensure project_id exists, or generate one if not provided
             if (!projectFields.project_id) {
                 projectFields.project_id = `proj_${Date.now()}`;
             }
@@ -55,20 +52,26 @@ export class ProjectsService {
 
             await projectUser.save();
             
-            // Create home page with page_id if pages not provided
-            if (!pagesData || pagesData.length === 0) {
-                const homePage = new PageModel({
-                    name: 'Home',
-                    path: '/',
-                    isStatic: true,
-                    project: savedProject._id,
-                    page_id: `page_${Date.now()}`
-                });
-                
-                await homePage.save();
-            } else {
-                // Create pages from provided data
+           //@ts-ignore
+            const homePageId = `page_home_${savedProject._id.toString().substring(0, 6)}`;
+            
+            // Always create a default home page
+            const homePage = new PageModel({
+                name: 'Home',
+                path: '/',
+                isStatic: true,
+                project: savedProject._id,
+                page_id: homePageId
+            });
+            
+            await homePage.save();
+        
+            // If additional pages were provided, also create those
+            if (pagesData && pagesData.length > 0) {
                 for (const pageData of pagesData) {
+                    // Skip if it's another attempt to create a page at the root path
+                    if (pageData.path === '/') continue;
+                    
                     const page = new PageModel({
                         ...pageData,
                         project: savedProject._id
@@ -262,85 +265,75 @@ export class ProjectsService {
                 );
             }
             
-            // ----- Pages Synchronization -----
             const syncedPages: Record<string, any> = {};
             const deletedPages: string[] = [];
             
-            // Get all existing pages for this project
             const allExistingPages = await PageModel.find({ project: projectId });
             
-            // Create a map of pages from incoming data
             const incomingPageIds = new Set(
                 (data.pages || []).map(page => page.page_id)
             );
             
-            // Identify pages that need to be deleted (exist in DB but not in incoming data)
             const pagesToDelete = allExistingPages.filter(
                 page => !incomingPageIds.has(page.page_id)
             );
             
-            // Delete the pages that are no longer in the data
             for (const pageToDelete of pagesToDelete) {
                 await PageModel.findByIdAndDelete(pageToDelete._id);
                 deletedPages.push(pageToDelete.page_id);
             }
             
-            // Process the pages from the incoming data
             if (data.pages && data.pages.length > 0) {
+                
+                const pagesByPageId = new Map();
+                allExistingPages.forEach(page => {
+                    pagesByPageId.set(page.page_id, page);
+                });
+                
                 for (const pageData of data.pages) {
-                    const { page_id, ...pageFields } = pageData;
-                    
-                    const existingPage = await PageModel.findOne({ 
-                        project: projectId,
-                        page_id: page_id
-                    });
+                    const existingPage = pagesByPageId.get(pageData.page_id);
                     
                     if (existingPage) {
+                       
                         const updatedPage = await PageModel.findByIdAndUpdate(
                             existingPage._id,
                             {
-                                ...pageFields,
+                                ...pageData,
                                 updatedAt: new Date()
                             },
                             { new: true }
                         );
-                        syncedPages[page_id] = updatedPage;
+                        syncedPages[pageData.page_id] = updatedPage;
                     } else {
-                        const newPage = new PageModel({
-                            ...pageFields,
-                            page_id: page_id,
+                        // Create new page
+                        const page = new PageModel({
+                            ...pageData,
                             project: projectId
                         });
-                        const savedPage = await newPage.save();
-                        syncedPages[page_id] = savedPage;
+                        const savedPage = await page.save();
+                        syncedPages[pageData.page_id] = savedPage;
                     }
                 }
             }
             
-            // ----- Variables Synchronization -----
             const syncedVariables: Record<string, any> = {};
             const deletedVariables: string[] = [];
             
-            // Get all existing variables for this project
             const allExistingVariables = await VariableModel.find({ project: projectId });
             
-            // Create a map of variables from incoming data
             const incomingVariableIds = new Set(
                 (data.variables || []).map(variable => variable.variable_id)
             );
             
-            // Identify variables that need to be deleted
             const variablesToDelete = allExistingVariables.filter(
                 variable => !incomingVariableIds.has(variable.variable_id)
             );
             
-            // Delete variables that are no longer in the data
             for (const variableToDelete of variablesToDelete) {
                 await VariableModel.findByIdAndDelete(variableToDelete._id);
                 deletedVariables.push(variableToDelete.variable_id);
             }
             
-            // Process variables from incoming data
             if (data.variables && data.variables.length > 0) {
                 for (const variableData of data.variables) {
                     const { variable_id, ...variableFields } = variableData;
@@ -372,51 +365,135 @@ export class ProjectsService {
                 }
             }
             
-            // ----- BlockInstances Synchronization -----
             const syncedBlocks: Record<string, any> = {};
             const deletedBlocks: string[] = [];
             
-            // Get all existing blocks for this project
             const allExistingBlocks = await BlockInstanceModel.find({ project: projectId });
             
-            // For blocks, we need a composite key since they don't have a single ID field
-            const generateBlockKey = (block: any) => 
-                `${block.page}-${block.index}-${block.folderName}-${block.subFolder}`;
-            
-            // Create a set of block keys from incoming data
-            const incomingBlockKeys = new Set(
-                (data.blocks || []).map(block => generateBlockKey(block))
+            const incomingBlockIds = new Set(
+                (data.blocks || []).map(block => block.instance_id || '')
             );
             
-            // Identify blocks that need to be deleted
             const blocksToDelete = allExistingBlocks.filter(
-                block => !incomingBlockKeys.has(generateBlockKey(block))
+                block => !block.instance_id || !incomingBlockIds.has(block.instance_id)
             );
             
-            // Delete blocks that are no longer in the data
             for (const blockToDelete of blocksToDelete) {
-                const blockKey = generateBlockKey(blockToDelete);
                 await BlockInstanceModel.findByIdAndDelete(blockToDelete._id);
-                deletedBlocks.push(blockKey);
+                const blockId = blockToDelete.instance_id || (blockToDelete._id ? blockToDelete._id.toString() : '');
+                deletedBlocks.push(blockId);
             }
             
-            // Process blocks from incoming data
             if (data.blocks && data.blocks.length > 0) {
-                const existingBlocksMap = new Map(
-                    allExistingBlocks.map(block => [
-                        generateBlockKey(block),
-                        block
-                    ])
-                );
+                
+                const pageIdToObjectMap = new Map<string, mongoose.Types.ObjectId>();
+                const pagesForProject = await PageModel.find({ project: projectId });
+                
+                for (const page of pagesForProject) {
+                    if (page._id && page.page_id) {
+                        //@ts-ignore
+                        pageIdToObjectMap.set(page.page_id, page._id);
+                    }
+                }
+                
+                const instanceIdToObjectMap = new Map<string, mongoose.Types.ObjectId>();
+                for (const block of allExistingBlocks) {
+                    if (block.instance_id && block._id) {
+                        //@ts-ignore
+                        instanceIdToObjectMap.set(block.instance_id, block._id);
+                    }
+                }
                 
                 for (const blockData of data.blocks) {
-                    const { page, index, folderName, subFolder, ...blockFields } = blockData;
-                    const blockKey = generateBlockKey(blockData);
+                    interface BlockDataWithInstanceId {
+                        instance_id?: string;
+                        page_id: string; 
+                        index: number;
+                        page: string; 
+                        folderName: string;
+                        subFolder: string;
+                        value?: any;
+                        instance?: string | null;
+                    }
                     
-                    if (existingBlocksMap.has(blockKey)) {
-                        const existingBlock = existingBlocksMap.get(blockKey);
+                    const typedBlockData = blockData as BlockDataWithInstanceId;
+                    const { instance_id, page_id, page, index, folderName, subFolder, value, instance } = typedBlockData;
+                    
+                    const lookupPageId = page_id || page;
+                    
+                    const pageObjectId = pageIdToObjectMap.get(lookupPageId);
+                    
+                    const instanceObjectId = instance ? instanceIdToObjectMap.get(instance) : null;
+                    
+                    if (!pageObjectId) {
+                        console.warn(`Page with page_id ${lookupPageId} not found for block. Creating placeholder page.`);
+                        
+                        const placeholderPage = new PageModel({
+                            name: `Page ${lookupPageId}`,
+                            path: '/placeholder',
+                            isStatic: true,
+                            project: projectId,
+                            page_id: lookupPageId
+                        });
+                        
+                        const savedPage = await placeholderPage.save();
+                        //@ts-ignore
+                        pageIdToObjectMap.set(lookupPageId, savedPage?._id);
+                        
+                        const blockFields = {
+                            instance_id: instance_id || `inst_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                            page_id: lookupPageId, // Always preserve the frontend page_id
+                            index,
+                            page: savedPage._id, // Use the MongoDB reference
+                            folderName,
+                            subFolder,
+                            value,
+                            instance: instanceObjectId,
+                            project: projectId
+                        };
+                        
+                        // Continue with block creation logic
+                        const existingBlock = instance_id ? 
+                            await BlockInstanceModel.findOne({ instance_id }) : null;
+                        
+                        if (existingBlock) {
+                            const updatedBlock = await BlockInstanceModel.findByIdAndUpdate(
+                                existingBlock._id,
+                                {
+                                    ...blockFields,
+                                    updatedAt: new Date()
+                                },
+                                { new: true }
+                            );
+                            if (blockFields.instance_id) {
+                                syncedBlocks[blockFields.instance_id] = updatedBlock;
+                            }
+                        } else {
+                            const newBlock = new BlockInstanceModel(blockFields);
+                            const savedBlock = await newBlock.save();
+                            syncedBlocks[blockFields.instance_id] = savedBlock;
+                        }
+                        continue;
+                    }
+                    
+                    // If the page exists, proceed with the normal flow
+                    const blockFields = {
+                        instance_id: instance_id || `inst_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                        page_id: lookupPageId, // Always preserve the frontend page_id
+                        index,
+                        page: pageObjectId, // Use the MongoDB ObjectId for the page reference
+                        folderName,
+                        subFolder,
+                        value,
+                        instance: instanceObjectId,
+                        project: projectId
+                    };
+                    
+                    const existingBlock = instance_id ? 
+                        await BlockInstanceModel.findOne({ instance_id }) : null;
+                    
+                    if (existingBlock) {
                         const updatedBlock = await BlockInstanceModel.findByIdAndUpdate(
-                            //@ts-ignore
                             existingBlock._id,
                             {
                                 ...blockFields,
@@ -424,25 +501,23 @@ export class ProjectsService {
                             },
                             { new: true }
                         );
-                        syncedBlocks[blockKey] = updatedBlock;
+                        if (instance_id) {
+                            syncedBlocks[instance_id] = updatedBlock;
+                        }
                     } else {
                         const newBlock = new BlockInstanceModel({
-                            page,
-                            index,
-                            folderName,
-                            subFolder,
                             ...blockFields,
-                            project: projectId
+                            instance_id: instance_id || `inst_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
                         });
                         const savedBlock = await newBlock.save();
-                        syncedBlocks[blockKey] = savedBlock;
+                        //@ts-ignore
+                        syncedBlocks[instance_id] = savedBlock;
                     }
                 }
             }
             
             return {
-                message: 'Project data synchronized successfully',
-                projectId,
+                project: projectData,
                 pages: {
                     updated: Object.keys(syncedPages).length,
                     deleted: deletedPages.length,

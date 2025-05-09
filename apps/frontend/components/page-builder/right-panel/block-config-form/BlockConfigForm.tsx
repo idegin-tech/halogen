@@ -13,16 +13,15 @@ import { Separator } from '@/components/ui/separator';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { BlockConfigListValue, BlockFieldConfig, BlockProperties } from '@/types/block.types';
 import { Plus, Trash2, Link, Unlink, AlertCircle } from 'lucide-react';
-// Import the getBlockProperties function from UI package
 import { getBlockProperties } from '@repo/ui/blocks';
+import { BlockConfigListValue, BlockFieldConfig, BlockProperties } from '@halogen/common/types';
 
 export default function BlockConfigForm() {
   const { state, updateBuilderState } = useBuilderContext();
   const [blockProperties, setBlockProperties] = useState<BlockProperties | null>(null);
   const [blockLoadError, setBlockLoadError] = useState<string | null>(null);
-  const selectedBlock = state.blocks.find(block => block.id === state.selectedBlockId);
+  const selectedBlock = state.blocks.find(block => block.instance_id === state.selectedBlockId);
   const [activeListItem, setActiveListItem] = useState<{ fieldName: string, itemIndex: number } | null>(null);
   const [isPopoverOpen, setIsPopoverOpen] = useState<boolean>(false);
 
@@ -34,7 +33,6 @@ export default function BlockConfigForm() {
       }
 
       try {
-        // Use the getBlockProperties function from the UI package
         const properties = getBlockProperties(selectedBlock.folderName, selectedBlock.subFolder);
         
         if (properties) {
@@ -55,13 +53,11 @@ export default function BlockConfigForm() {
   const getEffectiveValues = () => {
     if (!selectedBlock) return {};
     
-    // Find the root block by following the instance chain
     const findRootBlock = (block: any): any => {
       if (block.value !== null || block.instance === null) {
         return block;
       }
-      // Find the referenced block by ID
-      const instanceBlock = state.blocks.find(b => b.id === block.instance);
+      const instanceBlock = state.blocks.find(b => b.instance_id === block.instance);
       if (!instanceBlock) return block;
       
       return findRootBlock(instanceBlock);
@@ -74,13 +70,11 @@ export default function BlockConfigForm() {
   const getSourceBlock = () => {
     if (!selectedBlock) return null;
     
-    // Find the root block by following the instance chain
     const findRootBlock = (block: any): any => {
       if (block.value !== null || block.instance === null) {
         return block;
       }
-      // Find the referenced block by ID
-      const instanceBlock = state.blocks.find(b => b.id === block.instance);
+      const instanceBlock = state.blocks.find(b => b.instance_id === block.instance);
       if (!instanceBlock) return block;
       
       return findRootBlock(instanceBlock);
@@ -92,15 +86,14 @@ export default function BlockConfigForm() {
   const handleUnlinkBlock = () => {
     if (!selectedBlock || !selectedBlock.instance) return;
 
-    // Find the source block by ID
-    const sourceBlock = state.blocks.find(b => b.id === selectedBlock.instance);
+    const sourceBlock = state.blocks.find(b => b.instance_id === selectedBlock.instance);
     if (!sourceBlock) return;
     
     // Copy its values
     const instanceValues = JSON.parse(JSON.stringify(sourceBlock.value));
     
     const updatedBlocks = state.blocks.map(block => {
-      if (block.id === selectedBlock.id) {
+      if (block.instance_id === selectedBlock.instance_id) {
         return {
           ...block,
           instance: null,
@@ -120,7 +113,7 @@ export default function BlockConfigForm() {
     if (!sourceBlock) return;
 
     const updatedBlocks = state.blocks.map(block => {
-      if (block.id === sourceBlock.id) {
+      if (block.instance_id === sourceBlock.instance_id) {
         const updatedValue = {
           ...(block.value || {}),
           [fieldName]: {
@@ -592,7 +585,7 @@ export default function BlockConfigForm() {
   }
 
   const isLinkedBlock = selectedBlock.value === null && selectedBlock.instance !== null;
-  const sourceBlockId = isLinkedBlock ? selectedBlock.instance : selectedBlock.id;
+  const sourceBlockId = isLinkedBlock ? selectedBlock.instance : selectedBlock.instance_id;
 
   return (
     <PropertyFormContainer

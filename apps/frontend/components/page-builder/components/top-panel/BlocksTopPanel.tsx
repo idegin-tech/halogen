@@ -9,6 +9,7 @@ import { BlockProperties } from '@halogen/common/types'
 import { usePage } from '@/hooks/usePage'
 import { generateId } from '@halogen/common/lib'
 import { getBlockProperties, getAllBlockPaths } from '@repo/ui/blocks'
+import { Tsukimi_Rounded } from 'next/font/google'
 
 
 type BlockFolder = {
@@ -54,8 +55,11 @@ function UsedBlockItem({ block, instanceCount }: { block: any, instanceCount: nu
             return;
         }
 
+        const blockId = generateId();
         const newBlock = {
-            id: generateId(),
+            id: blockId,
+            instance_id: blockId, // Add instance_id matching the id
+            page_id: selectedPageId, // Add page_id to match the active page
             index: state.blocks.length,
             page: selectedPageId,
             folderName: block.folderName,
@@ -158,7 +162,8 @@ export default function BlocksTopPanel({ show, onHide }: { show: boolean, onHide
         const counts: Record<string, number> = {};
 
         masterBlocks.forEach(block => {
-            counts[block.id] = 0;
+            //@ts-ignore
+            counts[block.instance_id] = 0;
         });
 
         state.blocks.forEach(block => {
@@ -255,8 +260,11 @@ export default function BlocksTopPanel({ show, onHide }: { show: boolean, onHide
             return;
         }
 
+        const blockId = generateId();
         const newBlock = {
-            id: generateId(),
+            id: blockId,
+            instance_id: blockId, // Add instance_id matching the id
+            page_id: selectedPageId, // Add page_id to match the active page
             index: state.blocks.length,
             page: selectedPageId,
             folderName: folderName,
@@ -288,7 +296,11 @@ export default function BlocksTopPanel({ show, onHide }: { show: boolean, onHide
             });
         }
 
-        result.push("BLOCK TYPES");
+        result.push({
+            id: 'block-types-header',
+            name: "BLOCK TYPES", 
+            isHeader: true
+        });
 
         result.push(...blockFolders.map((folder) => ({
             id: folder.name,
@@ -315,9 +327,10 @@ export default function BlocksTopPanel({ show, onHide }: { show: boolean, onHide
             <div className="grid grid-cols-1 gap-3">
                 {masterBlocks.map((block) => (
                     <UsedBlockItem
-                        key={block.id}
+                        key={block.instance_id}
                         block={block}
-                        instanceCount={blockInstanceCounts[block.id] || 0}
+                        // @ts-ignore
+                        instanceCount={blockInstanceCounts[block.instance_id] || 0}
                     />
                 ))}
             </div>
@@ -348,7 +361,7 @@ export default function BlocksTopPanel({ show, onHide }: { show: boolean, onHide
                 heading="Blocks"
                 onClose={onHide}
                 show={show}
-                setList={panelSetList}
+                setList={panelSetList as any[]}
                 activeSetId={selectedFolder}
                 onAddSet={handleAddBlockFolder}
                 onRemoveSet={handleRemoveBlockFolder}
