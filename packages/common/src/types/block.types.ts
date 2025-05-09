@@ -38,4 +38,5 @@ export type BlockInstance = {
     subFolder: string;
     value: Record<string, any> | null;
     instance: string | null;
+    ref?: string | null;   // Frontend instance_id reference of the block being referenced
 }

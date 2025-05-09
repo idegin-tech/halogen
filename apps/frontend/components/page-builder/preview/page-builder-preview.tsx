@@ -3,34 +3,44 @@ import React, { useEffect, useState } from 'react';
 import Frame, { FrameContextConsumer } from 'react-frame-component';
 import { DynamicBlockRenderer } from './block-renderer';
 import { useBuilderContext } from '@/context/builder.context';
+import { useSyncContext } from '@/context/sync.context';
 
 type Props = {};
 
 export default function PageBuilderPreview({ }: Props) {
   const [show, setShow] = useState(false);
   const { state } = useBuilderContext();
+  const { isLoading } = useSyncContext();
 
   const activeColorSet = state.variableSets.find(set => set.key === 'colors' || set.set_id === 'set_colors');
 
-  const colorVariables = state.variables.filter(v => {
-    const setId = typeof v.variableSet === 'string' ? v.variableSet : v.variableSet.set_id;
-    return v.type === 'color' && setId === activeColorSet?.set_id;
+  const colorVariablesFromState = state.variables.filter(v => {
+    const setId = typeof v.variableSet === 'string' ? v.variableSet : v.variableSet?.set_id;
+    return v.type === 'color' && (!activeColorSet || setId === activeColorSet?.set_id);
   });
 
-  const cssVariables = colorVariables.map(v => {
+  const cssVariables = colorVariablesFromState.map(v => {
     const varName = v.key.startsWith('--') ? v.key : `--${v.key}`;
     return `${varName}: ${v.primaryValue};`;
   }).join('\n                              ');
 
   useEffect(() => {
-    if (state.selectedPageId && state.pages.length > 0 && state.project && cssVariables.length > 0) {
+    const requirementsMet = !isLoading &&
+      state.selectedPageId &&
+      state.pages.length > 0 &&
+      state.project &&
+      colorVariablesFromState.length > 0;
+
+    if (requirementsMet) {
       setTimeout(() => {
         setShow(true);
       }, 600);
+    } else {
+      setShow(false);
     }
-  }, [state.selectedPageId, state.pages, state.project, cssVariables]);
+  }, [isLoading, state.selectedPageId, state.pages, state.project, colorVariablesFromState]);
 
-  const frameKey = JSON.stringify({...colorVariables, show});
+  const frameKey = JSON.stringify({ ...colorVariablesFromState, show });
 
   return (
     <main className="h-[var(--body-height)] max-h-[var(--body-height)] bg-white flex-1 overflow-hidden grid grid-cols-1">

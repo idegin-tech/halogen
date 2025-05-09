@@ -44,19 +44,41 @@ export function SyncProvider({
         }
 
         const projectData = await response.json();
+        console.log('API response data:', {
+          hasData: !!projectData.data,
+          variables: projectData.data?.variables || [],
+          variablesCount: projectData.data?.variables?.length || 0,
+          pages: projectData.data?.pages?.length || 0,
+          project: projectData.data?.project || null 
+        });
         
         if (projectData.data) {
+          const hasApiVariables = projectData.data.variables && projectData.data.variables.length > 0;
+          
+          if (!hasApiVariables) {
+            projectData.data.variables = [...colorVariables, ...radiusVariables];
+            
+            if (!projectData.data.variableSets || projectData.data.variableSets.length === 0) {
+              projectData.data.variableSets = [...variableSets];
+            }
+          }
+          
           const transformedData = transformAPIDataToFrontend(projectData.data);
           updateBuilderState(transformedData);
           
-          // Set apiVariablesLoaded to true if we have variables from the API
-          if (projectData.data.variables && projectData.data.variables.length > 0) {
-            setApiVariablesLoaded(true);
-          }
+          setApiVariablesLoaded(true);
         }
       } catch (error) {
         console.error("Error loading project:", error);
         toast.error("Failed to load project data");
+        
+        if (state.variables.length === 0) {
+          updateBuilderState({
+            variableSets: [...variableSets],
+            variables: [...colorVariables, ...radiusVariables],
+          });
+          setApiVariablesLoaded(true);
+        }
       } finally {
         setIsLoading(false);
       }
@@ -65,8 +87,26 @@ export function SyncProvider({
     loadProject();
   }, [projectId]);
 
+  useEffect(() => {
+    if (!isLoading && !apiVariablesLoaded && state.variables.length === 0) {
+      console.log('No variables found after API load, using fallback default variables');
+      updateBuilderState({
+        variableSets: [...variableSets],
+        variables: [...colorVariables, ...radiusVariables],
+      });
+      setApiVariablesLoaded(true);
+    }
+  }, [isLoading, apiVariablesLoaded, state.variables.length]);
+
   const transformAPIDataToFrontend = (apiData: any) => {
     const { pages = [], blockInstances = [], variables = [] } = apiData;
+    
+    console.log('Transforming API data:', {
+      pagesCount: pages.length,
+      blocksCount: blockInstances.length, 
+      variablesCount: variables.length,
+      variablesData: variables
+    });
     
     const pageLookup = new Map();
     pages.forEach((page: any) => {
@@ -88,7 +128,8 @@ export function SyncProvider({
         folderName: block.folderName,
         subFolder: block.subFolder,
         value: block.value,
-        instance: block.instance
+        instance: block.instance,
+        ref: block.ref
       };
     });
     
@@ -97,6 +138,9 @@ export function SyncProvider({
         const instanceBlock = blockLookup.get(block.instance);
         if (instanceBlock) {
           block.instance = instanceBlock.instance_id;
+          if (!block.ref) {
+            block.ref = instanceBlock.instance_id;
+          }
         }
       }
     });
@@ -126,6 +170,11 @@ export function SyncProvider({
       variableSet: variable.variableSet
     }));
 
+    console.log('Transformed variables:', {
+      count: transformedVariables.length,
+      items: transformedVariables
+    });
+
     // Always include the API variable sets
     const apiVariableSets = Array.isArray(apiData.variableSets) ? apiData.variableSets : [];
     
@@ -138,20 +187,6 @@ export function SyncProvider({
       selectedPageId: newSelectedPageId
     };
   };
-
-  useEffect(() => {
-    // Only use default variables if API call is complete AND no variables were loaded
-    if (!isLoading && !apiVariablesLoaded) {
-      // Check if there are no variables or variable sets from the API
-      if (state.variableSets.length === 0 || state.variables.length === 0) {
-        console.log("Loading default variables and variable sets");
-        updateBuilderState({
-          variableSets: [...variableSets],
-          variables: [...colorVariables, ...radiusVariables],
-        });
-      }
-    }
-  }, [isLoading, apiVariablesLoaded, state.variableSets.length, state.variables.length, updateBuilderState]);
 
   useEffect(() => {
     if (!isLoading && state.pages.length > 0 && !state.selectedPageId) {
@@ -224,7 +259,8 @@ export function SyncProvider({
           folderName: block.folderName,
           subFolder: block.subFolder,
           value: block.value,
-          instance: block.instance
+          instance: block.instance,
+          ref: block.ref || (block.instance ? block.instance : null)
         }))
       };
 

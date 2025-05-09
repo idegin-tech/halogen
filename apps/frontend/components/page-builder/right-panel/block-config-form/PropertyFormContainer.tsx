@@ -15,7 +15,7 @@ export default function PropertyFormContainer({
             "border-b border-divider h-header flex items-center justify-between px-default gap-3"
           }
         >
-          <div className={"w-[50%] flex items-center truncate"}>
+          <div className={"w-[60%] flex items-center truncate"}>
             {leftComponent}
           </div>
           <div />

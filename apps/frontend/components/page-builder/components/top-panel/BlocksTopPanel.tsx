@@ -5,7 +5,7 @@ import { useBuilderContext } from '@/context/builder.context'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { BlockProperties } from '@halogen/common/types'
+import { BlockInstance, BlockProperties } from '@halogen/common/types'
 import { usePage } from '@/hooks/usePage'
 import { generateId } from '@halogen/common/lib'
 import { getBlockProperties, getAllBlockPaths } from '@repo/ui/blocks'
@@ -23,7 +23,7 @@ type BlockSubFolder = {
     thumbnailPath?: string;
 }
 
-function UsedBlockItem({ block, instanceCount }: { block: any, instanceCount: number }) {
+function UsedBlockItem({ block, instanceCount }: { block: BlockInstance, instanceCount: number }) {
     const [blockName, setBlockName] = useState(`${block.folderName}/${block.subFolder}`);
     const { selectedPageId } = usePage();
     const { state, updateBuilderState } = useBuilderContext();
@@ -56,21 +56,21 @@ function UsedBlockItem({ block, instanceCount }: { block: any, instanceCount: nu
         }
 
         const blockId = generateId();
-        const newBlock = {
-            id: blockId,
-            instance_id: blockId, // Add instance_id matching the id
-            page_id: selectedPageId, // Add page_id to match the active page
+        const newBlock: BlockInstance = {
+            instance_id: blockId, 
+            page_id: selectedPageId, 
             index: state.blocks.length,
             page: selectedPageId,
             folderName: block.folderName,
             subFolder: block.subFolder,
             value: null,
-            instance: block.id
+            instance: block.instance_id as string,
+            ref: block.instance_id // Add the instance_id as ref for frontend reference
         };
 
         updateBuilderState({
             blocks: [...state.blocks, newBlock],
-            selectedBlockId: newBlock.id
+            selectedBlockId: newBlock.instance_id
         });
     };
 

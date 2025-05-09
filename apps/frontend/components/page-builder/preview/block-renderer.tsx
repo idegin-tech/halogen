@@ -94,7 +94,9 @@ function BlockComponent({ block, isSelected }: BlockComponentProps) {
       return currentBlock; 
     }
     
-    const instanceBlock = state.blocks.find(b => b.instance_id === currentBlock.instance);
+    // Use ref field if available, otherwise fall back to instance
+    const instanceId = currentBlock.ref || currentBlock.instance;
+    const instanceBlock = state.blocks.find(b => b.instance_id === instanceId);
     
     return instanceBlock ? getRootBlock(instanceBlock) : currentBlock;
   };

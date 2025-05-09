@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useBuilderContext } from '@/context/builder.context';
 import PropertyFormContainer from './PropertyFormContainer';
-import { Button } from '@/components/ui/button'; 
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -11,11 +11,24 @@ import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Trash2, Link, Unlink, AlertCircle } from 'lucide-react';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  Plus,
+  Trash2,
+  Link,
+  Unlink,
+  AlertCircle,
+  ListIcon,
+  Check,
+  ChevronDown,
+  Settings,
+  X
+} from 'lucide-react';
 import { getBlockProperties } from '@repo/ui/blocks';
 import { BlockConfigListValue, BlockFieldConfig, BlockProperties } from '@halogen/common/types';
+import { motion } from 'framer-motion';
 
 export default function BlockConfigForm() {
   const { state, updateBuilderState } = useBuilderContext();
@@ -34,7 +47,7 @@ export default function BlockConfigForm() {
 
       try {
         const properties = getBlockProperties(selectedBlock.folderName, selectedBlock.subFolder);
-        
+
         if (properties) {
           setBlockProperties(properties);
           setBlockLoadError(null);
@@ -52,34 +65,38 @@ export default function BlockConfigForm() {
 
   const getEffectiveValues = () => {
     if (!selectedBlock) return {};
-    
+
     const findRootBlock = (block: any): any => {
       if (block.value !== null || block.instance === null) {
         return block;
       }
-      const instanceBlock = state.blocks.find(b => b.instance_id === block.instance);
+      // Use ref field if available, otherwise fall back to instance
+      const instanceId = block.ref || block.instance;
+      const instanceBlock = state.blocks.find(b => b.instance_id === instanceId);
       if (!instanceBlock) return block;
-      
+
       return findRootBlock(instanceBlock);
     };
-    
+
     const rootBlock = findRootBlock(selectedBlock);
     return rootBlock.value || {};
   };
 
   const getSourceBlock = () => {
     if (!selectedBlock) return null;
-    
+
     const findRootBlock = (block: any): any => {
       if (block.value !== null || block.instance === null) {
         return block;
       }
-      const instanceBlock = state.blocks.find(b => b.instance_id === block.instance);
+      // Use ref field if available, otherwise fall back to instance
+      const instanceId = block.ref || block.instance;
+      const instanceBlock = state.blocks.find(b => b.instance_id === instanceId);
       if (!instanceBlock) return block;
-      
+
       return findRootBlock(instanceBlock);
     };
-    
+
     return findRootBlock(selectedBlock);
   };
 
@@ -88,10 +105,10 @@ export default function BlockConfigForm() {
 
     const sourceBlock = state.blocks.find(b => b.instance_id === selectedBlock.instance);
     if (!sourceBlock) return;
-    
+
     // Copy its values
     const instanceValues = JSON.parse(JSON.stringify(sourceBlock.value));
-    
+
     const updatedBlocks = state.blocks.map(block => {
       if (block.instance_id === selectedBlock.instance_id) {
         return {
@@ -127,7 +144,7 @@ export default function BlockConfigForm() {
           value: updatedValue
         };
       }
-      
+
       return block;
     });
 
@@ -136,7 +153,7 @@ export default function BlockConfigForm() {
 
   const handleListItemChange = (fieldName: string, itemIndex: number, itemFieldName: string, value: any) => {
     if (!selectedBlock) return;
-    
+
     const effectiveValues = getEffectiveValues();
     const currentList = effectiveValues[fieldName]?.value || [];
     const updatedList = [...currentList];
@@ -190,20 +207,22 @@ export default function BlockConfigForm() {
     const listItemConfig = (listConfig.value as BlockConfigListValue).items;
 
     return (
-      <div className="space-y-4 py-4 w-full px-2">
-        <div className="flex items-center justify-between mb-2">
-          <h4 className="font-medium">Edit Item {itemIndex + 1}</h4>
+      <div className="space-y-4 py-3 w-full px-2 pb-8">
+        <div className="flex items-center justify-between mb-1">
+          <h4 className="font-medium text-lg flex items-center gap-2">
+            <Settings className="h-4 w-4 text-muted-foreground" />
+            Edit Item {itemIndex + 1}
+          </h4>
           <Button
-            variant="destructive"
-            size="sm"
-            className="h-8"
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 rounded-full hover:bg-destructive/10 hover:text-destructive"
             onClick={() => removeListItem(fieldName, itemIndex)}
           >
-            <Trash2 className="h-4 w-4 mr-1" />
-            Remove
+            <Trash2 className="h-4 w-4" />
           </Button>
         </div>
-        <Separator />
+        <Separator className="my-2" />
         {Object.entries(listItemConfig).map(([itemFieldName, itemField]) => (
           <div key={itemFieldName} className="space-y-2 w-full">
             {renderItemFieldInput(
@@ -251,7 +270,7 @@ export default function BlockConfigForm() {
               placeholder={itemField.placeholder || `Enter ${itemField.label.toLowerCase()}`}
               value={value || itemField.defaultValue || ''}
               onChange={(e) => handleListItemChange(fieldName, itemIndex, itemFieldName, e.target.value)}
-              className="w-full min-h-[80px]"
+              className="w-full min-h-[80px] resize-none"
             />
             {itemField.description && (
               <p className="text-xs text-muted-foreground">{itemField.description}</p>
@@ -267,7 +286,7 @@ export default function BlockConfigForm() {
             </label>
             <Input
               id={`${fieldName}-${itemIndex}-${itemFieldName}`}
-              type="url" 
+              type="url"
               placeholder={itemField.placeholder || `Enter URL`}
               value={value || itemField.defaultValue || ''}
               onChange={(e) => handleListItemChange(fieldName, itemIndex, itemFieldName, e.target.value)}
@@ -309,19 +328,23 @@ export default function BlockConfigForm() {
       const listItems = value || [];
 
       return (
-        <div className="space-y-3">
+        <div className="space-y-3 bg-muted/30 p-4 rounded-lg border border-muted">
           <div className="flex items-center justify-between">
-            <div>
-              <label className="text-sm font-medium">{field.label}</label>
-              {field.description && (
-                <span className="text-xs text-muted-foreground block">{field.description}</span>
-              )}
+            <div className="flex items-start gap-2">
+              <ListIcon className="h-5 w-5 text-primary mt-0.5" />
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">{field.label}</label>
+                {field.description && (
+                  <span className="text-xs text-muted-foreground block mt-0.5">{field.description}</span>
+                )}
+              </div>
             </div>
+
             <Button
               variant="outline"
               size="sm"
               onClick={() => addListItem(fieldName)}
-              className="h-8"
+              className="h-8 border-primary/20 hover:border-primary hover:bg-primary/10 text-primary hover:text-primary"
             >
               <Plus className="h-4 w-4 mr-1" />
               Add Item
@@ -329,19 +352,21 @@ export default function BlockConfigForm() {
           </div>
 
           {listItems.length === 0 ? (
-            <div className="text-center p-4 border border-dashed rounded-lg border-muted bg-muted/50">
-              <p className="text-sm text-muted-foreground">No items added yet</p>
+            <div className="flex flex-col items-center justify-center p-6 border border-dashed rounded-lg border-muted bg-background text-center">
+              <ListIcon className="h-10 w-10 text-muted-foreground/50 mb-2" />
+              <p className="text-sm font-medium text-muted-foreground mb-3">No items added yet</p>
               <Button
-                variant="secondary"
+                variant="default"
                 size="sm"
-                className="mt-2"
+                className="mt-1"
                 onClick={() => addListItem(fieldName)}
               >
+                <Plus className="h-4 w-4 mr-1" />
                 Add First Item
               </Button>
             </div>
           ) : (
-            <div className="grid gap-1">
+            <div className="space-y-2 max-h-[50vh] overflow-y-auto pr-1">
               {listItems.map((item: any, index: number) => {
                 const nameField = Object.keys(listConfig.items).find(
                   (key: string) => {
@@ -371,14 +396,28 @@ export default function BlockConfigForm() {
                   >
                     <PopoverTrigger asChild>
                       <Card
-                        className={`cursor-pointer hover:border-primary transition-colors ${isActive ? 'border-primary' : ''}`}
+                        className={`cursor-pointer px-0 py-2 transition-all duration-200 ${isActive
+                            ? 'border-primary shadow-sm shadow-primary/20'
+                            : 'hover:border-primary/50 hover:shadow-sm'
+                          }`}
                       >
-                        <CardContent className="p-3">
-                          <p className="font-medium">{displayName}</p>
+                        <CardContent className="px-3 flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary text-sm font-medium">
+                              {index + 1}
+                            </div>
+                            <p className="font-medium">{displayName}</p>
+                          </div>
+                          <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isActive ? 'rotate-180' : ''}`} />
                         </CardContent>
                       </Card>
                     </PopoverTrigger>
-                    <PopoverContent className="w-80" align="end">
+                    <PopoverContent
+                      className="w-80 p-0 shadow-lg"
+                      align="end"
+                      sideOffset={40}
+                      alignOffset={-40}
+                    >
                       {renderListItemForm(fieldName, field, index)}
                     </PopoverContent>
                   </Popover>
@@ -394,7 +433,7 @@ export default function BlockConfigForm() {
       case 'text':
         return (
           <div className="grid gap-1.5">
-            <label className="text-sm font-medium">{field.label}</label>
+            <label className="text-sm font-medium text-muted-foreground">{field.label}</label>
             <Input
               placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}`}
               value={value}
@@ -410,12 +449,12 @@ export default function BlockConfigForm() {
       case 'textarea':
         return (
           <div className="grid gap-1.5">
-            <label className="text-sm font-medium">{field.label}</label>
+            <label className="text-sm font-medium text-muted-foreground">{field.label}</label>
             <Textarea
               placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}`}
               value={value}
               onChange={(e) => handleFieldChange(fieldName, e.target.value)}
-              className="w-full min-h-[100px]"
+              className="w-full min-h-[100px] resize-none"
             />
             {field.description && (
               <p className="text-xs text-muted-foreground">{field.description}</p>
@@ -426,7 +465,7 @@ export default function BlockConfigForm() {
       case 'select':
         return (
           <div className="grid gap-1.5">
-            <label className="text-sm font-medium">{field.label}</label>
+            <label className="text-sm font-medium text-muted-foreground">{field.label}</label>
             <Select
               value={value}
               onValueChange={(val) => handleFieldChange(fieldName, val)}
@@ -450,41 +489,57 @@ export default function BlockConfigForm() {
 
       case 'checkbox':
         return (
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id={`checkbox-${fieldName}`}
-              checked={value}
-              onCheckedChange={(checked) => handleFieldChange(fieldName, checked)}
-            />
-            <label htmlFor={`checkbox-${fieldName}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-              {field.label}
-            </label>
-            {field.description && (
-              <p className="text-xs text-muted-foreground">{field.description}</p>
-            )}
+          <div className="flex items-start space-x-3 bg-muted/30 hover:bg-muted/50 p-3 rounded-lg transition-colors border border-border">
+            <div className="pt-0.5">
+              <Checkbox
+                id={`checkbox-${fieldName}`}
+                checked={value}
+                onCheckedChange={(checked) => handleFieldChange(fieldName, checked)}
+                className="data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
+              />
+            </div>
+            <div>
+              <label
+                htmlFor={`checkbox-${fieldName}`}
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+              >
+                {field.label}
+              </label>
+              {field.description && (
+                <p className="text-xs text-muted-foreground mt-1">{field.description}</p>
+              )}
+            </div>
           </div>
         );
 
       case 'switch':
         return (
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between bg-muted/30 hover:bg-muted/50 p-3 rounded-lg transition-colors border border-border">
             <div className="space-y-0.5">
-              <label className="text-sm font-medium">{field.label}</label>
+              <label className="text-sm font-medium text-muted-foreground">{field.label}</label>
               {field.description && (
                 <p className="text-xs text-muted-foreground">{field.description}</p>
               )}
             </div>
-            <Switch
-              checked={value}
-              onCheckedChange={(checked) => handleFieldChange(fieldName, checked)}
-            />
+            <div className="relative flex items-center">
+              {value && (
+                <span className="absolute right-10 font-medium text-xs text-primary">
+                  ON
+                </span>
+              )}
+              <Switch
+                checked={value}
+                onCheckedChange={(checked) => handleFieldChange(fieldName, checked)}
+                className="data-[state=checked]:bg-primary"
+              />
+            </div>
           </div>
         );
 
       case 'url':
         return (
           <div className="grid gap-1.5">
-            <label className="text-sm font-medium">{field.label}</label>
+            <label className="text-sm font-medium text-muted-foreground">{field.label}</label>
             <Input
               type="url"
               placeholder={field.placeholder || `Enter URL`}
@@ -501,7 +556,7 @@ export default function BlockConfigForm() {
       case 'color':
         return (
           <div className="grid gap-1.5">
-            <label className="text-sm font-medium">{field.label}</label>
+            <label className="text-sm font-medium text-muted-foreground">{field.label}</label>
             <div className="flex items-center gap-2">
               <input
                 type="color"
@@ -525,7 +580,7 @@ export default function BlockConfigForm() {
       default:
         return (
           <div className="grid gap-1.5">
-            <label className="text-sm font-medium">{field.label}</label>
+            <label className="text-sm font-medium text-muted-foreground">{field.label}</label>
             <Input
               placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}`}
               value={value}
@@ -550,7 +605,7 @@ export default function BlockConfigForm() {
       </div>
     );
   }
-  
+
   if (blockLoadError) {
     return (
       <div className="h-full flex items-center justify-center text-center p-6">
@@ -591,22 +646,16 @@ export default function BlockConfigForm() {
     <PropertyFormContainer
       leftComponent={
         <div className='truncate'>
-          <h3 className="text-md font-semibold">{blockProperties.name}</h3>
+          <h3 className="text-md font-semibold truncate">{blockProperties.name}</h3>
           <div className="flex items-center gap-1">
             <p className="text-xs text-muted-foreground select-none truncate">{blockProperties.description}</p>
-            {isLinkedBlock && (
-              <Badge variant="secondary" className="ml-1">
-                <Link className="h-3 w-3 mr-1" />
-                Linked
-              </Badge>
-            )}
           </div>
         </div>
       }
       rightComponent={
         <>
           <Select>
-            <SelectTrigger className="w-[120px]" size="sm">
+            <SelectTrigger className="w-[130px]" size="sm">
               <SelectValue placeholder="Select View" />
             </SelectTrigger>
             <SelectContent>
@@ -617,37 +666,50 @@ export default function BlockConfigForm() {
         </>
       }
     >
-      <div className="space-y-6">
-        {isLinkedBlock && (
-          <div className="bg-secondary/10 p-3 rounded-md border border-secondary mb-4">
-            <div className="flex items-center justify-between mb-1">
-              <div>
-                <p className="text-sm text-secondary-foreground">
-                   Edits will update the source block.
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Source block ID: {sourceBlockId}
-                </p>
+      <ScrollArea className="h-[calc(var(--panel-body-height)-1rem)] pr-4">
+        <div className="space-y-6 pb-8">
+          {isLinkedBlock && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-secondary/5 p-3 rounded-lg border border-secondary/20 mb-4"
+            >
+              <div className="flex items-center justify-between mb-1">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <Link className="h-4 w-4 text-secondary" />
+                    <p className="text-sm font-medium text-secondary">Linked Block</p>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Edits will update the source block
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-secondary/20 hover:border-secondary/40 hover:bg-secondary/10 text-secondary"
+                  onClick={handleUnlinkBlock}
+                >
+                  <Unlink className="h-4 w-4 mr-1.5" />
+                  Unlink
+                </Button>
               </div>
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={handleUnlinkBlock}
-              >
-                <Unlink className="h-4 w-4 mr-1" />
-                Unlink
-              </Button>
-            </div>
-          </div>
-        )}
-      
-        {Object.entries(blockProperties.fields).map(([fieldName, field]) => (
-          <div key={fieldName} className="space-y-2">
-            {renderFieldInput(fieldName, field)}
-          </div>
-        ))}
-        <div className='h-20' />
-      </div>
+            </motion.div>
+          )}
+
+          {Object.entries(blockProperties.fields).map(([fieldName, field]) => (
+            <motion.div
+              key={fieldName}
+              className="space-y-2"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.2 }}
+            >
+              {renderFieldInput(fieldName, field)}
+            </motion.div>
+          ))}
+        </div>
+      </ScrollArea>
     </PropertyFormContainer>
   );
 }

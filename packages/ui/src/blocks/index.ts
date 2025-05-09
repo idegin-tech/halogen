@@ -1,7 +1,7 @@
 import { BlockProperties } from '@halogen/common/types';
 import React from 'react';
 
-export type BlockPath = 'hero/basic_saas_hero' | 'testimonials/simple_testimonial' | 'footer/basic_footer';
+export type BlockPath = 'hero/basic_saas_hero' | 'testimonials/simple_testimonial' | 'footer/basic_footer' | 'about/basic_about_us';
 
 export interface BlockRegistryItem {
   component: React.ComponentType<unknown>;
@@ -95,3 +95,5 @@ Object.entries(blockRegistry).forEach(([path, item]) => {
 export { SaasHeroSection } from './hero/basic_saas_hero/_block';
 export { BasicTestimonials } from './testimonials/simple_testimonial/_block';
 export { BasicFooter } from './footer/basic_footer/_block';
+export { BasicAboutUs } from './about/basic_about_us/_block';
+export { BasicHeader } from './header/basic_header/_block';

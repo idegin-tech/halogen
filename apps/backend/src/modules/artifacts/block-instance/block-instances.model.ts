@@ -7,6 +7,7 @@ export interface BlockInstance extends Omit<CommonBlockInstance, 'page'> {
   project: string;
   instance_id: string;
   page_id: string; // Add frontend page_id field
+  ref?: string; // Frontend instance_id reference of the block being referenced
 }
 
 export type BlockInstanceDocumentProps = Omit<BlockInstance, '_id'>;
@@ -55,6 +56,10 @@ const BlockInstanceSchema: Schema = new Schema<BlockInstance>({
   instance: {
     type: String,
     ref: 'BlockInstance',
+    default: null
+  },
+  ref: {
+    type: String,
     default: null
   }
 }, {
