@@ -16,6 +16,7 @@ import { ErrorHandlerMiddleware } from './middleware/error.middleware';
 import authRoutes from './modules/auth/auth.routes';
 import { projectsRoutes } from './modules/projects';
 import { projectUsersRoutes } from './modules/project-users';
+import { pagesRoutes, variablesRoutes, blockInstancesRoutes } from './modules/artifacts';
 
 declare module 'express' {
   interface Request {
@@ -108,10 +109,12 @@ class App {
         environment: env.NODE_ENV
       });
     });
-    
-    this.app.use(`${apiPrefix}/auth`, authRoutes);
+      this.app.use(`${apiPrefix}/auth`, authRoutes);
     this.app.use(`${apiPrefix}/projects`, projectsRoutes);
     this.app.use(`${apiPrefix}/project-users`, projectUsersRoutes);
+    this.app.use(`${apiPrefix}/pages`, pagesRoutes);
+    this.app.use(`${apiPrefix}/variables`, variablesRoutes);
+    this.app.use(`${apiPrefix}/block-instances`, blockInstancesRoutes);
   }
 
   private configureErrorHandlers(): void {

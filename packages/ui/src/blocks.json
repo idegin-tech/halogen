@@ -4,7 +4,7 @@
       "name": "basic_about_us",
       "path": "about/basic_about_us",
       "displayName": "Basic About Us",
-      "description": "We strive for excellence in everything we do, delivering exceptional results that exceed expectations.",
+      "description": "A basic about us section with mission, values, and team image",
       "hasThumbnail": false
     }
   ],
@@ -21,7 +21,7 @@
     {
       "name": "basic_header",
       "path": "header/basic_header",
-      "displayName": "Home",
+      "displayName": "Basic Header",
       "description": "A responsive header with dropdown navigation and mobile menu",
       "hasThumbnail": false
     }

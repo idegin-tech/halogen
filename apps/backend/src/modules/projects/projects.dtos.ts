@@ -32,34 +32,7 @@ export const syncProjectSchema = z.object({
     name: z.string(),
     description: z.string().optional(),
     thumbnail: z.string().optional()
-  }),
-  pages: z.array(z.object({
-    page_id: z.string(),
-    name: z.string(),
-    path: z.string().optional(),
-    slug: z.string().optional(),
-    route: z.string().optional(),
-    isStatic: z.boolean().optional()
-  })).optional(),
-  variables: z.array(z.object({
-    variable_id: z.string(),
-    name: z.string(),
-    key: z.string(),
-    type: z.enum(["color", "text", "size", "boolean"]),
-    primaryValue: z.string(),
-    secondaryValue: z.string(),
-    variableSet: z.string()
-  })).optional(),
-  blocks: z.array(z.object({
-    instance_id: z.string().optional(),
-    page_id: z.string(), // Add page_id field
-    index: z.number(),
-    page: z.string(),
-    folderName: z.string(),
-    subFolder: z.string(),
-    value: z.any().optional(),
-    instance: z.string().nullable().optional()
-  })).optional()
+  })
 }).strict();
 
 export type CreateProjectDTO = z.infer<typeof createProjectSchema>;

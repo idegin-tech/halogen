@@ -195,15 +195,14 @@ export function SyncProvider({
       });
     }
   }, [isLoading, state.pages, state.selectedPageId, updateBuilderState]);
-
   const syncToCloud = useCallback(async (): Promise<boolean> => {
     if (!projectId || !state.project) {
       toast.error("Project data is not available");
       return false;
-    }
-
-    setIsSyncing(true);
+    }    setIsSyncing(true);
+    const toastId = toast.loading("Preparing data for synchronization...");
     try {
+      // Prepare data for synchronization
       const pageMap = new Map();
       state.pages.forEach(page => {
         pageMap.set(page.page_id, page);
@@ -226,14 +225,32 @@ export function SyncProvider({
           instance_id: id,
           page_id: pageId,
         };
-      });
-
-      const syncData = {
+      });      // 1. Sync project data
+      toast.loading("Synchronizing project data...", { id: toastId });
+      const projectData = {
         project: {
           name: state.project.name,
           description: state.project.description || "",
           thumbnail: state.project.thumbnail
+        }
+      };
+      
+      const projectResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/projects/${projectId}/sync`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
+        credentials: 'include',
+        body: JSON.stringify(projectData)
+      });
+
+      if (!projectResponse.ok) {
+        const errorData = await projectResponse.json();
+        throw new Error(errorData.message || 'Failed to sync project data');
+      }
+        // 2. Sync pages
+      toast.loading("Synchronizing page data...", { id: toastId });
+      const pagesData = {
         pages: state.pages.map(page => ({
           page_id: page.page_id,
           name: page.name,
@@ -241,7 +258,25 @@ export function SyncProvider({
           slug: page.slug,
           route: page.route,
           isStatic: page.isStatic
-        })),
+        }))
+      };
+      
+      const pagesResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/pages/projects/${projectId}/sync`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(pagesData)
+      });
+
+      if (!pagesResponse.ok) {
+        const errorData = await pagesResponse.json();
+        throw new Error(errorData.message || 'Failed to sync pages');
+      }
+        // 3. Sync variables
+      toast.loading("Synchronizing variable data...", { id: toastId });
+      const variablesData = {
         variables: state.variables.map(variable => ({
           variable_id: variable.variable_id,
           name: variable.name,
@@ -250,7 +285,25 @@ export function SyncProvider({
           primaryValue: variable.primaryValue,
           secondaryValue: variable.secondaryValue || variable.primaryValue,
           variableSet: typeof variable.variableSet === 'string' ? variable.variableSet : variable.variableSet.set_id
-        })),
+        }))
+      };
+      
+      const variablesResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/variables/projects/${projectId}/sync`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(variablesData)
+      });
+
+      if (!variablesResponse.ok) {
+        const errorData = await variablesResponse.json();
+        throw new Error(errorData.message || 'Failed to sync variables');
+      }
+        // 4. Sync block instances
+      toast.loading("Synchronizing block instances...", { id: toastId });
+      const blocksData = {
         blocks: blocksWithIds.map(block => ({
           instance_id: block.id,
           page_id: block.page_id,
@@ -263,28 +316,25 @@ export function SyncProvider({
           ref: block.ref || (block.instance ? block.instance : null)
         }))
       };
-
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/projects/${projectId}/sync`, {
+      
+      const blocksResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/block-instances/projects/${projectId}/sync`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         credentials: 'include',
-        body: JSON.stringify(syncData)
+        body: JSON.stringify(blocksData)
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to sync project');
-      }
-
-      const result = await response.json();
-      toast.success("Project synced successfully");
+      if (!blocksResponse.ok) {
+        const errorData = await blocksResponse.json();
+        throw new Error(errorData.message || 'Failed to sync block instances');
+      }      // All syncs completed successfully
+      toast.success("All project data synchronized successfully", { id: toastId });
       setLastSynced(new Date());
-      return true;
-    } catch (error) {
+      return true;    } catch (error) {
       console.error("Error syncing to cloud:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to sync project");
+      toast.error(error instanceof Error ? error.message : "Failed to sync project", { id: toastId });
       return false;
     } finally {
       setIsSyncing(false);
