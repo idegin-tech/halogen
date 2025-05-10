@@ -37,7 +37,10 @@ export default function BlockConfigForm() {
   const selectedBlock = state.blocks.find(block => block.instance_id === state.selectedBlockId);
   const [activeListItem, setActiveListItem] = useState<{ fieldName: string, itemIndex: number } | null>(null);
   const [isPopoverOpen, setIsPopoverOpen] = useState<boolean>(false);
-
+  
+  // Local form state to prevent lag during typing
+  const [localFormState, setLocalFormState] = useState<Record<string, any>>({});
+  const [localListItemsState, setLocalListItemsState] = useState<Record<string, Record<number, Record<string, any>>>>({});
   useEffect(() => {
     const loadBlockProperties = async () => {
       if (!selectedBlock) {
@@ -51,6 +54,10 @@ export default function BlockConfigForm() {
         if (properties) {
           setBlockProperties(properties);
           setBlockLoadError(null);
+          
+          // Reset local form state when block changes
+          setLocalFormState({});
+          setLocalListItemsState({});
         } else {
           throw new Error(`Block properties not found for ${selectedBlock.folderName}/${selectedBlock.subFolder}`);
         }
@@ -80,6 +87,98 @@ export default function BlockConfigForm() {
 
     const rootBlock = findRootBlock(selectedBlock);
     return rootBlock.value || {};
+  };
+
+  // Get field value from local state first, then fall back to block state
+  const getFieldValue = (fieldName: string) => {
+    if (fieldName in localFormState) {
+      return localFormState[fieldName];
+    }
+    
+    const effectiveValues = getEffectiveValues();
+    return effectiveValues[fieldName]?.value;
+  };
+  
+  // Get list item field value from local state first, then fall back to block state
+  const getListItemValue = (fieldName: string, itemIndex: number, itemFieldName: string) => {
+    if (
+      fieldName in localListItemsState && 
+      itemIndex in localListItemsState[fieldName] && 
+      itemFieldName in localListItemsState[fieldName][itemIndex]
+    ) {
+      return localListItemsState[fieldName][itemIndex][itemFieldName];
+    }
+    
+    const effectiveValues = getEffectiveValues();
+    const listValue = effectiveValues[fieldName]?.value || [];
+    const itemValue = listValue[itemIndex] || {};
+    return itemValue[itemFieldName];
+  };
+
+  // Update local form state only
+  const updateLocalFieldValue = (fieldName: string, value: any) => {
+    setLocalFormState(prev => ({
+      ...prev,
+      [fieldName]: value
+    }));
+  };
+  
+  // Update local list item state only
+  const updateLocalListItemValue = (fieldName: string, itemIndex: number, itemFieldName: string, value: any) => {
+    setLocalListItemsState(prev => ({
+      ...prev,
+      [fieldName]: {
+        ...(prev[fieldName] || {}),
+        [itemIndex]: {
+          ...(prev[fieldName]?.[itemIndex] || {}),
+          [itemFieldName]: value
+        }
+      }
+    }));
+  };
+  
+  // Commit the local form state changes to the builder context
+  const commitFieldChange = (fieldName: string) => {
+    if (!(fieldName in localFormState)) return;
+    
+    handleFieldChange(fieldName, localFormState[fieldName]);
+    
+    // Clear from local state after committing
+    setLocalFormState(prev => {
+      const { [fieldName]: _, ...rest } = prev;
+      return rest;
+    });
+  };
+  
+  // Commit the local list item state changes to the builder context
+  const commitListItemChange = (fieldName: string, itemIndex: number, itemFieldName: string) => {
+    if (
+      !(fieldName in localListItemsState) || 
+      !(itemIndex in localListItemsState[fieldName]) ||
+      !(itemFieldName in localListItemsState[fieldName][itemIndex])
+    ) return;
+    
+    const effectiveValues = getEffectiveValues();
+    const currentList = effectiveValues[fieldName]?.value || [];
+    const updatedList = [...currentList];
+    
+    if (!updatedList[itemIndex]) {
+      updatedList[itemIndex] = {};
+    }
+    
+    updatedList[itemIndex] = {
+      ...updatedList[itemIndex],
+      [itemFieldName]: localListItemsState[fieldName][itemIndex][itemFieldName]
+    };
+    
+    handleFieldChange(fieldName, updatedList);
+    
+    // Clear from local state after committing
+    setLocalListItemsState(prev => {
+      const newState = { ...prev };
+      delete newState[fieldName][itemIndex][itemFieldName];
+      return newState;
+    });
   };
 
   const getSourceBlock = () => {
@@ -122,15 +221,17 @@ export default function BlockConfigForm() {
 
     updateBuilderState({ blocks: updatedBlocks });
   };
-
   const handleFieldChange = (fieldName: string, value: any) => {
     if (!selectedBlock) return;
 
     const sourceBlock = getSourceBlock();
     if (!sourceBlock) return;
 
+    // Get the real source block's instance_id, not the currently selected block's
+    const sourceBlockId = sourceBlock.instance_id;
+
     const updatedBlocks = state.blocks.map(block => {
-      if (block.instance_id === sourceBlock.instance_id) {
+      if (block.instance_id === sourceBlockId) {
         const updatedValue = {
           ...(block.value || {}),
           [fieldName]: {
@@ -239,8 +340,7 @@ export default function BlockConfigForm() {
   };
 
   const renderItemFieldInput = (fieldName: string, itemIndex: number, itemFieldName: string, itemField: any, value: any) => {
-    switch (itemField.type) {
-      case 'text':
+    switch (itemField.type) {      case 'text':
         return (
           <div className="grid gap-1.5">
             <label htmlFor={`${fieldName}-${itemIndex}-${itemFieldName}`} className="text-sm font-medium">
@@ -249,17 +349,21 @@ export default function BlockConfigForm() {
             <Input
               id={`${fieldName}-${itemIndex}-${itemFieldName}`}
               placeholder={itemField.placeholder || `Enter ${itemField.label.toLowerCase()}`}
-              value={value || itemField.defaultValue || ''}
-              onChange={(e) => handleListItemChange(fieldName, itemIndex, itemFieldName, e.target.value)}
+              value={getListItemValue(fieldName, itemIndex, itemFieldName) ?? (value || itemField.defaultValue || '')}
+              onChange={(e) => updateLocalListItemValue(fieldName, itemIndex, itemFieldName, e.target.value)}
+              onBlur={() => commitListItemChange(fieldName, itemIndex, itemFieldName)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  commitListItemChange(fieldName, itemIndex, itemFieldName);
+                }
+              }}
               className="w-full"
             />
             {itemField.description && (
               <p className="text-xs text-muted-foreground">{itemField.description}</p>
             )}
           </div>
-        );
-
-      case 'textarea':
+        );      case 'textarea':
         return (
           <div className="grid gap-1.5">
             <label htmlFor={`${fieldName}-${itemIndex}-${itemFieldName}`} className="text-sm font-medium">
@@ -268,17 +372,16 @@ export default function BlockConfigForm() {
             <Textarea
               id={`${fieldName}-${itemIndex}-${itemFieldName}`}
               placeholder={itemField.placeholder || `Enter ${itemField.label.toLowerCase()}`}
-              value={value || itemField.defaultValue || ''}
-              onChange={(e) => handleListItemChange(fieldName, itemIndex, itemFieldName, e.target.value)}
+              value={getListItemValue(fieldName, itemIndex, itemFieldName) ?? (value || itemField.defaultValue || '')}
+              onChange={(e) => updateLocalListItemValue(fieldName, itemIndex, itemFieldName, e.target.value)}
+              onBlur={() => commitListItemChange(fieldName, itemIndex, itemFieldName)}
               className="w-full min-h-[80px] resize-none"
             />
             {itemField.description && (
               <p className="text-xs text-muted-foreground">{itemField.description}</p>
             )}
           </div>
-        );
-
-      case 'url':
+        );      case 'url':
         return (
           <div className="grid gap-1.5">
             <label htmlFor={`${fieldName}-${itemIndex}-${itemFieldName}`} className="text-sm font-medium">
@@ -288,17 +391,21 @@ export default function BlockConfigForm() {
               id={`${fieldName}-${itemIndex}-${itemFieldName}`}
               type="url"
               placeholder={itemField.placeholder || `Enter URL`}
-              value={value || itemField.defaultValue || ''}
-              onChange={(e) => handleListItemChange(fieldName, itemIndex, itemFieldName, e.target.value)}
+              value={getListItemValue(fieldName, itemIndex, itemFieldName) ?? (value || itemField.defaultValue || '')}
+              onChange={(e) => updateLocalListItemValue(fieldName, itemIndex, itemFieldName, e.target.value)}
+              onBlur={() => commitListItemChange(fieldName, itemIndex, itemFieldName)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  commitListItemChange(fieldName, itemIndex, itemFieldName);
+                }
+              }}
               className="w-full"
             />
             {itemField.description && (
               <p className="text-xs text-muted-foreground">{itemField.description}</p>
             )}
           </div>
-        );
-
-      default:
+        );      default:
         return (
           <div className="grid gap-1.5">
             <label htmlFor={`${fieldName}-${itemIndex}-${itemFieldName}`} className="text-sm font-medium">
@@ -307,8 +414,14 @@ export default function BlockConfigForm() {
             <Input
               id={`${fieldName}-${itemIndex}-${itemFieldName}`}
               placeholder={itemField.placeholder || `Enter ${itemField.label.toLowerCase()}`}
-              value={value || itemField.defaultValue || ''}
-              onChange={(e) => handleListItemChange(fieldName, itemIndex, itemFieldName, e.target.value)}
+              value={getListItemValue(fieldName, itemIndex, itemFieldName) ?? (value || itemField.defaultValue || '')}
+              onChange={(e) => updateLocalListItemValue(fieldName, itemIndex, itemFieldName, e.target.value)}
+              onBlur={() => commitListItemChange(fieldName, itemIndex, itemFieldName)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  commitListItemChange(fieldName, itemIndex, itemFieldName);
+                }
+              }}
               className="w-full"
             />
             {itemField.description && (
@@ -429,31 +542,35 @@ export default function BlockConfigForm() {
       );
     }
 
-    switch (field.type) {
-      case 'text':
+    switch (field.type) {      case 'text':
         return (
           <div className="grid gap-1.5">
             <label className="text-sm font-medium text-muted-foreground">{field.label}</label>
             <Input
               placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}`}
-              value={value}
-              onChange={(e) => handleFieldChange(fieldName, e.target.value)}
+              value={getFieldValue(fieldName) ?? value}
+              onChange={(e) => updateLocalFieldValue(fieldName, e.target.value)}
+              onBlur={() => commitFieldChange(fieldName)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  commitFieldChange(fieldName);
+                }
+              }}
               className="w-full"
             />
             {field.description && (
               <p className="text-xs text-muted-foreground">{field.description}</p>
             )}
           </div>
-        );
-
-      case 'textarea':
+        );      case 'textarea':
         return (
           <div className="grid gap-1.5">
             <label className="text-sm font-medium text-muted-foreground">{field.label}</label>
             <Textarea
               placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}`}
-              value={value}
-              onChange={(e) => handleFieldChange(fieldName, e.target.value)}
+              value={getFieldValue(fieldName) ?? value}
+              onChange={(e) => updateLocalFieldValue(fieldName, e.target.value)}
+              onBlur={() => commitFieldChange(fieldName)}
               className="w-full min-h-[100px] resize-none"
             />
             {field.description && (
@@ -534,39 +651,50 @@ export default function BlockConfigForm() {
               />
             </div>
           </div>
-        );
-
-      case 'url':
+        );      case 'url':
         return (
           <div className="grid gap-1.5">
             <label className="text-sm font-medium text-muted-foreground">{field.label}</label>
             <Input
               type="url"
               placeholder={field.placeholder || `Enter URL`}
-              value={value}
-              onChange={(e) => handleFieldChange(fieldName, e.target.value)}
+              value={getFieldValue(fieldName) ?? value}
+              onChange={(e) => updateLocalFieldValue(fieldName, e.target.value)}
+              onBlur={() => commitFieldChange(fieldName)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  commitFieldChange(fieldName);
+                }
+              }}
               className="w-full"
             />
             {field.description && (
               <p className="text-xs text-muted-foreground">{field.description}</p>
             )}
           </div>
-        );
-
-      case 'color':
+        );      case 'color':
         return (
           <div className="grid gap-1.5">
             <label className="text-sm font-medium text-muted-foreground">{field.label}</label>
             <div className="flex items-center gap-2">
               <input
                 type="color"
-                value={value}
-                onChange={(e) => handleFieldChange(fieldName, e.target.value)}
+                value={getFieldValue(fieldName) ?? value}
+                onChange={(e) => {
+                  updateLocalFieldValue(fieldName, e.target.value);
+                  commitFieldChange(fieldName); // Immediate update for color picker
+                }}
                 className="w-10 h-10 rounded-md cursor-pointer border border-input"
               />
               <Input
-                value={value}
-                onChange={(e) => handleFieldChange(fieldName, e.target.value)}
+                value={getFieldValue(fieldName) ?? value}
+                onChange={(e) => updateLocalFieldValue(fieldName, e.target.value)}
+                onBlur={() => commitFieldChange(fieldName)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    commitFieldChange(fieldName);
+                  }
+                }}
                 placeholder="#FFFFFF"
                 className="flex-1"
               />
@@ -575,16 +703,20 @@ export default function BlockConfigForm() {
               <p className="text-xs text-muted-foreground">{field.description}</p>
             )}
           </div>
-        );
-
-      default:
+        );default:
         return (
           <div className="grid gap-1.5">
             <label className="text-sm font-medium text-muted-foreground">{field.label}</label>
             <Input
               placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}`}
-              value={value}
-              onChange={(e) => handleFieldChange(fieldName, e.target.value)}
+              value={getFieldValue(fieldName) ?? value}
+              onChange={(e) => updateLocalFieldValue(fieldName, e.target.value)}
+              onBlur={() => commitFieldChange(fieldName)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  commitFieldChange(fieldName);
+                }
+              }}
               className="w-full"
             />
             {field.description && (

@@ -47,9 +47,7 @@ function UsedBlockItem({ block, instanceCount }: { block: BlockInstance, instanc
         loadBlockInfo();
     }, [block.folderName, block.subFolder]);
 
-    let ThumbnailImage = '/placeholder.jpg';
-
-    const handleAddToPage = () => {
+    let ThumbnailImage = '/placeholder.jpg';    const handleAddToPage = () => {
         if (!selectedPageId) {
             console.error("Cannot add block: No page selected");
             return;
@@ -59,7 +57,7 @@ function UsedBlockItem({ block, instanceCount }: { block: BlockInstance, instanc
         const newBlock: BlockInstance = {
             instance_id: blockId, 
             page_id: selectedPageId, 
-            index: state.blocks.length,
+            index: state.blocks.filter(block => block.page_id === selectedPageId).length,
             page: selectedPageId,
             folderName: block.folderName,
             subFolder: block.subFolder,
@@ -249,20 +247,16 @@ export default function BlocksTopPanel({ show, onHide }: { show: boolean, onHide
         if (!selectedFolder || selectedFolder === 'used-blocks') return [];
         const folder = blockFolders.find(f => f.name === selectedFolder);
         return folder ? folder.subFolders : [];
-    }, [selectedFolder, blockFolders]);
-
-    const handleAddBlockToPage = (folderName: string, subFolder: string, properties: BlockProperties) => {
+    }, [selectedFolder, blockFolders]);    const handleAddBlockToPage = (folderName: string, subFolder: string, properties: BlockProperties) => {
         if (!selectedPageId) {
             console.error("Cannot add block: No page selected");
             return;
-        }
-
+        }        
         const blockId = generateId();
-        const newBlock = {
-            id: blockId,
-            instance_id: blockId, // Add instance_id matching the id
-            page_id: selectedPageId, // Add page_id to match the active page
-            index: state.blocks.length,
+        const newBlock: BlockInstance = {
+            instance_id: blockId,
+            page_id: selectedPageId,
+            index: state.blocks.filter(block => block.page_id === selectedPageId).length,
             page: selectedPageId,
             folderName: folderName,
             subFolder: subFolder,
@@ -270,12 +264,13 @@ export default function BlocksTopPanel({ show, onHide }: { show: boolean, onHide
                 acc[key] = { value: field.defaultValue };
                 return acc;
             }, {} as Record<string, any>),
-            instance: null
+            instance: null,
+            ref: null
         };
-
+        
         updateBuilderState({
             blocks: [...state.blocks, newBlock],
-            selectedBlockId: newBlock.id
+            selectedBlockId: newBlock.instance_id
         });
 
         onHide();

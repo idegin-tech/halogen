@@ -1,8 +1,59 @@
 import * as React from "react"
-
+import _ from 'lodash'
 import { cn } from "@/lib/utils"
 
-function Input({ className, type, ...props }: React.ComponentProps<"input">) {
+interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+  debounce?: boolean;
+  debounceTime?: number;
+  onDebounceChange?: (value: string) => void;
+  preserveOriginalOnChange?: boolean;
+}
+
+function Input({
+  className, 
+  type, 
+  debounce = false,
+  debounceTime = 500,
+  onDebounceChange,
+  preserveOriginalOnChange = true,
+  onChange,
+  ...props
+}: InputProps) {
+  // Store the current input value
+  const [value, setValue] = React.useState(props.value || props.defaultValue || '');
+  
+  // Create a debounced function that will call onDebounceChange
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const debouncedOnChange = React.useCallback(
+    _.debounce((value: string) => {
+      onDebounceChange?.(value);
+    }, debounceTime),
+    [debounceTime, onDebounceChange]
+  );
+  
+  // Clean up the debounce on unmount
+  React.useEffect(() => {
+    return () => {
+      debouncedOnChange.cancel();
+    };
+  }, [debouncedOnChange]);
+  
+  // Handle input changes
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value;
+    setValue(newValue);
+    
+    // If debounce is enabled, call the debounced function
+    if (debounce && onDebounceChange) {
+      debouncedOnChange(newValue);
+    }
+    
+    // Preserve original onChange behavior if needed
+    if (preserveOriginalOnChange && onChange) {
+      onChange(e);
+    }
+  };
+  
   return (
     <input
       type={type}
@@ -13,6 +64,8 @@ function Input({ className, type, ...props }: React.ComponentProps<"input">) {
         "aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
         className
       )}
+      value={debounce ? value : undefined}
+      onChange={debounce ? handleChange : onChange}
       {...props}
     />
   )

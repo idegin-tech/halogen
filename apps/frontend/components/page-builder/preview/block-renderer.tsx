@@ -87,23 +87,34 @@ function BlockComponent({ block, isSelected }: BlockComponentProps) {
 
   if (!Component) {
     return <div className="block-loading p-4">Loading component...</div>;
-  }
-
-  const getRootBlock = (currentBlock: BlockInstance): BlockInstance => {
-    if (currentBlock.instance === null) {
-      return currentBlock; 
+  }  const getRootBlock = (currentBlock: BlockInstance): BlockInstance => {
+    // This is for finding the source block that contains the actual values
+    
+    // For linked blocks (those with ref/instance), we need to find the source block
+    // A linked block will have a ref/instance and its value will be null
+    if (currentBlock.ref || currentBlock.instance) {
+      const instanceId = currentBlock.ref || currentBlock.instance;
+      
+      // Find the source block
+      const sourceBlock = state.blocks.find(b => b.instance_id === instanceId);
+      
+      if (!sourceBlock) {
+        console.warn(`Source block with ID ${instanceId} not found for linked block ${currentBlock.instance_id}`);
+        return currentBlock; // Return current block as fallback
+      }
+      
+      // Follow the chain of references until we find the root source block
+      return getRootBlock(sourceBlock);
     }
     
-    // Use ref field if available, otherwise fall back to instance
-    const instanceId = currentBlock.ref || currentBlock.instance;
-    const instanceBlock = state.blocks.find(b => b.instance_id === instanceId);
-    
-    return instanceBlock ? getRootBlock(instanceBlock) : currentBlock;
+    // This is a master block (source block with values)
+    return currentBlock;
   };
   
   const rootBlock = getRootBlock(block);
   
-  const blockValues = rootBlock.value;
+  // Get the values from the root block
+  const blockValues = rootBlock.value || {};
 
   const blockClassName = isSelected 
     ? "block-wrapper block-selected relative cursor-pointer" 

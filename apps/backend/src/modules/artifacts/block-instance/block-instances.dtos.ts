@@ -9,7 +9,8 @@ export const syncBlocksSchema = z.object({
     folderName: z.string(),
     subFolder: z.string(),
     value: z.any().optional(),
-    instance: z.string().nullable().optional()
+    instance: z.string().nullable().optional(),
+    ref: z.string().nullable().optional() // Add ref field to support frontend instance references
   })).optional()
 });
 

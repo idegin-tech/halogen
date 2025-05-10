@@ -68,7 +68,7 @@ export function SaasHeroSection(fields: typeof properties.fields) {
                         key={i}
                         className="h-10 w-10 rounded-full border-2 border-background bg-muted flex items-center justify-center overflow-hidden"
                       >
-                        <Image 
+                        <img 
                           src={client.imageUrl || `/placeholder.svg?height=40&width=40`} 
                           width={40} 
                           height={40} 
@@ -83,7 +83,7 @@ export function SaasHeroSection(fields: typeof properties.fields) {
                         key={i}
                         className="h-10 w-10 rounded-full border-2 border-background bg-muted flex items-center justify-center overflow-hidden"
                       >
-                        <Image src={`/placeholder.svg?height=40&width=40`} width={40} height={40} alt={`Client ${i}`} />
+                        <img src={`/placeholder.svg?height=40&width=40`} width={40} height={40} alt={`Client ${i}`} />
                       </div>
                     ))
                   )}
@@ -131,12 +131,12 @@ export function SaasHeroSection(fields: typeof properties.fields) {
                 : 'shadow-xl'
               } backdrop-blur`}>
               {fields?.imageUrl?.value && (
-                <Image
+                <img
                   src={fields.imageUrl.value}
                   width={600}
                   height={600}
                   alt={fields?.imageAlt?.value || "Hero image"}
-                  className="aspect-square rounded-xl object-cover"
+                  className="aspect-square- rounded-xl object-cover"
                 />
               )}
             </div>

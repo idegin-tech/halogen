@@ -40,7 +40,7 @@ export function ProjectSearch() {
           onChange={(e) => setSearchTerm(e.target.value)}
         />
       </div>
-      <Button type="submit">Search</Button>
+      <Button type="submit" variant={'outline'}>Search</Button>
     </form>
   );
 }

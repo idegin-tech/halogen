@@ -12,6 +12,7 @@ interface BlockDataWithInstanceId {
     subFolder: string;
     value?: any;
     instance?: string | null;
+    ref?: string | null; // Add ref field to support frontend instance references
 }
 
 export class BlockInstancesService {
@@ -66,8 +67,7 @@ export class BlockInstancesService {
                         const savedPage = await PagesService.createPlaceholderPage(projectId, lookupPageId);
                         //@ts-ignore
                         pageIdToObjectMap.set(lookupPageId, savedPage?._id);
-                        
-                        const blockFields = {
+                          const blockFields = {
                             instance_id: instance_id || `inst_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
                             page_id: lookupPageId, // Always preserve the frontend page_id
                             index,
@@ -76,10 +76,10 @@ export class BlockInstancesService {
                             subFolder,
                             value,
                             instance: instanceObjectId,
-                            project: projectId
+                            project: projectId,
+                            ref: typedBlockData.ref || null // Include ref field from frontend
                         };
                         
-                        // Continue with block creation logic
                         const existingBlock = instance_id ? 
                             await BlockInstanceModel.findOne({ instance_id }) : null;
                         
@@ -102,9 +102,7 @@ export class BlockInstancesService {
                         }
                         continue;
                     }
-                    
-                    // If the page exists, proceed with the normal flow
-                    const blockFields = {
+                      const blockFields = {
                         instance_id: instance_id || `inst_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
                         page_id: lookupPageId, // Always preserve the frontend page_id
                         index,
@@ -113,7 +111,8 @@ export class BlockInstancesService {
                         subFolder,
                         value,
                         instance: instanceObjectId,
-                        project: projectId
+                        project: projectId,
+                        ref: typedBlockData.ref || null // Include ref field from frontend
                     };
                     
                     const existingBlock = instance_id ? 
