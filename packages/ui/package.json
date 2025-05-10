@@ -4,14 +4,16 @@
   "private": true,
   "exports": {
     "./*": "./src/*.tsx",
-    "./blocks": "./src/blocks/index.ts"
+    "./blocks": "./src/blocks/index.ts",
+    "./blocks.json": "./src/blocks.json"
   },
   "scripts": {
     "lint": "eslint . --max-warnings 0",
     "generate:component": "turbo gen react-component",
     "check-types": "tsc --noEmit",
-    "build": "tsc --project tsconfig.json --outDir dist --declaration",
-    "dev": "tsc --project tsconfig.json --outDir dist --declaration --watch"
+    "generate:blocks": "node scripts/generate-blocks-registry.js",
+    "build": "npm run generate:blocks && tsc --project tsconfig.json --outDir dist --declaration",
+    "dev": "npm run generate:blocks && tsc --project tsconfig.json --outDir dist --declaration --watch"
   },
   "devDependencies": {
     "@repo/eslint-config": "*",

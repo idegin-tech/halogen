@@ -4,65 +4,13 @@ import Link from "next/link"
 import { useState, useRef, useEffect } from "react"
 import { BlockProperties } from "@halogen/common/types";
 
-// Default navigation for the header
-const defaultNavigation = [
-  {
-    name: "Home",
-    href: "#home",
-  },
-  {
-    name: "Services",
-    href: "#services",
-    children: [
-      { name: "Strategic Planning", href: "#strategic-planning" },
-      { name: "Business Optimization", href: "#business-optimization" },
-      { name: "Digital Transformation", href: "#digital-transformation" },
-      { name: "Market Research", href: "#market-research" },
-    ],
-  },
-  {
-    name: "About",
-    href: "#about",
-    children: [
-      { name: "Our Story", href: "#our-story" },
-      { name: "Our Team", href: "#our-team" },
-      { name: "Our Values", href: "#our-values" },
-    ],
-  },
-  {
-    name: "Case Studies",
-    href: "#case-studies",
-  },
-  {
-    name: "Contact",
-    href: "#contact",
-  },
-];
-
-export function BasicHeader(props: {
-  companyName?: string;
-  companyLogoInitial?: string;
-  ctaButtonText?: string;
-  ctaButtonLink?: string;
-  headerBackgroundColor?: string;
-  headerBorderColor?: string;
-  logoBackgroundColor?: string;
-  logoTextColor?: string;
-  navigation?: {
-    name: string;
-    href: string;
-    children?: Array<{
-      name: string;
-      href: string;
-    }>;
-  }[];
-}) {
+export function BasicHeader(fields: typeof properties.fields) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null)
   const dropdownRefs = useRef<{ [key: string]: HTMLDivElement | null }>({})
   
-  // Use provided navigation or default
-  const navigation = props.navigation || defaultNavigation;
+  // Use provided navigation from fields
+  const navigation = fields?.navigation?.value || [];
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -89,13 +37,13 @@ export function BasicHeader(props: {
 
   // Extract customizable styles
   const headerStyles = {
-    backgroundColor: props.headerBackgroundColor || "",
-    borderColor: props.headerBorderColor || ""
+    backgroundColor: fields?.headerBackgroundColor?.value || "",
+    borderColor: fields?.headerBorderColor?.value || ""
   };
 
   const logoStyles = {
-    backgroundColor: props.logoBackgroundColor || "var(--primary, #000)",
-    color: props.logoTextColor || "#fff"
+    backgroundColor: fields?.logoBackgroundColor?.value || "var(--primary, #000)",
+    color: fields?.logoTextColor?.value || "#fff"
   };
 
   return (
@@ -106,7 +54,7 @@ export function BasicHeader(props: {
         backgroundColor: headerStyles.backgroundColor || "var(--background, #fff)"
       }}
     >
-      <div className="container flex h-16 md:h-20 items-center justify-between">
+      <div className="container mx-auto flex h-16 md:h-20 items-center justify-between">
         <div className="flex items-center gap-3">
           <div 
             className="relative h-9 w-9 md:h-10 md:w-10 overflow-hidden rounded-lg"
@@ -117,7 +65,7 @@ export function BasicHeader(props: {
                 className="text-lg md:text-xl font-bold"
                 style={{ color: logoStyles.color }}
               >
-                {props.companyLogoInitial || "C"}
+                {fields?.companyLogoInitial?.value || "C"}
               </span>
             </div>
             <div 
@@ -126,12 +74,12 @@ export function BasicHeader(props: {
             ></div>
           </div>
           <span className="text-lg md:text-xl font-bold tracking-tight text-foreground">
-            {props.companyName || "Consulta"}
+            {fields?.companyName?.value || "Consulta"}
           </span>
         </div>
 
         <nav className="hidden md:flex items-center gap-1 lg:gap-2">
-          {navigation.map((item) => (
+          {navigation.map((item:any) => (
             <div key={item.name} className="relative" ref={(el) => {
               dropdownRefs.current[item.name] = el;
             }}>
@@ -167,7 +115,7 @@ export function BasicHeader(props: {
                   {activeDropdown === item.name && (
                     <div className="absolute top-full left-0 mt-1 w-56 rounded-md border border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 shadow-lg overflow-hidden z-50 animate-in fade-in slide-in-from-top-5 duration-200">
                       <div className="py-1">
-                        {item.children.map((child) => (
+                        {item.children.map((child:any) => (
                           <Link
                             key={child.name}
                             href={child.href}
@@ -195,10 +143,10 @@ export function BasicHeader(props: {
 
         <div className="flex items-center gap-4">
           <Link
-            href={props.ctaButtonLink || "#contact"}
+            href={fields?.ctaButtonLink?.value || "#contact"}
             className="hidden md:inline-flex h-9 md:h-10 items-center justify-center rounded-md bg-primary px-4 md:px-6 py-2 text-sm font-medium text-primary-foreground shadow-md transition-all hover:bg-primary/90 hover:shadow-lg hover:shadow-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
-            {props.ctaButtonText || "Get Started"}
+            {fields?.ctaButtonText?.value || "Get Started"}
           </Link>
           <button
             className="md:hidden text-foreground p-2 rounded-md hover:bg-accent/50"
@@ -239,7 +187,7 @@ export function BasicHeader(props: {
         <div className="md:hidden border-t border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 animate-in slide-in-from-top duration-300">
           <div className="container py-3">
             <nav className="flex flex-col space-y-1">
-              {navigation.map((item) => (
+              {navigation.map((item:any) => (
                 <div key={item.name} className="w-full">
                   {item.children ? (
                     <div className="w-full">
@@ -271,7 +219,7 @@ export function BasicHeader(props: {
                       </button>
                       {activeDropdown === item.name && (
                         <div className="ml-4 mt-1 border-l-2 border-border/40 pl-4 animate-in slide-in-from-left duration-200">
-                          {item.children.map((child) => (
+                          {item.children.map((child:any) => (
                             <Link
                               key={child.name}
                               href={child.href}
@@ -300,11 +248,11 @@ export function BasicHeader(props: {
               ))}
               <div className="pt-2">
                 <Link
-                  href={props.ctaButtonLink || "#contact"}
+                  href={fields?.ctaButtonLink?.value || "#contact"}
                   className="flex h-10 items-center justify-center rounded-md bg-primary px-6 py-2 text-sm font-medium text-primary-foreground shadow-md w-full mt-2"
                   onClick={() => setIsMenuOpen(false)}
                 >
-                  {props.ctaButtonText || "Get Started"}
+                  {fields?.ctaButtonText?.value || "Get Started"}
                 </Link>
               </div>
             </nav>
@@ -316,7 +264,7 @@ export function BasicHeader(props: {
 }
 
 // Block properties for the page builder
-export const blockProperties: BlockProperties = {
+export const properties: BlockProperties = {
   name: "Basic Header",
   description: "A responsive header with dropdown navigation and mobile menu",
   fields: {

@@ -8,8 +8,8 @@ import { Badge } from '@/components/ui/badge'
 import { BlockInstance, BlockProperties } from '@halogen/common/types'
 import { usePage } from '@/hooks/usePage'
 import { generateId } from '@halogen/common/lib'
-import { getBlockProperties, getAllBlockPaths } from '@repo/ui/blocks'
-import { Tsukimi_Rounded } from 'next/font/google'
+import { getBlockProperties } from '@repo/ui/blocks'
+import blocksRegistry from '@repo/ui/blocks.json'
 
 
 type BlockFolder = {
@@ -65,7 +65,7 @@ function UsedBlockItem({ block, instanceCount }: { block: BlockInstance, instanc
             subFolder: block.subFolder,
             value: null,
             instance: block.instance_id as string,
-            ref: block.instance_id // Add the instance_id as ref for frontend reference
+            ref: block.instance_id
         };
 
         updateBuilderState({
@@ -181,34 +181,31 @@ export default function BlocksTopPanel({ show, onHide }: { show: boolean, onHide
             setLoadError(null);
             
             try {
-                // Get all available block paths using the dynamic path discovery function
-                const availablePaths = getAllBlockPaths();
                 const folders: BlockFolder[] = [];
                 
-                // Group blocks by folder
-                const folderMap = new Map<string, BlockSubFolder[]>();
-                
-                // Process each block path
-                for (const path of availablePaths) {
-                    const [folderName, subFolderName] = path.split('/');
+                // Use the imported blocksRegistry instead of dynamic discovery
+                for (const [folderName, blockInfos] of Object.entries(blocksRegistry)) {
+                    const subFolders: BlockSubFolder[] = [];
                     
-                    if (!folderMap.has(folderName)) {
-                        folderMap.set(folderName, []);
+                    for (const blockInfo of blockInfos) {
+                        try {
+                            // Get the properties for each block
+                            const properties = getBlockProperties(folderName, blockInfo.name);
+                            
+                            if (properties) {
+                                subFolders.push({
+                                    name: blockInfo.name,
+                                    properties,
+                                    thumbnailPath: blockInfo.hasThumbnail ? 
+                                        `/_next/static/media/blocks/${folderName}/${blockInfo.name}/_thumbnail.png` : 
+                                        undefined
+                                });
+                            }
+                        } catch (err) {
+                            console.warn(`Failed to load properties for block: ${folderName}/${blockInfo.name}`, err);
+                        }
                     }
                     
-                    // Get block properties dynamically for each path
-                    const properties = getBlockProperties(folderName, subFolderName);
-                    
-                    if (properties) {
-                        folderMap.get(folderName)!.push({
-                            name: subFolderName,
-                            properties: properties,
-                        });
-                    }
-                }
-                
-                // Convert the map to the array format we need
-                for (const [folderName, subFolders] of folderMap.entries()) {
                     folders.push({
                         name: folderName,
                         subFolders

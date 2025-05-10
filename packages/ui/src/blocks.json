@@ -1,0 +1,47 @@
+{
+  "about": [
+    {
+      "name": "basic_about_us",
+      "path": "about/basic_about_us",
+      "displayName": "Basic About Us",
+      "description": "We strive for excellence in everything we do, delivering exceptional results that exceed expectations.",
+      "hasThumbnail": false
+    }
+  ],
+  "footer": [
+    {
+      "name": "basic_footer",
+      "path": "footer/basic_footer",
+      "displayName": "Basic footer",
+      "description": "A simple footer with links and copyright information.",
+      "hasThumbnail": true
+    }
+  ],
+  "header": [
+    {
+      "name": "basic_header",
+      "path": "header/basic_header",
+      "displayName": "Home",
+      "description": "A responsive header with dropdown navigation and mobile menu",
+      "hasThumbnail": false
+    }
+  ],
+  "hero": [
+    {
+      "name": "basic_saas_hero",
+      "path": "hero/basic_saas_hero",
+      "displayName": "Business Consulting Hero Section",
+      "description": "A professional hero section for consulting businesses with social proof and statistics.",
+      "hasThumbnail": true
+    }
+  ],
+  "testimonials": [
+    {
+      "name": "simple_testimonial",
+      "path": "testimonials/simple_testimonial",
+      "displayName": "Basic Testimonials",
+      "description": "A simple testimonials section with customer quotes.",
+      "hasThumbnail": true
+    }
+  ]
+}

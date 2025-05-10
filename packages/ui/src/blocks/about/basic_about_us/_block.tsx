@@ -1,153 +1,33 @@
 import Image from "next/image";
 import { BlockProperties } from "@halogen/common/types";
 
-// Values array with icon components
-const defaultValues = [
-  {
-    title: "Excellence",
-    description:
-      "We strive for excellence in everything we do, delivering exceptional results that exceed expectations.",
-    icon: (
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        width="24"
-        height="24"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        className="text-primary"
-      >
-        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-      </svg>
-    ),
-  },
-  {
-    title: "Integrity",
-    description: "We uphold the highest standards of integrity, building trust through honesty and transparency.",
-    icon: (
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        width="24"
-        height="24"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        className="text-primary"
-      >
-        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-      </svg>
-    ),
-  },
-  {
-    title: "Innovation",
-    description:
-      "We embrace innovation, constantly seeking new ideas and approaches to solve complex business challenges.",
-    icon: (
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        width="24"
-        height="24"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        className="text-primary"
-      >
-        <path d="M12 2v8" />
-        <path d="m4.93 10.93 1.41 1.41" />
-        <path d="M2 18h2" />
-        <path d="M20 18h2" />
-        <path d="m19.07 10.93-1.41 1.41" />
-        <path d="M22 22H2" />
-        <path d="m16 6-4 4-4-4" />
-        <path d="M16 18a4 4 0 0 0 0-8H8a4 4 0 0 0 0 8" />
-      </svg>
-    ),
-  },
-  {
-    title: "Collaboration",
-    description: "We believe in the power of collaboration, working closely with clients to achieve shared goals.",
-    icon: (
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        width="24"
-        height="24"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        className="text-primary"
-      >
-        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-        <circle cx="9" cy="7" r="4" />
-        <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-      </svg>
-    ),
-  },
-];
-
-export function BasicAboutUs(props: {
-  sectionId?: string;
-  badgeText?: string;
-  titlePrefix?: string;
-  titleHighlight?: string;
-  titleSuffix?: string;
-  subtitle?: string;
-  missionTitle?: string;
-  missionDescription?: string;
-  valuesTitle?: string;
-  teamImageSrc?: string;
-  teamImageAlt?: string;
-  statTitle?: string;
-  statValue?: string;
-  backgroundColor?: string;
-  values?: Array<{
-    title: string;
-    description: string;
-  }>;
-}) {
-  // Merge default values with props values, keeping the default icons
-  const values = props.values?.map((value, index) => {
-    return {
-      ...value,
-      icon: defaultValues[index]?.icon || defaultValues[0]?.icon
-    };
-  }) || defaultValues;
+export function BasicAboutUs(fields: typeof properties.fields) {
+  // Use values directly from fields
+  const values = fields?.values?.value || [];
 
   return (
     <section 
       className="relative py-20 overflow-hidden bg-background" 
-      id={props.sectionId || "about"}
-      style={props.backgroundColor ? { backgroundColor: props.backgroundColor } : {}}
+      id={fields?.sectionId?.value || "about"}
+      style={fields?.backgroundColor?.value ? { backgroundColor: fields.backgroundColor.value } : {}}
     >
       {/* Background decorative elements */}
       <div className="absolute top-0 right-0 w-1/3 h-1/3 bg-primary/5 rounded-full blur-3xl -translate-y-1/2"></div>
       <div className="absolute bottom-0 left-0 w-1/3 h-1/3 bg-secondary/10 rounded-full blur-3xl translate-y-1/2"></div>
 
-      <div className="container px-4 md:px-6">
+      <div className="container mx-auto px-4 md:px-6">
         <div className="flex flex-col items-center text-center mb-12">
           <div className="inline-flex items-center rounded-full border border-border bg-background/50 px-3 py-1 text-sm text-muted-foreground backdrop-blur mb-4">
             <span className="mr-2 h-2 w-2 rounded-full bg-primary"></span>
-            {props.badgeText || "Our Story"}
+            {fields?.badgeText?.value || "Our Story"}
           </div>
           <h2 className="text-3xl font-bold tracking-tighter md:text-4xl/tight">
-            {props.titlePrefix || "About"}{" "}
-            <span className="text-primary">{props.titleHighlight || "Consulta"}</span>
-            {props.titleSuffix}
+            {fields?.titlePrefix?.value || "About"}{" "}
+            <span className="text-primary">{fields?.titleHighlight?.value || "Consulta"}</span>
+            {fields?.titleSuffix?.value}
           </h2>
           <p className="mt-4 max-w-[700px] text-muted-foreground">
-            {props.subtitle || "We're a team of experienced consultants dedicated to helping businesses thrive in today's competitive landscape."}
+            {fields?.subtitle?.value || "We're a team of experienced consultants dedicated to helping businesses thrive in today's competitive landscape."}
           </p>
         </div>
 
@@ -155,10 +35,10 @@ export function BasicAboutUs(props: {
           <div className="relative order-2 lg:order-1">
             <div className="relative z-10 overflow-hidden rounded-2xl border border-border/40 bg-background/50 p-2 shadow-xl backdrop-blur">
               <Image
-                src={props.teamImageSrc || "/placeholder.svg?height=600&width=600"}
+                src={fields?.teamImageSrc?.value || "/placeholder.svg?height=600&width=600"}
                 width={600}
                 height={600}
-                alt={props.teamImageAlt || "Our team"}
+                alt={fields?.teamImageAlt?.value || "Our team"}
                 className="rounded-xl object-cover w-full aspect-[4/3]"
               />
             </div>
@@ -188,28 +68,117 @@ export function BasicAboutUs(props: {
                   </svg>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-foreground">{props.statTitle || "Team Size"}</p>
-                  <p className="text-2xl font-bold text-primary">{props.statValue || "50+"}</p>
+                  <p className="text-sm font-medium text-foreground">{fields?.statTitle?.value || "Team Size"}</p>
+                  <p className="text-2xl font-bold text-primary">{fields?.statValue?.value || "50+"}</p>
                 </div>
               </div>
             </div>
           </div>
 
           <div className="order-1 lg:order-2">
-            <h3 className="text-2xl font-bold mb-4">{props.missionTitle || "Our Mission"}</h3>
+            <h3 className="text-2xl font-bold mb-4">{fields?.missionTitle?.value || "Our Mission"}</h3>
             <p className="text-muted-foreground mb-6">
-              {props.missionDescription || "At Consulta, our mission is to empower businesses to reach their full potential through strategic guidance, innovative solutions, and actionable insights. We believe that every business, regardless of size or industry, deserves access to world-class consulting services."}
+              {fields?.missionDescription?.value || "At Consulta, our mission is to empower businesses to reach their full potential through strategic guidance, innovative solutions, and actionable insights. We believe that every business, regardless of size or industry, deserves access to world-class consulting services."}
             </p>
 
-            <h3 className="text-2xl font-bold mb-4 mt-8">{props.valuesTitle || "Our Values"}</h3>
+            <h3 className="text-2xl font-bold mb-4 mt-8">{fields?.valuesTitle?.value || "Our Values"}</h3>
             <div className="grid gap-6 sm:grid-cols-2">
-              {values.map((value, index) => (
-                <div key={index} className="rounded-xl border border-border/40 bg-background/50 p-4 backdrop-blur">
-                  <div className="rounded-full bg-primary/10 p-2 w-fit mb-4">{value.icon}</div>
-                  <h4 className="text-lg font-medium mb-2">{value.title}</h4>
-                  <p className="text-sm text-muted-foreground">{value.description}</p>
-                </div>
-              ))}
+              {values.map((value: any, index: number) => {
+                // Create icons for each value based on index
+                let icon;
+                switch (index % 4) {
+                  case 0:
+                    icon = (
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="text-primary"
+                      >
+                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                      </svg>
+                    );
+                    break;
+                  case 1:
+                    icon = (
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="text-primary"
+                      >
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                      </svg>
+                    );
+                    break;
+                  case 2:
+                    icon = (
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="text-primary"
+                      >
+                        <path d="M12 2v8" />
+                        <path d="m4.93 10.93 1.41 1.41" />
+                        <path d="M2 18h2" />
+                        <path d="M20 18h2" />
+                        <path d="m19.07 10.93-1.41 1.41" />
+                        <path d="M22 22H2" />
+                        <path d="m16 6-4 4-4-4" />
+                        <path d="M16 18a4 4 0 0 0 0-8H8a4 4 0 0 0 0 8" />
+                      </svg>
+                    );
+                    break;
+                  case 3:
+                  default:
+                    icon = (
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="text-primary"
+                      >
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                        <circle cx="9" cy="7" r="4" />
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                      </svg>
+                    );
+                }
+
+                return (
+                  <div key={index} className="rounded-xl border border-border/40 bg-background/50 p-4 backdrop-blur">
+                    <div className="rounded-full bg-primary/10 p-2 w-fit mb-4">{icon}</div>
+                    <h4 className="text-lg font-medium mb-2">{value.title}</h4>
+                    <p className="text-sm text-muted-foreground">{value.description}</p>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -219,7 +188,7 @@ export function BasicAboutUs(props: {
 }
 
 // Block properties for the page builder
-export const blockProperties: BlockProperties = {
+export const properties: BlockProperties = {
   name: "Basic About Us",
   description: "A basic about us section with mission, values, and team image",
   fields: {
