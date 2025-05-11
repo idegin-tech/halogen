@@ -77,7 +77,7 @@ BlockInstanceSchema.index({ page: 1 });
 BlockInstanceSchema.index({ page_id: 1 }); // Add index for page_id
 BlockInstanceSchema.index({ project: 1, page: 1 });
 BlockInstanceSchema.index({ instance: 1 });
-BlockInstanceSchema.index({ instance_id: 1 }, { unique: true });
+// BlockInstanceSchema.index({ instance_id: 1 }, { unique: true });
 
 BlockInstanceSchema.plugin(mongoosePaginate);
 

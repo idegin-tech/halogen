@@ -1,12 +1,12 @@
 // Utility functions for API calls
 
-export async function fetchProjectData(subdomain: string, path: string = '/') {
+export async function fetchProjectData(subdomain: string, path: string, tags: string[]) {
   try {
     const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/preview/projects/subdomain/${subdomain}?path=${path}`;
     const response = await fetch(apiUrl, {
       next: { 
         revalidate: 180, // Revalidate every 3 minutes
-        tags: [`subdomain-${subdomain}`, `path-${subdomain}-${path}`], // Tags for precise invalidation
+        tags
       },
       headers: {
         'Content-Type': 'application/json',

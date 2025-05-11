@@ -2,18 +2,19 @@ import React from 'react';
 import { headers } from 'next/headers';
 import * as UiBlocks from '@repo/ui/blocks';
 import { fetchProjectData } from '@/lib/api';
+import { BlockInstance, PageData } from '@halogen/common/types';
 
 export default async function CatchAllPage({ params }: { params: { slug?: string[] } }) {
   const headersList = await headers();
   const host = headersList.get('host') || '';
-  
-  const subdomain = host.split('.')[0];
-  const pathSegment = params.slug ? `/${params.slug.join('/')}` : '/';
-  
-  try {
-    const projectData = await fetchProjectData(subdomain, pathSegment);
 
-    if (!projectData || !projectData.blocks) {
+  const subdomain = host.split('.')[0];
+  const allParams = await params;
+  const pathSegment = allParams.slug ? `/${allParams.slug.join('/')}` : '/';
+  try {
+    const projectData = await fetchProjectData(subdomain, pathSegment, [subdomain]);
+
+    if (!projectData) {
       return (
         <div className="container mx-auto p-8">
           <h1 className="text-3xl font-bold mb-6">Page Not Found</h1>
@@ -22,7 +23,53 @@ export default async function CatchAllPage({ params }: { params: { slug?: string
       );
     }
 
-    const sortedBlocks = [...projectData.blocks].sort((a, b) => a.index - b.index);
+    const matchingPage = projectData.pages?.find((page: PageData) => page.path === pathSegment);
+
+    if (!matchingPage) {
+      return (
+        <div className="container mx-auto p-8">
+          <h1 className="text-3xl font-bold mb-6">Page Not Found</h1>
+          <p>No page found matching this path: {pathSegment}</p>
+        </div>
+      );
+    }
+
+    const pageBlocks: BlockInstance[] = projectData.blocks?.filter((block: BlockInstance) => block.page_id === matchingPage.page_id);
+
+    if (!pageBlocks || pageBlocks.length === 0) {
+      return (
+        <div className="container mx-auto p-8">
+          <h1 className="text-3xl font-bold mb-6">Empty Page</h1>
+          <p>This page has no content blocks.</p>
+        </div>
+      );
+    }
+
+
+    const sortedBlocks = [...pageBlocks].sort((a, b) => a.index - b.index);
+
+
+    const getRootBlock = (currentBlock: BlockInstance): BlockInstance => {
+      if (currentBlock.ref) {
+        const sourceBlock = projectData.blocks.find(
+          (b: BlockInstance) => b.instance_id === currentBlock.ref
+        );
+
+        console.log('Resolving block reference:', {
+          currentBlockId: currentBlock.instance_id,
+          refId: currentBlock.ref,
+          sourceBlockFound: !!sourceBlock
+        });
+
+        if (!sourceBlock) {
+          return currentBlock;
+        }
+
+        return getRootBlock(sourceBlock);
+      }
+
+      return currentBlock;
+    };
 
     return (
       <div className="site-content">
@@ -34,7 +81,7 @@ export default async function CatchAllPage({ params }: { params: { slug?: string
         ) : (
           sortedBlocks.map(block => {
             const BlockComponent = UiBlocks.getBlockComponent(block.folderName, block.subFolder);
-            
+
             if (!BlockComponent) {
               return (
                 <div key={block.instance_id} className="p-4 bg-red-50 border border-red-300 text-red-700">
@@ -42,9 +89,10 @@ export default async function CatchAllPage({ params }: { params: { slug?: string
                 </div>
               );
             }
-            
-            const blockValues = block.value || {};
-            
+
+            const rootBlock = getRootBlock(block);
+            const blockValues = rootBlock.value || {};
+
             return (
               <div key={block.instance_id} className="block-wrapper">
                 <BlockComponent {...blockValues} />
@@ -56,7 +104,7 @@ export default async function CatchAllPage({ params }: { params: { slug?: string
     );
   } catch (error) {
     console.error('Failed to render page:', error);
-    
+
     return (
       <div className="container mx-auto p-8">
         <h1 className="text-3xl font-bold mb-6">Error</h1>

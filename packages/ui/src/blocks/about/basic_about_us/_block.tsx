@@ -34,7 +34,7 @@ export function BasicAboutUs(fields: typeof properties.fields) {
         <div className="grid gap-12 lg:grid-cols-2 lg:gap-16 items-center">
           <div className="relative order-2 lg:order-1">
             <div className="relative z-10 overflow-hidden rounded-2xl border border-border/40 bg-background/50 p-2 shadow-xl backdrop-blur">
-              <Image
+              <img
                 src={fields?.teamImageSrc?.value || "/placeholder.svg?height=600&width=600"}
                 width={600}
                 height={600}

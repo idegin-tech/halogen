@@ -10,38 +10,63 @@ export class PreviewController {
   static async getProjectDataBySubdomain(req: Request, res: Response): Promise<void> {
     try {
       const { subdomain } = req.params;
-      
+
       if (!subdomain) {
         ResponseHelper.error(res, 'Subdomain is required', 400);
         return;
       }
-      
+
       const project = await ProjectModel.findOne({ subdomain });
-      
+
       if (!project) {
         ResponseHelper.error(res, 'Project not found', 404);
         return;
       }
-      
+
       const pages = await PageModel.find({ project: project._id });
-      
+
       if (!pages || pages.length === 0) {
         ResponseHelper.error(res, 'No pages found for this project', 404);
         return;
       }
-        const blockInstances = await BlockInstanceModel.find({ project: project._id });
-      
-      // Fetch project variables
+      const blockInstances = await BlockInstanceModel.find({ project: project._id });
+
       const variables = await VariableModel.find({ project: project._id });
-      
-      const path = req.query.path ? String(req.query.path) : '/';
-      const currentPage = pages.find(page => page.path === path) || pages[0];
-      
-      const pageBlocks = blockInstances.filter(
-        //@ts-ignore
-        block => block.page.toString() === currentPage?._id?.toString()
+
+      ResponseHelper.success(res, {
+        variables,
+        pages,
+        blocks: blockInstances,
+      }, 'Project data retrieved successfully');
+    } catch (error) {
+      Logger.error(`Preview error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      ResponseHelper.error(
+        res,
+        error instanceof Error ? error.message : 'Failed to retrieve project data',
+        500
       );
-      
+    }
+  }
+
+  static async getProjectVariablesForLayout(req: Request, res: Response): Promise<void> {
+    try {
+      const { subdomain } = req.params;
+
+      if (!subdomain) {
+        ResponseHelper.error(res, 'Subdomain is required', 400);
+        return;
+      }
+
+      const project = await ProjectModel.findOne({ subdomain });
+
+      if (!project) {
+        ResponseHelper.error(res, 'Project not found', 404);
+        return;
+      }
+
+      // Fetch project variables only
+      const variables = await VariableModel.find({ project: project._id });
+
       const response = {
         project: {
           id: project._id,
@@ -49,28 +74,6 @@ export class PreviewController {
           subdomain: project.subdomain,
           project_id: project.project_id
         },
-        pages: pages.map(page => ({
-          id: page._id,
-          name: page.name,
-          path: page.path,
-          page_id: page.page_id,
-          isStatic: page.isStatic
-        })),
-        currentPage: {
-          id: currentPage._id,
-          name: currentPage.name,
-          path: currentPage.path,
-          page_id: currentPage.page_id,
-          isStatic: currentPage.isStatic
-        },        blocks: pageBlocks.map(block => ({
-          instance_id: block.instance_id,
-          page_id: block.page_id,
-          index: block.index,
-          folderName: block.folderName,
-          subFolder: block.subFolder,
-          value: block.value,
-          ref: block.ref
-        })),
         variables: variables.map(variable => ({
           variable_id: variable.variable_id,
           name: variable.name,
@@ -81,13 +84,13 @@ export class PreviewController {
           variableSet: variable.variableSet
         }))
       };
-      
-      ResponseHelper.success(res, response, 'Project data retrieved successfully');
+
+      ResponseHelper.success(res, response, 'Project variables retrieved successfully');
     } catch (error) {
-      Logger.error(`Preview error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      Logger.error(`Preview layout variables error: ${error instanceof Error ? error.message : 'Unknown error'}`);
       ResponseHelper.error(
-        res, 
-        error instanceof Error ? error.message : 'Failed to retrieve project data', 
+        res,
+        error instanceof Error ? error.message : 'Failed to retrieve layout variables',
         500
       );
     }
