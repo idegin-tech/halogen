@@ -1,12 +1,12 @@
 import mongoose, { Schema, Document } from 'mongoose';
-import { Project } from '@halogen/common';
+import { ProjectData } from '@halogen/common';
 import mongoosePaginate from 'mongoose-paginate-v2';
 
-export type ProjectDocumentProps = Omit<Project, '_id'>;
+export type ProjectDocumentProps = Omit<ProjectData, '_id'>;
 
 export interface ProjectDocument extends ProjectDocumentProps, Document {}
 
-const ProjectSchema: Schema = new Schema<Project>({
+const ProjectSchema: Schema = new Schema<ProjectData>({
   name: {
     type: String,
     required: true,

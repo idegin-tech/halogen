@@ -35,6 +35,15 @@ export default function BuilderHeader() {
     }
   };
 
+  const handlePreview = () => {
+    if (builderState.project) {
+      const previewUrl = `http://${builderState.project.subdomain}.${process.env.NEXT_PUBLIC_PREVIEW_URL}`;
+      window.open(previewUrl, "_blank", "noopener,noreferrer");
+    } else {
+      toast.error("Project not found");
+    }
+  };
+
   return (
     <>
       <header
@@ -77,6 +86,7 @@ export default function BuilderHeader() {
               {isPublishing || isSyncing ? "Publishing..." : "Publish"}
             </Button>
             <Button
+              onClick={handlePreview}
               variant="default"
               className="flex items-center gap-2"
             >

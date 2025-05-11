@@ -3,6 +3,7 @@ export type ProjectData = {
   project_id: string;
   name: string;
   description?: string;
+  subdomain: string;
   thumbnail?: string;
   createdAt: string;
   updatedAt: string;

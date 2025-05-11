@@ -1,13 +1,13 @@
-export interface Project {
-    _id?: string;
-    name: string;
-    subdomain: string;
-    user: string;
-    project_id: string;
-    thumbnail?: string;
-    createdAt: Date;
-    updatedAt: Date;
-}
+// export interface Project {
+//     _id?: string;
+//     name: string;
+//     subdomain: string;
+//     user: string;
+//     project_id: string;
+//     thumbnail?: string;
+//     createdAt: Date;
+//     updatedAt: Date;
+// }
 
 export interface ProjectQueryOptions {
     search?: string;

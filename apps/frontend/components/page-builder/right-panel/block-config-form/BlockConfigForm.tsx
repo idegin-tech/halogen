@@ -315,7 +315,7 @@ export default function BlockConfigForm() {
       case 'text':
         return (
           <div className="grid gap-1.5">
-            <label htmlFor={`${fieldName}-${itemIndex}-${itemFieldName}`} className="text-sm font-medium">
+            <label htmlFor={`${fieldName}-${itemIndex}-${itemFieldName}`} className="text-sm font-medium text-muted-foreground">
               {itemField.label}
             </label>
             <Input
@@ -338,7 +338,7 @@ export default function BlockConfigForm() {
         ); case 'textarea':
         return (
           <div className="grid gap-1.5">
-            <label htmlFor={`${fieldName}-${itemIndex}-${itemFieldName}`} className="text-sm font-medium">
+            <label htmlFor={`${fieldName}-${itemIndex}-${itemFieldName}`} className="text-sm font-medium text-muted-foreground">
               {itemField.label}
             </label>
             <Textarea
@@ -356,7 +356,7 @@ export default function BlockConfigForm() {
         ); case 'url':
         return (
           <div className="grid gap-1.5">
-            <label htmlFor={`${fieldName}-${itemIndex}-${itemFieldName}`} className="text-sm font-medium">
+            <label htmlFor={`${fieldName}-${itemIndex}-${itemFieldName}`} className="text-sm font-medium text-muted-foreground">
               {itemField.label}
             </label>
             <Input
@@ -380,7 +380,7 @@ export default function BlockConfigForm() {
         ); default:
         return (
           <div className="grid gap-1.5">
-            <label htmlFor={`${fieldName}-${itemIndex}-${itemFieldName}`} className="text-sm font-medium">
+            <label htmlFor={`${fieldName}-${itemIndex}-${itemFieldName}`} className="text-sm font-medium text-muted-foreground">
               {itemField.label}
             </label>
             <Input
