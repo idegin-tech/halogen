@@ -1,9 +1,12 @@
+import { User } from "./users.types";
+
 export type ProjectData = {
   _id?: string;
   project_id: string;
   name: string;
   description?: string;
   subdomain: string;
+  user: string;
   thumbnail?: string;
   createdAt: string;
   updatedAt: string;

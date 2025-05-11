@@ -366,30 +366,18 @@ export const properties: BlockProperties = {
             }
           }
         }
-      },
-      defaultValue: [
+      },      defaultValue: [
         {
           name: "Home",
-          href: "#home",
+          href: "/",
         },
         {
           name: "Services",
-          href: "#services",
-          children: [
-            { name: "Strategic Planning", href: "#strategic-planning" },
-            { name: "Business Optimization", href: "#business-optimization" },
-            { name: "Digital Transformation", href: "#digital-transformation" },
-            { name: "Market Research", href: "#market-research" },
-          ],
+          href: "/services",
         },
         {
           name: "About",
-          href: "#about",
-          children: [
-            { name: "Our Story", href: "#our-story" },
-            { name: "Our Team", href: "#our-team" },
-            { name: "Our Values", href: "#our-values" },
-          ],
+          href: "/about",
         },
         {
           name: "Case Studies",
