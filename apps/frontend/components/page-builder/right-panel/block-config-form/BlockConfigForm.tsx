@@ -37,8 +37,7 @@ export default function BlockConfigForm() {
   const selectedBlock = state.blocks.find(block => block.instance_id === state.selectedBlockId);
   const [activeListItem, setActiveListItem] = useState<{ fieldName: string, itemIndex: number } | null>(null);
   const [isPopoverOpen, setIsPopoverOpen] = useState<boolean>(false);
-  
-  // Local form state to prevent lag during typing
+
   const [localFormState, setLocalFormState] = useState<Record<string, any>>({});
   const [localListItemsState, setLocalListItemsState] = useState<Record<string, Record<number, Record<string, any>>>>({});
   useEffect(() => {
@@ -54,8 +53,7 @@ export default function BlockConfigForm() {
         if (properties) {
           setBlockProperties(properties);
           setBlockLoadError(null);
-          
-          // Reset local form state when block changes
+
           setLocalFormState({});
           setLocalListItemsState({});
         } else {
@@ -77,7 +75,6 @@ export default function BlockConfigForm() {
       if (block.value !== null || block.instance === null) {
         return block;
       }
-      // Use ref field if available, otherwise fall back to instance
       const instanceId = block.ref || block.instance;
       const instanceBlock = state.blocks.find(b => b.instance_id === instanceId);
       if (!instanceBlock) return block;
@@ -89,41 +86,37 @@ export default function BlockConfigForm() {
     return rootBlock.value || {};
   };
 
-  // Get field value from local state first, then fall back to block state
   const getFieldValue = (fieldName: string) => {
     if (fieldName in localFormState) {
       return localFormState[fieldName];
     }
-    
+
     const effectiveValues = getEffectiveValues();
     return effectiveValues[fieldName]?.value;
   };
-  
-  // Get list item field value from local state first, then fall back to block state
+
   const getListItemValue = (fieldName: string, itemIndex: number, itemFieldName: string) => {
     if (
-      fieldName in localListItemsState && 
-      itemIndex in localListItemsState[fieldName] && 
+      fieldName in localListItemsState &&
+      itemIndex in localListItemsState[fieldName] &&
       itemFieldName in localListItemsState[fieldName][itemIndex]
     ) {
       return localListItemsState[fieldName][itemIndex][itemFieldName];
     }
-    
+
     const effectiveValues = getEffectiveValues();
     const listValue = effectiveValues[fieldName]?.value || [];
     const itemValue = listValue[itemIndex] || {};
     return itemValue[itemFieldName];
   };
 
-  // Update local form state only
   const updateLocalFieldValue = (fieldName: string, value: any) => {
     setLocalFormState(prev => ({
       ...prev,
       [fieldName]: value
     }));
   };
-  
-  // Update local list item state only
+
   const updateLocalListItemValue = (fieldName: string, itemIndex: number, itemFieldName: string, value: any) => {
     setLocalListItemsState(prev => ({
       ...prev,
@@ -136,43 +129,40 @@ export default function BlockConfigForm() {
       }
     }));
   };
-  
-  // Commit the local form state changes to the builder context
+
   const commitFieldChange = (fieldName: string) => {
     if (!(fieldName in localFormState)) return;
-    
+
     handleFieldChange(fieldName, localFormState[fieldName]);
-    
-    // Clear from local state after committing
+
     setLocalFormState(prev => {
       const { [fieldName]: _, ...rest } = prev;
       return rest;
     });
   };
-  
-  // Commit the local list item state changes to the builder context
+
   const commitListItemChange = (fieldName: string, itemIndex: number, itemFieldName: string) => {
     if (
-      !(fieldName in localListItemsState) || 
+      !(fieldName in localListItemsState) ||
       !(itemIndex in localListItemsState[fieldName]) ||
       !(itemFieldName in localListItemsState[fieldName][itemIndex])
     ) return;
-    
+
     const effectiveValues = getEffectiveValues();
     const currentList = effectiveValues[fieldName]?.value || [];
     const updatedList = [...currentList];
-    
+
     if (!updatedList[itemIndex]) {
       updatedList[itemIndex] = {};
     }
-    
+
     updatedList[itemIndex] = {
       ...updatedList[itemIndex],
       [itemFieldName]: localListItemsState[fieldName][itemIndex][itemFieldName]
     };
-    
+
     handleFieldChange(fieldName, updatedList);
-    
+
     // Clear from local state after committing
     setLocalListItemsState(prev => {
       const newState = { ...prev };
@@ -252,25 +242,6 @@ export default function BlockConfigForm() {
     updateBuilderState({ blocks: updatedBlocks });
   };
 
-  const handleListItemChange = (fieldName: string, itemIndex: number, itemFieldName: string, value: any) => {
-    if (!selectedBlock) return;
-
-    const effectiveValues = getEffectiveValues();
-    const currentList = effectiveValues[fieldName]?.value || [];
-    const updatedList = [...currentList];
-
-    if (!updatedList[itemIndex]) {
-      updatedList[itemIndex] = {};
-    }
-
-    updatedList[itemIndex] = {
-      ...updatedList[itemIndex],
-      [itemFieldName]: value
-    };
-
-    handleFieldChange(fieldName, updatedList);
-  };
-
   const addListItem = (fieldName: string) => {
     if (!selectedBlock) return;
 
@@ -340,7 +311,8 @@ export default function BlockConfigForm() {
   };
 
   const renderItemFieldInput = (fieldName: string, itemIndex: number, itemFieldName: string, itemField: any, value: any) => {
-    switch (itemField.type) {      case 'text':
+    switch (itemField.type) {
+      case 'text':
         return (
           <div className="grid gap-1.5">
             <label htmlFor={`${fieldName}-${itemIndex}-${itemFieldName}`} className="text-sm font-medium">
@@ -363,7 +335,7 @@ export default function BlockConfigForm() {
               <p className="text-xs text-muted-foreground">{itemField.description}</p>
             )}
           </div>
-        );      case 'textarea':
+        ); case 'textarea':
         return (
           <div className="grid gap-1.5">
             <label htmlFor={`${fieldName}-${itemIndex}-${itemFieldName}`} className="text-sm font-medium">
@@ -381,7 +353,7 @@ export default function BlockConfigForm() {
               <p className="text-xs text-muted-foreground">{itemField.description}</p>
             )}
           </div>
-        );      case 'url':
+        ); case 'url':
         return (
           <div className="grid gap-1.5">
             <label htmlFor={`${fieldName}-${itemIndex}-${itemFieldName}`} className="text-sm font-medium">
@@ -405,7 +377,7 @@ export default function BlockConfigForm() {
               <p className="text-xs text-muted-foreground">{itemField.description}</p>
             )}
           </div>
-        );      default:
+        ); default:
         return (
           <div className="grid gap-1.5">
             <label htmlFor={`${fieldName}-${itemIndex}-${itemFieldName}`} className="text-sm font-medium">
@@ -510,8 +482,8 @@ export default function BlockConfigForm() {
                     <PopoverTrigger asChild>
                       <Card
                         className={`cursor-pointer px-0 py-2 transition-all duration-200 ${isActive
-                            ? 'border-primary shadow-sm shadow-primary/20'
-                            : 'hover:border-primary/50 hover:shadow-sm'
+                          ? 'border-primary shadow-sm shadow-primary/20'
+                          : 'hover:border-primary/50 hover:shadow-sm'
                           }`}
                       >
                         <CardContent className="px-3 flex items-center justify-between">
@@ -542,7 +514,8 @@ export default function BlockConfigForm() {
       );
     }
 
-    switch (field.type) {      case 'text':
+    switch (field.type) {
+      case 'text':
         return (
           <div className="grid gap-1.5">
             <label className="text-sm font-medium text-muted-foreground">{field.label}</label>
@@ -562,7 +535,7 @@ export default function BlockConfigForm() {
               <p className="text-xs text-muted-foreground">{field.description}</p>
             )}
           </div>
-        );      case 'textarea':
+        ); case 'textarea':
         return (
           <div className="grid gap-1.5">
             <label className="text-sm font-medium text-muted-foreground">{field.label}</label>
@@ -651,7 +624,7 @@ export default function BlockConfigForm() {
               />
             </div>
           </div>
-        );      case 'url':
+        ); case 'url':
         return (
           <div className="grid gap-1.5">
             <label className="text-sm font-medium text-muted-foreground">{field.label}</label>
@@ -672,7 +645,7 @@ export default function BlockConfigForm() {
               <p className="text-xs text-muted-foreground">{field.description}</p>
             )}
           </div>
-        );      case 'color':
+        ); case 'color':
         return (
           <div className="grid gap-1.5">
             <label className="text-sm font-medium text-muted-foreground">{field.label}</label>
@@ -703,7 +676,7 @@ export default function BlockConfigForm() {
               <p className="text-xs text-muted-foreground">{field.description}</p>
             )}
           </div>
-        );default:
+        ); default:
         return (
           <div className="grid gap-1.5">
             <label className="text-sm font-medium text-muted-foreground">{field.label}</label>
@@ -772,76 +745,51 @@ export default function BlockConfigForm() {
   }
 
   const isLinkedBlock = selectedBlock.value === null && selectedBlock.instance !== null;
-  const sourceBlockId = isLinkedBlock ? selectedBlock.instance : selectedBlock.instance_id;
 
   return (
-    <PropertyFormContainer
-      leftComponent={
-        <div className='truncate'>
-          <h3 className="text-md font-semibold truncate">{blockProperties.name}</h3>
-          <div className="flex items-center gap-1">
-            <p className="text-xs text-muted-foreground select-none truncate">{blockProperties.description}</p>
-          </div>
-        </div>
-      }
-      rightComponent={
-        <>
-          <Select>
-            <SelectTrigger className="w-[130px]" size="sm">
-              <SelectValue placeholder="Select View" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="content">Content</SelectItem>
-              <SelectItem value="outline">Outline</SelectItem>
-            </SelectContent>
-          </Select>
-        </>
-      }
-    >
-      <ScrollArea className="h-[calc(var(--panel-body-height)-1rem)] pr-4">
-        <div className="space-y-6 pb-8">
-          {isLinkedBlock && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-secondary/5 p-3 rounded-lg border border-secondary/20 mb-4"
-            >
-              <div className="flex items-center justify-between mb-1">
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <Link className="h-4 w-4 text-secondary" />
-                    <p className="text-sm font-medium text-secondary">Linked Block</p>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Edits will update the source block
-                  </p>
+    <>
+      <div className="space-y-6 pb-8">
+        {isLinkedBlock && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-secondary/5 p-3 rounded-lg border border-secondary/20 mb-4"
+          >
+            <div className="flex items-center justify-between mb-1">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <Link className="h-4 w-4 text-secondary" />
+                  <p className="text-sm font-medium text-secondary">Linked Block</p>
                 </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="border-secondary/20 hover:border-secondary/40 hover:bg-secondary/10 text-secondary"
-                  onClick={handleUnlinkBlock}
-                >
-                  <Unlink className="h-4 w-4 mr-1.5" />
-                  Unlink
-                </Button>
+                <p className="text-xs text-muted-foreground">
+                  Edits will update the source block
+                </p>
               </div>
-            </motion.div>
-          )}
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-secondary/20 hover:border-secondary/40 hover:bg-secondary/10 text-secondary"
+                onClick={handleUnlinkBlock}
+              >
+                <Unlink className="h-4 w-4 mr-1.5" />
+                Unlink
+              </Button>
+            </div>
+          </motion.div>
+        )}
 
-          {Object.entries(blockProperties.fields).map(([fieldName, field]) => (
-            <motion.div
-              key={fieldName}
-              className="space-y-2"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.2 }}
-            >
-              {renderFieldInput(fieldName, field)}
-            </motion.div>
-          ))}
-        </div>
-      </ScrollArea>
-    </PropertyFormContainer>
+        {Object.entries(blockProperties.fields).map(([fieldName, field]) => (
+          <motion.div
+            key={fieldName}
+            className="space-y-2"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.2 }}
+          >
+            {renderFieldInput(fieldName, field)}
+          </motion.div>
+        ))}
+      </div>
+    </>
   );
 }

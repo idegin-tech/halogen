@@ -219,7 +219,6 @@ export default function FilesTopPanel({ show, onHide }: { show: boolean; onHide:
     }
   };
 
-  // Drag and drop handling
   const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setIsDragging(true);

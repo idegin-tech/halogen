@@ -23,7 +23,7 @@ export default function PropertyFormContainer({
             {rightComponent}
           </div>
         </header>
-        <div className={"px-default h-[var(--panel-body-height)] overflow-y-auto space-y-default select-none"}>
+        <div className={"h-[var(--panel-body-height)] overflow-y-auto space-y-default select-none"}>
           {children}
         </div>
       </div>
