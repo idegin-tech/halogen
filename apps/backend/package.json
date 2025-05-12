@@ -10,7 +10,7 @@
     "watch": "nodemon --exec \"npm run build\" --watch src --ext ts",
     "clean": "rimraf dist",
     "lint": "eslint src --ext .ts",
-    "pm2:start": "pm2 stop halogen-backend && pm2 start dist/index.js --name halogen-backend"
+    "pm2:start": "pm2 start dist/index.js --name halogen-backend"
   },
   "keywords": [],
   "author": "",

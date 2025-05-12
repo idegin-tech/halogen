@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "pm2:start": "pm2 stop halogen-frontend && pm2 start npm --name 'halogen-frontend' -- start",
+    "pm2:start": "pm2 start npm --name 'halogen-frontend' -- start",
     "lint": "next lint"
   },
   "dependencies": {
