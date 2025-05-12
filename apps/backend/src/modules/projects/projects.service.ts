@@ -1,4 +1,4 @@
-import { Project, ProjectUserRole, PaginatedResponse, ProjectQueryOptions } from '@halogen/common';
+import { ProjectData, ProjectUserRole, PaginatedResponse, ProjectQueryOptions } from '@halogen/common';
 import { generateUsername } from 'unique-username-generator';
 import { CreateProjectDTO, UpdateProjectDTO, SyncProjectDTO } from './projects.dtos';
 import ProjectModel from './projects.model';
@@ -26,7 +26,7 @@ export class ProjectsService {
         return subdomain;
     }
 
-    static async createProject(userId: string, projectData: CreateProjectDTO): Promise<Project> {
+    static async createProject(userId: string, projectData: CreateProjectDTO): Promise<ProjectData> {
         try {
             const subdomain = await this.generateUniqueSubdomain();
             
@@ -124,7 +124,7 @@ export class ProjectsService {
         }
     }
 
-    static async getProjectBySubdomain(subdomain: string): Promise<Project | null> {
+    static async getProjectBySubdomain(subdomain: string): Promise<ProjectData | null> {
         try {
             const project = await ProjectModel.findOne({ subdomain });
             if (!project) return null;
@@ -143,7 +143,7 @@ export class ProjectsService {
     static async getUserProjects(
         userId: string, 
         options: ProjectQueryOptions = {}
-    ): Promise<PaginatedResponse<Project>> {
+    ): Promise<PaginatedResponse<ProjectData>> {
         try {
             const { 
                 search, 
@@ -202,7 +202,7 @@ export class ProjectsService {
         }
     }
 
-    static async updateProject(projectId: string, projectData: UpdateProjectDTO): Promise<Project | null> {
+    static async updateProject(projectId: string, projectData: UpdateProjectDTO): Promise<ProjectData | null> {
         try {
             if (projectData.subdomain) {
                 const existingProject = await ProjectModel.findOne({

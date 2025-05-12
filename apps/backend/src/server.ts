@@ -79,10 +79,10 @@ class App {
     this.app.use(cookieParser());
     this.app.use(compression());
     SessionConfig.configure(this.app);
-    
+
     this.app.use((req: Request, res: Response, next: NextFunction) => {
       req.requestTime = new Date().toISOString();
-      
+
       if (!req.url.includes('/health')) {
         Logger.http(`${req.method} ${req.url}`);
       }
@@ -93,24 +93,25 @@ class App {
   private configureRoutes(): void {
     this.app.get('/health', (req: Request, res: Response) => {
       const dbStatus = Database.getInstance().getStatus();
-      
+
       res.status(200).json({
         status: 'UP',
         timestamp: new Date().toISOString(),
         database: dbStatus
       });
     });
-    
+
     const apiPrefix = '/api/v1';
-    
+
     this.app.get(apiPrefix, (req: Request, res: Response) => {
-      res.json({ 
+      res.json({
         message: 'Welcome to the Halogen API',
         version: '1.0.0',
         environment: env.NODE_ENV
       });
     });
-      this.app.use(`${apiPrefix}/auth`, authRoutes);    this.app.use(`${apiPrefix}/projects`, projectsRoutes);
+    this.app.use(`${apiPrefix}/auth`, authRoutes); 
+    this.app.use(`${apiPrefix}/projects`, projectsRoutes);
     this.app.use(`${apiPrefix}/project-users`, projectUsersRoutes);
     this.app.use(`${apiPrefix}/pages`, pagesRoutes);
     this.app.use(`${apiPrefix}/variables`, variablesRoutes);
@@ -122,7 +123,7 @@ class App {
     this.app.use((req: Request, res: Response) => {
       ErrorHandlerMiddleware.handleNotFound(req, res);
     });
-    
+
     this.app.use((err: any, req: Request, res: Response, next: NextFunction) => {
       ErrorHandlerMiddleware.handleError(err, req, res, next);
     });

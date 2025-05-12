@@ -8,5 +8,6 @@ export default defineConfig({
   clean: true,
   dts: true,
   outDir: 'dist',
-  onSuccess: 'node dist/index.js',
+  // Removing auto-start to fix build issues
+  // onSuccess: 'node dist/index.js',
 });

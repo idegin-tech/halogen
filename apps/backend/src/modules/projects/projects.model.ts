@@ -46,8 +46,7 @@ const ProjectSchema: Schema = new Schema<ProjectData>({
 ProjectSchema.plugin(mongoosePaginate);
 
 ProjectSchema.index({ user: 1 });
-ProjectSchema.index({ subdomain: 1 }, { unique: true });
-ProjectSchema.index({ project_id: 1 }, { unique: true });
+// Removed duplicate indexes since they're already defined in the schema fields
 ProjectSchema.index({ name: 'text' }, { weights: { name: 10 } });
 
 export default mongoose.model<ProjectDocument, mongoose.PaginateModel<ProjectDocument>>('Project', ProjectSchema);

@@ -1,7 +1,7 @@
 import app from './server';
 import Database from './config/db.config';
 import Logger from './config/logger.config';
-import validateEnv from './config/env.config';
+import { validateEnv } from './config/env.config';
 import fs from 'fs';
 import path from 'path';
 

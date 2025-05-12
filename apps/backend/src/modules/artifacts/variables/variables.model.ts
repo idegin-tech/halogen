@@ -2,14 +2,8 @@ import { Variable } from '@halogen/common';
 import mongoose, { Schema, Document } from 'mongoose';
 import mongoosePaginate from 'mongoose-paginate-v2';
 
-export enum VariableType {
-  COLOR = 'color',
-  SIZE = 'size',
-  FONT = 'font',
-  SPACING = 'spacing',
-  SHADOW = 'shadow',
-  OPACITY = 'opacity'
-}
+// Using the variable types from the common package
+export type VariableType = 'color' | 'text' | 'size' | 'boolean';
 
 export type VariableDocumentProps = Omit<Variable, '_id'>;
 
@@ -31,12 +25,11 @@ const VariableSchema: Schema = new Schema<Variable>({
     type: String,
     required: true,
     trim: true
-  },
-  type: {
+  },  type: {
     type: String,
     required: true,
     trim: true,
-    enum: Object.values(VariableType)
+    enum: ['color', 'text', 'size', 'boolean']
   },
   primaryValue: {
     type: String,
