@@ -1,10 +1,13 @@
 import React from 'react';
 import { headers } from 'next/headers';
 import * as UiBlocks from '@repo/ui/blocks';
-import { fetchProjectData } from '@/lib/api';
 import { BlockInstance, PageData } from '@halogen/common/types';
+import { fetchProjectData } from '@/lib/api';
 
-export default async function CatchAllPage({ params }: { params: { slug?: string[] } }) {
+export default async function CatchAllPage({ params }: { 
+  params: Promise<{ slug: string[] }>
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>
+ }) {
   const headersList = await headers();
   const host = headersList.get('host') || '';
 
@@ -29,7 +32,7 @@ export default async function CatchAllPage({ params }: { params: { slug?: string
       return (
         <div className="container mx-auto p-8">
           <h1 className="text-3xl font-bold mb-6">Page Not Found</h1>
-          <p>No page found matching this path: {pathSegment}</p>
+          {/* <p>No page found matching this path: {pathSegment}</p> */}
         </div>
       );
     }
@@ -54,13 +57,7 @@ export default async function CatchAllPage({ params }: { params: { slug?: string
         const sourceBlock = projectData.blocks.find(
           (b: BlockInstance) => b.instance_id === currentBlock.ref
         );
-
-        console.log('Resolving block reference:', {
-          currentBlockId: currentBlock.instance_id,
-          refId: currentBlock.ref,
-          sourceBlockFound: !!sourceBlock
-        });
-
+        
         if (!sourceBlock) {
           return currentBlock;
         }
@@ -85,17 +82,28 @@ export default async function CatchAllPage({ params }: { params: { slug?: string
             if (!BlockComponent) {
               return (
                 <div key={block.instance_id} className="p-4 bg-red-50 border border-red-300 text-red-700">
-                  Failed to load component: {block.folderName}/{block.subFolder}
+                  {/* Failed to load component: {block.folderName}/{block.subFolder} */}
                 </div>
               );
             }
 
             const rootBlock = getRootBlock(block);
-            const blockValues = rootBlock.value || {};
+            const blockValues = rootBlock.value || {}; 
+            const safeBlockValues = typeof blockValues === 'object' && blockValues !== null 
+              ? Object.fromEntries(
+                  Object.entries(blockValues)
+                    .map(([key, val]) => {
+                      if (val && typeof val === 'object' && 'value' in val) {
+                        return [key, val.value];
+                      }
+                      return [key, val];
+                    })
+                )
+              : {};
 
             return (
               <div key={block.instance_id} className="block-wrapper">
-                <BlockComponent {...blockValues} />
+                {/* <BlockComponent {...safeBlockValues} /> */}
               </div>
             );
           })
@@ -110,8 +118,8 @@ export default async function CatchAllPage({ params }: { params: { slug?: string
         <h1 className="text-3xl font-bold mb-6">Error</h1>
         <div className="bg-red-50 p-4 rounded-md border border-red-300">
           <p className="text-xl mb-2">Could not load page content.</p>
-          <p><strong>Subdomain:</strong> {subdomain}</p>
-          <p><strong>Path:</strong> {pathSegment}</p>
+          {/* <p><strong>Subdomain:</strong> {`${subdomain}`}</p>
+          <p><strong>Path:</strong> {`${pathSegment}`}</p> */}
         </div>
       </div>
     );

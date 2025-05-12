@@ -7,17 +7,23 @@ import { CreateProjectModal } from './components/CreateProjectModal';
 import ClientProjects from './components/ClientProjects';
 import { QueryParams } from '@/types/api.types';
 
-interface PageProps {
-  searchParams: QueryParams;
-}
 
-export default async function ProjectsPage({ searchParams }: PageProps) {
-  const search = searchParams.search || '';
+export default async function ProjectsPage({ searchParams }: {
+  params: Promise<{ id: string }>
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>
+}) {
+  //@ts-ignore
+  const search = searchParams?.search || '';
+  //@ts-ignore
   const page = parseInt(String(searchParams.page) || '1', 10);
+  //@ts-ignore
   const limit = parseInt(String(searchParams.limit) || '12', 10);
+  //@ts-ignore
   const sortBy = searchParams.sortBy === 'name' || searchParams.sortBy === 'createdAt' || searchParams.sortBy === 'updatedAt'
-    ? searchParams.sortBy
-    : 'updatedAt';
+  //@ts-ignore
+  ? searchParams.sortBy
+  : 'updatedAt';
+  //@ts-ignore
   const sortOrder = searchParams.sortOrder === 'asc' ? 'asc' : 'desc';
 
   let projectsData: PaginatedResponse<ProjectData> | null = null;

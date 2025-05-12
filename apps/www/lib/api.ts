@@ -25,22 +25,3 @@ export async function fetchProjectData(subdomain: string, path: string, tags: st
   }
 }
 
-// This function is no longer used as we're calling fetchProjectData directly
-// Keeping for reference in case it's needed elsewhere
-/*
-export async function getProjectVariables(subdomain: string) {
-  try {
-    // Get project data from the API with variables included
-    const projectData = await fetchProjectData(subdomain);
-    
-    if (!projectData || !projectData.variables) {
-      console.warn('Project data or variables not found for subdomain:', subdomain);
-    }
-    
-    return projectData?.variables || [];
-  } catch (error) {
-    console.error('Error fetching project variables:', error);
-    return [];
-  }
-}
-*/

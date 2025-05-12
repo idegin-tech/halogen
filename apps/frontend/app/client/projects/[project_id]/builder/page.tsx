@@ -7,17 +7,18 @@ import { notFound } from "next/navigation";
 export default async function BuilderPage({
   params
 }: {
-  params: { project_id: string }
+  params: Promise<{ project_id: string }>
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }) {
-  const projectId = params.project_id;
-  
+  const projectId = (await params)?.project_id;
+
   // Fetch project data
   let projectData = null;
-  
+
   try {
     projectData = await fetchFromApi(`/projects/${projectId}`);
     console.log('THE PROJECT DATA:', projectData);
-    
+
     if (!projectData) {
       notFound();
     }

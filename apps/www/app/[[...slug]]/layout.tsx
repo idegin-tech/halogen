@@ -57,13 +57,6 @@ export default async function RootLayout({
     if (!response.ok) {
       if (response.status === 404) {
         console.warn(`Layout variables not found for subdomain "${subdomain}". Using default variables.`);
-        projectVariables = [
-          { key: 'primary', type: 'color', primaryValue: '#3b82f6' },
-          { key: 'secondary', type: 'color', primaryValue: '#6366f1' },
-          { key: 'accent', type: 'color', primaryValue: '#10b981' },
-          { key: 'background', type: 'color', primaryValue: '#ffffff' },
-          { key: 'foreground', type: 'color', primaryValue: '#1f2937' },
-        ];
       } else {
         throw new Error(`Failed to fetch layout variables: ${response.statusText}`);
       }
