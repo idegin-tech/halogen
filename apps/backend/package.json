@@ -4,9 +4,9 @@
   "description": "Backend API for Halogen project",
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsc --noEmit && tsup",
+    "build": "cross-env NODE_OPTIONS=--max-old-space-size=4096 tsc --noEmit && cross-env NODE_OPTIONS=--max-old-space-size=4096 tsup",
     "start": "node --max-old-space-size=4096 dist/index.js",
-    "dev": "tsup --watch --onSuccess \"node dist/index.js\"",
+    "dev": "cross-env NODE_OPTIONS=--max-old-space-size=4096 tsup --watch --onSuccess \"node dist/index.js\"",
     "watch": "nodemon --exec \"npm run build\" --watch src --ext ts",
     "clean": "rimraf dist",
     "lint": "eslint src --ext .ts",
