@@ -17,6 +17,9 @@
       "cache": false,
       "persistent": true,
       "outputs": []
+    },
+    "pm2:start": {
+      "cache": false
     }
   }
 }
