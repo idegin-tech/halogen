@@ -7,7 +7,10 @@
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "check-types": "turbo run check-types",
-    "pm2:start": "turbo run pm2:start"
+    "pm2:start": "turbo run pm2:start",
+    "setup": "turbo run setup && npm run pm2:start",
+    "redeploy": "turbo run redeploy && npm run restart-services",
+    "restart-services": "pm2 stop all || true && pm2 delete all || true && cd apps/backend && npm run pm2:start && cd ../frontend && npm run pm2:start && cd ../www && npm run pm2:start"
   },
   "devDependencies": {
     "prettier": "^3.5.3",

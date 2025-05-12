@@ -20,6 +20,14 @@
     },
     "pm2:start": {
       "cache": false
+    },
+    "setup": {
+      "dependsOn": ["build"],
+      "cache": false
+    },
+    "redeploy": {
+      "dependsOn": ["build"],
+      "cache": false
     }
   }
 }
