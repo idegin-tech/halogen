@@ -84,8 +84,7 @@ export class ProjectUserService {
 
             let aggregate = [];
 
-            if (search) {
-                aggregate.push(
+            if (search) {                aggregate.push(
                     {
                         $lookup: {
                             from: 'users',
@@ -130,13 +129,16 @@ export class ProjectUserService {
                 const results = await ProjectUserModel.aggregatePaginate(
                     ProjectUserModel.aggregate(aggregate),
                     options
-                );
-
-                return {
-                    docs: results.docs.map((doc: any) => ({
+                );                return {                    docs: results.docs.map((doc: any) => ({
                         ...doc,
                         _id: doc._id.toString(),
-                        user: doc.user.toString(),
+                        user: {
+                            _id: doc.userDetails._id.toString(),
+                            displayName: doc.userDetails.displayName,
+                            name: doc.userDetails.name,
+                            email: doc.userDetails.email,
+                            avatarUrl: doc.userDetails.avatarUrl || null
+                        },
                         project: doc.project.toString()
                     })),
                     totalDocs: results.totalDocs,
@@ -149,15 +151,13 @@ export class ProjectUserService {
                     prevPage: results.prevPage,
                     nextPage: results.nextPage
                 };
-            } else {
-                const paginateOptions = {
+            } else {                const paginateOptions = {
                     page: Number(page),
                     limit: Number(limit),
                     sort: { [sortBy]: sortOrder === 'asc' ? 1 : -1 },
-                    lean: true,
-                    populate: {
+                    lean: true,                    populate: {
                         path: 'user',
-                        select: 'name email'
+                        select: 'displayName name email avatarUrl'
                     }
                 };
 
@@ -167,9 +167,7 @@ export class ProjectUserService {
                     docs: results.docs.map(doc => ({
                         ...doc,
                         _id: doc._id as any,
-                        // @ts-ignore
-                        user: typeof doc.user === 'object' ? doc.user._id as any : doc.user.toString(),
-                        project: doc.project.toString()
+                        user: doc.user
                     })),
                     totalDocs: results.totalDocs,
                     limit: results.limit,

@@ -8,6 +8,7 @@ import mongoose from 'mongoose';
 import PageModel from '../artifacts/pages/pages.model';
 import VariableModel from '../artifacts/variables/variables.model';
 import BlockInstanceModel from '../artifacts/block-instance/block-instances.model';
+import { ProjectMetadataService } from '../project-metadata';
 
 export class ProjectsService {
     static async generateUniqueSubdomain(): Promise<string> {
@@ -15,7 +16,7 @@ export class ProjectsService {
         let subdomain: string = generateUsername('-', 2);
 
         while (!isUnique) {
-            subdomain = generateUsername('-', 2); 
+            subdomain = generateUsername('-', 2);
 
             const existingProject = await ProjectModel.findOne({ subdomain });
             if (!existingProject) {
@@ -29,9 +30,9 @@ export class ProjectsService {
     static async createProject(userId: string, projectData: CreateProjectDTO): Promise<ProjectData> {
         try {
             const subdomain = await this.generateUniqueSubdomain();
-            
+
             const { pages: pagesData, ...projectFields } = projectData;
-            
+
             if (!projectFields.project_id) {
                 projectFields.project_id = `proj_${Date.now()}`;
             }
@@ -51,11 +52,10 @@ export class ProjectsService {
             });
 
             await projectUser.save();
-            
-           //@ts-ignore
+
+            //@ts-ignore
             const homePageId = `page_home_${savedProject._id.toString().substring(0, 6)}`;
-            
-            // Always create a default home page
+
             const homePage = new PageModel({
                 name: 'Home',
                 path: '/',
@@ -63,23 +63,27 @@ export class ProjectsService {
                 project: savedProject._id,
                 page_id: homePageId
             });
-            
+
             await homePage.save();
-        
-            // If additional pages were provided, also create those
+
             if (pagesData && pagesData.length > 0) {
                 for (const pageData of pagesData) {
-                    // Skip if it's another attempt to create a page at the root path
                     if (pageData.path === '/') continue;
-                    
+
                     const page = new PageModel({
                         ...pageData,
                         project: savedProject._id
                     });
-                    
+
                     await page.save();
                 }
-            }
+            }             const defaultMetadata = {
+                project: savedProject._id?.toString() || '',
+                title: projectFields.name,
+                description: projectFields.description || ''
+            };
+
+            await ProjectMetadataService.createProjectMetadata(defaultMetadata);
 
             const projectObj = savedProject.toObject();
             return {
@@ -90,26 +94,23 @@ export class ProjectsService {
             Logger.error(`Create project error: ${error instanceof Error ? error.message : 'Unknown error'}`);
             throw error;
         }
-    }
-
-    static async getProjectById(projectId: string) {
+    } static async getProjectById(projectId: string) {
         try {
             const project = await ProjectModel.findById(projectId);
             if (!project) return null;
-            
+
             const projectObj = project.toObject();
-            
+
             const projectUsers = await ProjectUserModel.find({ project: projectId })
                 .populate('user', 'displayName email')
                 .limit(10)
                 .lean();
-                
+
             const pages = await PageModel.find({ project: projectId }).lean();
-            
+
             const variables = await VariableModel.find({ project: projectId }).lean();
-            
             const blockInstances = await BlockInstanceModel.find({ project: projectId }).lean();
-            
+
             return {
                 ...projectObj,
                 _id: projectObj._id as string,
@@ -122,13 +123,11 @@ export class ProjectsService {
             Logger.error(`Get project error: ${error instanceof Error ? error.message : 'Unknown error'}`);
             throw error;
         }
-    }
-
-    static async getProjectBySubdomain(subdomain: string): Promise<ProjectData | null> {
+    } static async getProjectBySubdomain(subdomain: string): Promise<ProjectData | null> {
         try {
             const project = await ProjectModel.findOne({ subdomain });
             if (!project) return null;
-            
+
             const projectObj = project.toObject();
             return {
                 ...projectObj,
@@ -141,29 +140,29 @@ export class ProjectsService {
     }
 
     static async getUserProjects(
-        userId: string, 
+        userId: string,
         options: ProjectQueryOptions = {}
     ): Promise<PaginatedResponse<ProjectData>> {
         try {
-            const { 
-                search, 
-                page = 1, 
-                limit = 10, 
-                sortBy = 'createdAt', 
-                sortOrder = 'desc' 
+            const {
+                search,
+                page = 1,
+                limit = 10,
+                sortBy = 'createdAt',
+                sortOrder = 'desc'
             } = options;
 
             const projectUsers = await ProjectUserModel.find({ user: userId });
             const projectIds = projectUsers.map(pu => pu.project);
 
             const query: any = { _id: { $in: projectIds } };
-            
+
             if (search) {
                 query.$or = [
                     { name: { $regex: search, $options: 'i' } },
-                    { subdomain: { $regex: search, $options: 'i' } } 
+                    { subdomain: { $regex: search, $options: 'i' } }
                 ];
-                
+
                 if (mongoose.Types.ObjectId.isValid(search)) {
                     query.$or.push({ _id: search });
                 }
@@ -177,15 +176,15 @@ export class ProjectsService {
                 limit: Number(limit),
                 sort,
                 lean: true
-            };
+            }; const results = await ProjectModel.paginate(query, paginateOptions);
 
-            const results = await ProjectModel.paginate(query, paginateOptions);
-            
             return {
-                docs: results.docs.map(project => ({
-                    ...project,
-                    _id: project._id as any
-                })),
+                docs: results.docs.map(project => {
+                    return {
+                        ...project,
+                        _id: project._id as any
+                    };
+                }),
                 totalDocs: results.totalDocs,
                 limit: results.limit,
                 totalPages: results.totalPages,
@@ -222,7 +221,7 @@ export class ProjectsService {
             );
 
             if (!updatedProject) return null;
-            
+
             const projectObj = updatedProject.toObject();
             return {
                 ...projectObj,
@@ -232,9 +231,7 @@ export class ProjectsService {
             Logger.error(`Update project error: ${error instanceof Error ? error.message : 'Unknown error'}`);
             throw error;
         }
-    }
-
-    static async deleteProject(projectId: string): Promise<boolean> {
+    } static async deleteProject(projectId: string): Promise<boolean> {
         try {
             const deleteResult = await ProjectModel.deleteOne({ _id: projectId });
 
@@ -242,34 +239,38 @@ export class ProjectsService {
                 return false;
             }
 
+            // Also delete related data
             await ProjectUserModel.deleteMany({ project: projectId });
+
+            // Delete project metadata if exists
+            await ProjectMetadataService.deleteProjectMetadataByProjectId(projectId);
 
             return true;
         } catch (error) {
             Logger.error(`Delete project error: ${error instanceof Error ? error.message : 'Unknown error'}`);
             throw error;
         }
-    }    static async syncProject(projectId: string, data: SyncProjectDTO): Promise<Record<string, any>> {
+    } static async syncProject(projectId: string, data: SyncProjectDTO): Promise<Record<string, any>> {
         try {
             // Update project data
             const projectData = data.project;
             if (!projectData) {
                 throw new Error('Project data is required');
             }
-            
+
             const updatedProject = await ProjectModel.findByIdAndUpdate(
-                projectId, 
-                { 
+                projectId,
+                {
                     ...projectData,
                     updatedAt: new Date()
                 },
                 { new: true }
             );
-            
+
             if (!updatedProject) {
                 throw new Error('Project not found');
             }
-            
+
             return {
                 project: updatedProject.toObject(),
             };

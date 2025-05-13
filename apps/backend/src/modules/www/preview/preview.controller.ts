@@ -4,6 +4,7 @@ import ProjectModel from '../../projects/projects.model';
 import PageModel from '../../artifacts/pages/pages.model';
 import BlockInstanceModel from '../../artifacts/block-instance/block-instances.model';
 import VariableModel from '../../artifacts/variables/variables.model';
+import ProjectMetadataModel from '../../project-metadata/project-metadata.model';
 import Logger from '../../../config/logger.config';
 
 export class PreviewController {
@@ -28,15 +29,18 @@ export class PreviewController {
       if (!pages || pages.length === 0) {
         ResponseHelper.error(res, 'No pages found for this project', 404);
         return;
-      }
-      const blockInstances = await BlockInstanceModel.find({ project: project._id });
+      }      const blockInstances = await BlockInstanceModel.find({ project: project._id });
 
       const variables = await VariableModel.find({ project: project._id });
+      
+      // Get project metadata if available
+      const metadata = await ProjectMetadataModel.findOne({ project: project._id });
 
       ResponseHelper.success(res, {
         variables,
         pages,
         blocks: blockInstances,
+        metadata: metadata || undefined
       }, 'Project data retrieved successfully');
     } catch (error) {
       Logger.error(`Preview error: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -62,17 +66,19 @@ export class PreviewController {
       if (!project) {
         ResponseHelper.error(res, 'Project not found', 404);
         return;
-      }
-
-      // Fetch project variables only
+      }      // Fetch project variables only
       const variables = await VariableModel.find({ project: project._id });
+      
+      // Get project metadata if available
+      const metadata = await ProjectMetadataModel.findOne({ project: project._id });
 
       const response = {
         project: {
           id: project._id,
           name: project.name,
           subdomain: project.subdomain,
-          project_id: project.project_id
+          project_id: project.project_id,
+          metadata: metadata || undefined
         },
         variables: variables.map(variable => ({
           variable_id: variable.variable_id,

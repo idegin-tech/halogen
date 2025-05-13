@@ -12,12 +12,10 @@ export default async function BuilderPage({
 }) {
   const projectId = (await params)?.project_id;
 
-  // Fetch project data
   let projectData = null;
 
   try {
     projectData = await fetchFromApi(`/projects/${projectId}`);
-    console.log('THE PROJECT DATA:', projectData);
 
     if (!projectData) {
       notFound();

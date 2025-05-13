@@ -1,10 +1,11 @@
 import React from 'react'
-import { BlocksIcon, BrushIcon, Database, FileIcon, FolderIcon, SettingsIcon } from "lucide-react"
+import { BlocksIcon, BrushIcon, Database, FileIcon, FolderIcon, Puzzle, SettingsIcon } from "lucide-react"
 import { ToggleButton } from '../ToggleBtn'
 import PagesTopPanel from './PagesTopPanel'
 import ThemeTopPanel from './ThemeTopPanel'
 import BlocksTopPanel from './BlocksTopPanel'
 import FilesTopPanel from './FilesTopPanel'
+import SettingsTopPanel from './SettingsTopPanel/SettingsTopPanel'
 import { useTopPanelContext } from '@/context/top-panel.context'
 
 export default function TopPanelToggler() {
@@ -52,6 +53,8 @@ export default function TopPanelToggler() {
                     Icon={SettingsIcon}
                     label={"Site settings"}
                     placement="bottom"
+                    onClick={() => setActiveTopPanel('settings')}
+                    isActive={activeTopPanel === 'settings'}
                 />
             </div>
             <PagesTopPanel
@@ -65,10 +68,13 @@ export default function TopPanelToggler() {
             <BlocksTopPanel
                 onHide={() => setActiveTopPanel(null)}
                 show={activeTopPanel === 'blocks'}
-            />
-            <FilesTopPanel
+            />            <FilesTopPanel
                 onHide={() => setActiveTopPanel(null)}
                 show={activeTopPanel === 'files'}
+            />
+            <SettingsTopPanel
+                onHide={() => setActiveTopPanel(null)}
+                show={activeTopPanel === 'settings'}
             />
         </>
     )

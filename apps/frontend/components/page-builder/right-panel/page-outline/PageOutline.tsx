@@ -120,53 +120,25 @@ export default function PageOutline() {
 
     if (!state.selectedPageId) {
         return (
-            <PropertyFormContainer
-                leftComponent={
-                    <div className="truncate">
-                        <h3 className="text-md font-semibold truncate">Page Outline</h3>
-                        <div className="flex items-center gap-1">
-                            <p className="text-xs text-muted-foreground select-none truncate">Block structure and order</p>
-                        </div>
-                    </div>
-                }
-                rightComponent={
-                    <Button variant="ghost" size="icon" disabled>
-                        <RefreshCw className="h-4 w-4" />
-                    </Button>
-                }
-            >
+            <>
                 <div className="flex flex-col items-center justify-center h-full p-6 text-center text-muted-foreground">
                     <Layers className="h-12 w-12 mb-4 opacity-50" />
                     <p className="mb-2 text-lg font-medium">No Page Selected</p>
                     <p className="text-sm">Select a page to view and manage its blocks</p>
                 </div>
-            </PropertyFormContainer>
+            </>
         );
     }
 
     if (blocks.length === 0) {
         return (
-            <PropertyFormContainer
-                leftComponent={
-                    <div className="truncate">
-                        <h3 className="text-md font-semibold truncate">Page Outline</h3>
-                        <div className="flex items-center gap-1">
-                            <p className="text-xs text-muted-foreground select-none truncate">Block structure and order</p>
-                        </div>
-                    </div>
-                }
-                rightComponent={
-                    <Button variant="ghost" size="icon">
-                        <RefreshCw className="h-4 w-4" />
-                    </Button>
-                }
-            >
-                <div className="flex flex-col items-center justify-center h-full p-6 text-center border border-dashed border-muted rounded-lg">
+            <>
+                <div className="flex mt-40 flex-col items-center justify-center h-full p-6 text-center border border-dashed border-muted rounded-lg">
                     <Layers className="h-12 w-12 mb-4 text-muted-foreground/70" />
                     <p className="mb-2 text-lg font-medium">No Blocks On This Page</p>
                     <p className="text-sm text-muted-foreground">Add some blocks to this page to see them here</p>
                 </div>
-            </PropertyFormContainer>
+            </>
         );
     }
 

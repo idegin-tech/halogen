@@ -22,13 +22,13 @@ const api = axios.create({
 
 // Error handler
 const handleError = (error: any) => {
-  const message = 
-    error instanceof AxiosError 
+  const message =
+    error instanceof AxiosError
       ? error.response?.data?.message || error.message
       : error instanceof Error
         ? error.message
         : 'An unexpected error occurred';
-        
+
   toast.error(message);
   return message;
 };
@@ -41,8 +41,8 @@ export type ApiState<T> = {
 };
 
 export function useQuery<T>(
-  endpoint: string, 
-  config?: AxiosRequestConfig, 
+  endpoint: string,
+  config?: AxiosRequestConfig,
   dependencies: any[] = [],
   options = { enabled: true }
 ) {
@@ -51,9 +51,8 @@ export function useQuery<T>(
     isLoading: false,
     error: null,
   });
-
   const execute = useCallback(async () => {
-    if (!options.enabled) return null;
+    if (!endpoint || !options.enabled) return null;
 
     setState(prev => ({ ...prev, isLoading: true, error: null }));
     try {
@@ -65,19 +64,29 @@ export function useQuery<T>(
       });
       return response.data.payload;
     } catch (error) {
-      const errorMessage = handleError(error);
-      setState({
-        data: null,
-        isLoading: false,
-        error: errorMessage,
-      });
+      // Don't show toast for 404 responses as they're often expected
+      if (error instanceof AxiosError && error.response?.status === 404) {
+        setState({
+          data: null,
+          isLoading: false,
+          error: 'Not found',
+        });
+      } else {
+        const errorMessage = handleError(error);
+        setState({
+          data: null,
+          isLoading: false,
+          error: errorMessage,
+        });
+      }
       return null;
     }
   }, [endpoint, config, options.enabled]);
-
   useEffect(() => {
-    execute();
-  }, [...dependencies, execute]);
+    if (endpoint) {
+      execute();
+    }
+  }, [...dependencies]);
 
   return {
     ...state,

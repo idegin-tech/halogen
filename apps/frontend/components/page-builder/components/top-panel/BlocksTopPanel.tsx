@@ -359,13 +359,6 @@ export default function BlocksTopPanel({ show, onHide }: { show: boolean, onHide
                 onRemoveSet={handleRemoveBlockFolder}
                 onSetActiveSet={setSelectedFolder}
                 onSetChange={handleSetChange}
-                subPageHeading={
-                    selectedFolder === 'used-blocks'
-                        ? "Master Blocks"
-                        : selectedFolder
-                            ? `${selectedFolder.charAt(0).toUpperCase() + selectedFolder.slice(1)} Blocks`
-                            : "Select a block type"
-                }
                 breadcrumbs={breadcrumbs} // Pass the breadcrumbs to the TopPanelContainer
             >
                 <div className='flex-1 overflow-x-hidden overflow-y-auto'>
