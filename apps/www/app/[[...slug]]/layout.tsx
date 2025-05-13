@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { headers } from "next/headers";
 import "../globals.css";
 import Script from "next/script";
+import { extractSubdomain } from "@/lib/subdomain";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -30,14 +31,9 @@ export default async function RootLayout({
   // console.log('[DEBUG] Layout Headers:', Object.fromEntries(headersList.entries()));
   // console.log('[DEBUG] Layout Host header value:', host);
   
-  let subdomain = 'demo'; // Default fallback subdomain
-  if (host && host.includes('.')) {
-    subdomain = host.split('.')[0];
-  } else {
-    console.warn('Could not extract subdomain from host:', host);
-  }
-  
-  // console.log('[DEBUG] Layout resolved subdomain:', subdomain);
+  // Extract subdomain from host using the shared utility
+  const subdomain = extractSubdomain(host);
+  console.log('[DEBUG] Layout resolved subdomain:', subdomain, 'from host:', host);
 
   let projectVariables: any[] = [];
   try {

@@ -3,25 +3,16 @@ import { headers } from 'next/headers';
 import * as UiBlocks from '@repo/ui/blocks';
 import { BlockInstance, PageData } from '@halogen/common/types';
 import { fetchProjectData } from '@/lib/api';
+import { extractSubdomain } from '@/lib/subdomain';
 
 export default async function CatchAllPage({ params }: { 
   params: Promise<{ slug: string[] }>
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>
  }) {  const headersList = await headers();
   const host = headersList.get('host') || '';
-
-  let subdomain = '';
-  if (host.includes('localhost')) {
-    subdomain = host.split(':')[0] === 'localhost' ? 'demo' : host.split(':')[0];
-  } else {
-    const hostParts = host.split('.');
-    
-    if (hostParts.length > 2) {
-      subdomain = hostParts.slice(0, -2).join('.');
-    } else {
-      subdomain = 'demo';
-    }
-  }
+  // Extract subdomain from host using the shared utility
+  const subdomain = extractSubdomain(host);
+  console.log(`Page component resolved subdomain: ${subdomain} from host: ${host}`);
   
   const allParams = await params;
   const pathSegment = allParams.slug ? `/${allParams.slug.join('/')}` : '/';  try {
