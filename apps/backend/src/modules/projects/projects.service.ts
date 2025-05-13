@@ -43,12 +43,10 @@ export class ProjectsService {
                 user: userId
             });
 
-            const savedProject = await newProject.save();
-
-            const projectUser = new ProjectUserModel({
+            const savedProject = await newProject.save();            const projectUser = new ProjectUserModel({
                 project: savedProject._id as string,
                 user: userId,
-                role: ProjectUserRole.OWNER
+                role: ProjectUserRole.MANAGER
             });
 
             await projectUser.save();
@@ -123,9 +121,9 @@ export class ProjectsService {
             Logger.error(`Get project error: ${error instanceof Error ? error.message : 'Unknown error'}`);
             throw error;
         }
-    } static async getProjectBySubdomain(subdomain: string): Promise<ProjectData | null> {
+    }    static async getProjectBySubdomain(subdomain: string): Promise<ProjectData | null> {
         try {
-            const project = await ProjectModel.findOne({ subdomain });
+            const project = await ProjectModel.findOne({ subdomain }).populate('user', 'name displayName email avatarUrl');
             if (!project) return null;
 
             const projectObj = project.toObject();

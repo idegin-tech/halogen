@@ -193,9 +193,8 @@ export default function SettingsTopPanelUsers() {
   const handlePageChange = (newPage: number) => {
     setPage(newPage);
   };
-
   const roleColorMap = {
-    [ProjectUserRole.OWNER]: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-300',
+    'owner': 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-300', // Keep for backward compatibility
     [ProjectUserRole.MANAGER]: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-300',
     [ProjectUserRole.DEVELOPER]: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300'
   };
@@ -267,16 +266,14 @@ export default function SettingsTopPanelUsers() {
                       </Badge>
                       <Badge variant="outline" className={statusColorMap[user.status]}>
                         {user.status}
-                      </Badge>
-
-                      <DropdownMenu>
+                      </Badge>                      <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button disabled={user.role === ProjectUserRole.OWNER} variant="ghost" size="sm" className="h-8 w-8 p-0">
+                          <Button disabled={user.user._id === project?.user} variant="ghost" size="sm" className="h-8 w-8 p-0">
                             <MoreVertical className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          {user.role !== ProjectUserRole.OWNER && (
+                          {user.user._id !== project?.user && (
                             <>
                               <DropdownMenuLabel>Actions</DropdownMenuLabel>
                               <DropdownMenuItem onClick={() => openChangeRoleDialog(user._id, ProjectUserRole.MANAGER)}>
