@@ -1,11 +1,10 @@
-// Utility functions for API calls
 
 export async function fetchProjectData(subdomain: string, path: string, tags: string[]) {
   try {
     const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/preview/projects/subdomain/${subdomain}?path=${path}`;
     const response = await fetch(apiUrl, {
       next: { 
-        revalidate: 180, // Revalidate every 3 minutes
+        revalidate: 180,
         tags
       },
       headers: {
@@ -14,6 +13,7 @@ export async function fetchProjectData(subdomain: string, path: string, tags: st
     });
 
     if (!response.ok) {
+      console.log(response.body)
       throw new Error(`Failed to fetch project data: ${response.statusText}`);
     }
 

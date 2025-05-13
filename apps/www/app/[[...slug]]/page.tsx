@@ -188,6 +188,7 @@ export default async function CatchAllPage({ params }: {
         )}
       </div>
     );  } catch (error) {
+      console.log(error)
     console.error(`Failed to render page: Subdomain=${subdomain}, Path=${pathSegment}, Host=${host}`, error);
 
     return (
