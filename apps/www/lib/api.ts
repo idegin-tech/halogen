@@ -1,6 +1,11 @@
 
 export async function fetchProjectData(subdomain: string, path: string, tags: string[]) {
   try {
+    console.log('Fetching project data...',{
+      subdomain,
+      path,
+      tags
+    });
     const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/preview/projects/subdomain/${subdomain}?path=${path}`;
     const response = await fetch(apiUrl, {
       next: { 
