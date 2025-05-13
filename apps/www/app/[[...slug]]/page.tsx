@@ -7,11 +7,22 @@ import { fetchProjectData } from '@/lib/api';
 export default async function CatchAllPage({ params }: { 
   params: Promise<{ slug: string[] }>
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>
- }) {
-  const headersList = await headers();
+ }) {  const headersList = await headers();
   const host = headersList.get('host') || '';
 
-  const subdomain = host.split('.')[0];
+  let subdomain = '';
+  if (host.includes('localhost')) {
+    subdomain = host.split(':')[0] === 'localhost' ? 'demo' : host.split(':')[0];
+  } else {
+    const hostParts = host.split('.');
+    
+    if (hostParts.length > 2) {
+      subdomain = hostParts.slice(0, -2).join('.');
+    } else {
+      subdomain = 'demo';
+    }
+  }
+  
   const allParams = await params;
   const pathSegment = allParams.slug ? `/${allParams.slug.join('/')}` : '/';  try {
     const projectData = await fetchProjectData(subdomain, pathSegment, [subdomain]);    if (!projectData) {
@@ -23,8 +34,7 @@ export default async function CatchAllPage({ params }: {
             <p className="text-lg text-muted-foreground">Could not find any content for this page.</p>
             {process.env.NODE_ENV !== 'production' && (
               <div className="mt-4 p-5 bg-destructive/10 border border-destructive/20 rounded-lg shadow-sm">
-                <h2 className="text-lg font-semibold text-destructive mb-3">Debug Information</h2>
-                <div className="space-y-2 text-sm">
+                <h2 className="text-lg font-semibold text-destructive mb-3">Debug Information</h2>                <div className="space-y-2 text-sm">
                   <div className="grid grid-cols-[120px_1fr] items-start">
                     <div className="font-medium">Subdomain:</div>
                     <div className="font-mono bg-muted px-2 py-1 rounded">{subdomain}</div>
@@ -36,6 +46,10 @@ export default async function CatchAllPage({ params }: {
                   <div className="grid grid-cols-[120px_1fr] items-start">
                     <div className="font-medium">Host:</div>
                     <div className="font-mono bg-muted px-2 py-1 rounded">{host}</div>
+                  </div>
+                  <div className="grid grid-cols-[120px_1fr] items-start">
+                    <div className="font-medium">Full Domain:</div>
+                    <div className="font-mono bg-muted px-2 py-1 rounded">{host.split(':')[0]}</div>
                   </div>
                   <div className="grid grid-cols-[120px_1fr] items-start">
                     <div className="font-medium">Error:</div>
@@ -58,8 +72,7 @@ export default async function CatchAllPage({ params }: {
             <p className="text-lg text-muted-foreground">No page found matching this path.</p>
             {process.env.NODE_ENV !== 'production' && (
               <div className="mt-4 p-5 bg-destructive/10 border border-destructive/20 rounded-lg shadow-sm">
-                <h2 className="text-lg font-semibold text-destructive mb-3">Debug Information</h2>
-                <div className="space-y-2 text-sm">
+                <h2 className="text-lg font-semibold text-destructive mb-3">Debug Information</h2>                <div className="space-y-2 text-sm">
                   <div className="grid grid-cols-[120px_1fr] items-start">
                     <div className="font-medium">Subdomain:</div>
                     <div className="font-mono bg-muted px-2 py-1 rounded">{subdomain}</div>
@@ -67,6 +80,10 @@ export default async function CatchAllPage({ params }: {
                   <div className="grid grid-cols-[120px_1fr] items-start">
                     <div className="font-medium">Path:</div>
                     <div className="font-mono bg-muted px-2 py-1 rounded">{pathSegment}</div>
+                  </div>
+                  <div className="grid grid-cols-[120px_1fr] items-start">
+                    <div className="font-medium">Host:</div>
+                    <div className="font-mono bg-muted px-2 py-1 rounded">{host}</div>
                   </div>
                   <div className="grid grid-cols-[120px_1fr] items-start">
                     <div className="font-medium">Project ID:</div>
@@ -93,8 +110,7 @@ export default async function CatchAllPage({ params }: {
             <p className="text-lg text-muted-foreground">This page has no content blocks.</p>
             {process.env.NODE_ENV !== 'production' && (
               <div className="mt-4 p-5 bg-warning/10 border border-warning/20 rounded-lg shadow-sm">
-                <h2 className="text-lg font-semibold text-warning-foreground mb-3">Debug Information</h2>
-                <div className="space-y-2 text-sm">
+                <h2 className="text-lg font-semibold text-warning-foreground mb-3">Debug Information</h2>                <div className="space-y-2 text-sm">
                   <div className="grid grid-cols-[120px_1fr] items-start">
                     <div className="font-medium">Subdomain:</div>
                     <div className="font-mono bg-muted px-2 py-1 rounded">{subdomain}</div>
@@ -102,6 +118,10 @@ export default async function CatchAllPage({ params }: {
                   <div className="grid grid-cols-[120px_1fr] items-start">
                     <div className="font-medium">Path:</div>
                     <div className="font-mono bg-muted px-2 py-1 rounded">{pathSegment}</div>
+                  </div>
+                  <div className="grid grid-cols-[120px_1fr] items-start">
+                    <div className="font-medium">Host:</div>
+                    <div className="font-mono bg-muted px-2 py-1 rounded">{host}</div>
                   </div>
                   <div className="grid grid-cols-[120px_1fr] items-start">
                     <div className="font-medium">Page ID:</div>
@@ -201,8 +221,7 @@ export default async function CatchAllPage({ params }: {
             
             {process.env.NODE_ENV !== 'production' && (
               <div className="mt-6 p-5 bg-card border rounded-lg shadow-sm">
-                <h2 className="text-lg font-semibold mb-3 text-card-foreground">Debug Information</h2>
-                <div className="space-y-2 text-sm">
+                <h2 className="text-lg font-semibold mb-3 text-card-foreground">Debug Information</h2>                <div className="space-y-2 text-sm">
                   <div className="grid grid-cols-[120px_1fr] items-start">
                     <div className="font-medium">Subdomain:</div>
                     <div className="font-mono bg-muted px-2 py-1 rounded">{subdomain}</div>
@@ -214,6 +233,10 @@ export default async function CatchAllPage({ params }: {
                   <div className="grid grid-cols-[120px_1fr] items-start">
                     <div className="font-medium">Host:</div>
                     <div className="font-mono bg-muted px-2 py-1 rounded">{host}</div>
+                  </div>
+                  <div className="grid grid-cols-[120px_1fr] items-start">
+                    <div className="font-medium">Full Domain:</div>
+                    <div className="font-mono bg-muted px-2 py-1 rounded">{host.split(':')[0]}</div>
                   </div>
                   <div className="grid grid-cols-[120px_1fr] items-start">
                     <div className="font-medium">Error:</div>
