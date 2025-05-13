@@ -195,7 +195,7 @@ export default async function CatchAllPage({ params }: {
 
           return (
             <div key={block.instance_id} className="block-wrapper">
-              {/* <BlockComponent {...safeBlockValues} /> */}
+              <BlockComponent {...safeBlockValues} />
             </div>
           );
         })
