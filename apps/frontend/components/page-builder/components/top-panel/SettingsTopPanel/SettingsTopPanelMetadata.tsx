@@ -126,16 +126,7 @@ export default function SettingsTopPanelMetadata() {
         ...prev,
         [type]: uploadedUrl
       }));
-      
-      // If we want to immediately save the upload
-      /*if (project?._id) {
-        await updateMetadata({
-          ...formData,
-          [type]: uploadedUrl,
-          project: project._id
-        });
-        toast.success(`${type === 'favicon' ? 'Favicon' : 'Open Graph image'} updated`);
-      }*/
+      toast.success(`${type === 'favicon' ? 'Favicon' : 'Open Graph image'} uploaded successfully`);
     }
   };
 
@@ -153,6 +144,7 @@ export default function SettingsTopPanelMetadata() {
       setIsFormDirty(false);
     }
   }, [metadata]);
+
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -174,7 +166,7 @@ export default function SettingsTopPanelMetadata() {
         ...formData,
         project: project._id
       });
-
+      
       toast.success("Metadata updated successfully");
       setIsFormDirty(false);
       refetch();
@@ -182,9 +174,6 @@ export default function SettingsTopPanelMetadata() {
       console.error("Error updating metadata:", error);
       toast.error("Failed to update metadata");
     }
-  };
-  // This code has been replaced by the handleFileChange function
-  // This code has been replaced by the handleFileChange function
   };
 
   if (isLoading) {
@@ -245,6 +234,7 @@ export default function SettingsTopPanelMetadata() {
           </div>
         </CardContent>
       </Card>
+
       <Card>
         <CardHeader>
           <CardTitle>Favicon</CardTitle>
@@ -283,15 +273,16 @@ export default function SettingsTopPanelMetadata() {
                   type="file"
                   id="favicon-upload"
                   className="hidden"
-                  accept=".ico,.png"                  onChange={(e) => handleFileChange(e, 'favicon')}
+                  accept=".ico,.png"
+                  onChange={(e) => handleFileChange(e, 'favicon')}
                 />
               </label>
             </div>
             {formData.favicon && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
+              <Button 
+                type="button" 
+                variant="ghost" 
+                size="sm" 
                 className="mt-2"
                 onClick={() => {
                   setFormData(prev => ({
@@ -313,7 +304,7 @@ export default function SettingsTopPanelMetadata() {
           </div>
         </CardContent>
       </Card>
-
+        
       <Card>
         <CardHeader>
           <CardTitle>Social Media Cards</CardTitle>
@@ -351,7 +342,7 @@ export default function SettingsTopPanelMetadata() {
                       className="w-full h-48 object-cover rounded-md shadow-sm"
                     />
                     <div className="absolute inset-0 bg-black/0 hover:bg-black/40 transition-colors flex items-center justify-center opacity-0 hover:opacity-100">
-                      <Button variant="secondary" size="sm" className="gap-1">
+                      <Button variant="secondary" size="sm" className="gap-1" type="button">
                         <PaintBucket className="h-4 w-4" /> Replace image
                       </Button>
                     </div>
@@ -371,7 +362,8 @@ export default function SettingsTopPanelMetadata() {
                   type="file"
                   id="og-image-upload"
                   className="hidden"
-                  accept=".jpg,.jpeg,.png"                  onChange={(e) => handleFileChange(e, 'ogImage')}
+                  accept=".jpg,.jpeg,.png"
+                  onChange={(e) => handleFileChange(e, 'ogImage')}
                 />
               </label>
             </div>
@@ -426,5 +418,5 @@ export default function SettingsTopPanelMetadata() {
         </div>
       )}
     </form>
-  )
+  );
 }
