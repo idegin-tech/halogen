@@ -5,18 +5,21 @@ import { BlockInstance, PageData } from '@halogen/common/types';
 import { fetchProjectData } from '@/lib/api';
 import { extractSubdomain } from '@/lib/subdomain';
 
-export default async function CatchAllPage({ params }: { 
+export default async function CatchAllPage({ params }: {
   params: Promise<{ slug: string[] }>
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>
- }) {  const headersList = await headers();
+}) {
+  const headersList = await headers();
   const host = headersList.get('host') || '';
-  // Extract subdomain from host using the shared utility
+
   const subdomain = extractSubdomain(host);
   console.log(`Page component resolved subdomain: ${subdomain} from host: ${host}`);
-  
+
   const allParams = await params;
-  const pathSegment = allParams.slug ? `/${allParams.slug.join('/')}` : '/';  try {
-    const projectData = await fetchProjectData(subdomain, pathSegment, [subdomain]);    if (!projectData) {
+  const pathSegment = allParams.slug ? `/${allParams.slug.join('/')}` : '/'; try {
+    const projectData = await fetchProjectData(subdomain, pathSegment, [subdomain]);
+
+    if (!projectData) {
       console.error(`Project not found: Subdomain=${subdomain}, Path=${pathSegment}, Host=${host}`);
       return (
         <div className="container mx-auto p-8">
@@ -54,7 +57,7 @@ export default async function CatchAllPage({ params }: {
       );
     }
 
-    const matchingPage = projectData.pages?.find((page: PageData) => page.path === pathSegment);    if (!matchingPage) {
+    const matchingPage = projectData.pages?.find((page: PageData) => page.path === pathSegment); if (!matchingPage) {
       console.error(`Page not found: Subdomain=${subdomain}, Path=${pathSegment}, ProjectID=${projectData.project_id}`);
       return (
         <div className="container mx-auto p-8">
@@ -92,7 +95,7 @@ export default async function CatchAllPage({ params }: {
       );
     }
 
-    const pageBlocks: BlockInstance[] = projectData.blocks?.filter((block: BlockInstance) => block.page_id === matchingPage.page_id);    if (!pageBlocks || pageBlocks.length === 0) {
+    const pageBlocks: BlockInstance[] = projectData.blocks?.filter((block: BlockInstance) => block.page_id === matchingPage.page_id); if (!pageBlocks || pageBlocks.length === 0) {
       console.warn(`Empty page (no blocks): Subdomain=${subdomain}, Path=${pathSegment}, PageID=${matchingPage.page_id}, ProjectID=${projectData.project_id}`);
       return (
         <div className="container mx-auto p-8">
@@ -143,7 +146,7 @@ export default async function CatchAllPage({ params }: {
         const sourceBlock = projectData.blocks.find(
           (b: BlockInstance) => b.instance_id === currentBlock.ref
         );
-        
+
         if (!sourceBlock) {
           return currentBlock;
         }
@@ -156,50 +159,51 @@ export default async function CatchAllPage({ params }: {
 
     return (
       <div className="site-content">        {sortedBlocks.length === 0 ? (
-          <div className="container mx-auto p-8">
-            <div className="flex flex-col gap-3">
-              <h1 className="text-4xl font-bold text-warning-foreground">Empty Page</h1>
-              <p className="text-lg text-muted-foreground">This page has no content blocks.</p>
-            </div>
+        <div className="container mx-auto p-8">
+          <div className="flex flex-col gap-3">
+            <h1 className="text-4xl font-bold text-warning-foreground">Empty Page</h1>
+            <p className="text-lg text-muted-foreground">This page has no content blocks.</p>
           </div>
-        ): (
-          sortedBlocks.map(block => {
-            const BlockComponent = UiBlocks.getBlockComponent(block.folderName, block.subFolder);            if (!BlockComponent) {
-              return (
-                <div key={block.instance_id} className="p-4 bg-destructive/10 border border-destructive/20 rounded-md shadow-sm text-destructive">
-                  {process.env.NODE_ENV !== 'production' ? (
-                    <p className="font-mono text-sm">Failed to load component: {block.folderName}/{block.subFolder}</p>
-                  ) : (
-                    <p>This content cannot be displayed</p>
-                  )}
-                </div>
-              );
-            }
-
-            const rootBlock = getRootBlock(block);
-            const blockValues = rootBlock.value || {}; 
-            const safeBlockValues = typeof blockValues === 'object' && blockValues !== null 
-              ? Object.fromEntries(
-                  Object.entries(blockValues)
-                    .map(([key, val]) => {
-                      if (val && typeof val === 'object' && 'value' in val) {
-                        return [key, val.value];
-                      }
-                      return [key, val];
-                    })
-                )
-              : {};
-
+        </div>
+      ) : (
+        sortedBlocks.map(block => {
+          const BlockComponent = UiBlocks.getBlockComponent(block.folderName, block.subFolder); if (!BlockComponent) {
             return (
-              <div key={block.instance_id} className="block-wrapper">
-                {/* <BlockComponent {...safeBlockValues} /> */}
+              <div key={block.instance_id} className="p-4 bg-destructive/10 border border-destructive/20 rounded-md shadow-sm text-destructive">
+                {process.env.NODE_ENV !== 'production' ? (
+                  <p className="font-mono text-sm">Failed to load component: {block.folderName}/{block.subFolder}</p>
+                ) : (
+                  <p>This content cannot be displayed</p>
+                )}
               </div>
             );
-          })
-        )}
+          }
+
+          const rootBlock = getRootBlock(block);
+          const blockValues = rootBlock.value || {};
+          const safeBlockValues = typeof blockValues === 'object' && blockValues !== null
+            ? Object.fromEntries(
+              Object.entries(blockValues)
+                .map(([key, val]) => {
+                  if (val && typeof val === 'object' && 'value' in val) {
+                    return [key, val.value];
+                  }
+                  return [key, val];
+                })
+            )
+            : {};
+
+          return (
+            <div key={block.instance_id} className="block-wrapper">
+              {/* <BlockComponent {...safeBlockValues} /> */}
+            </div>
+          );
+        })
+      )}
       </div>
-    );  } catch (error) {
-      console.log(error)
+    );
+  } catch (error) {
+    console.log(error)
     console.error(`Failed to render page: Subdomain=${subdomain}, Path=${pathSegment}, Host=${host}`, error);
 
     return (
@@ -209,7 +213,7 @@ export default async function CatchAllPage({ params }: {
           <div className="p-5 bg-destructive/10 border border-destructive/30 rounded-lg shadow-sm">
             <p className="text-xl font-medium text-destructive mb-2">Could not load page content</p>
             <p className="text-muted-foreground">An unexpected error occurred while trying to load this page.</p>
-            
+
             {process.env.NODE_ENV !== 'production' && (
               <div className="mt-6 p-5 bg-card border rounded-lg shadow-sm">
                 <h2 className="text-lg font-semibold mb-3 text-card-foreground">Debug Information</h2>                <div className="space-y-2 text-sm">
@@ -233,7 +237,7 @@ export default async function CatchAllPage({ params }: {
                     <div className="font-medium">Error:</div>
                     <div className="font-mono bg-destructive/20 text-destructive px-2 py-1 rounded">{error instanceof Error ? error.message : String(error)}</div>
                   </div>
-                  
+
                   {error instanceof Error && error.stack && (
                     <details className="mt-4 border rounded-md">
                       <summary className="cursor-pointer p-2 bg-muted font-medium">Stack Trace</summary>
