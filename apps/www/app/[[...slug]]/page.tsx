@@ -13,37 +13,112 @@ export default async function CatchAllPage({ params }: {
 
   const subdomain = host.split('.')[0];
   const allParams = await params;
-  const pathSegment = allParams.slug ? `/${allParams.slug.join('/')}` : '/';
-  try {
-    const projectData = await fetchProjectData(subdomain, pathSegment, [subdomain]);
-
-    if (!projectData) {
+  const pathSegment = allParams.slug ? `/${allParams.slug.join('/')}` : '/';  try {
+    const projectData = await fetchProjectData(subdomain, pathSegment, [subdomain]);    if (!projectData) {
+      console.error(`Project not found: Subdomain=${subdomain}, Path=${pathSegment}, Host=${host}`);
       return (
         <div className="container mx-auto p-8">
-          <h1 className="text-3xl font-bold mb-6">Page Not Found</h1>
-          <p>Could not find any content for this page.</p>
+          <div className="flex flex-col gap-3">
+            <h1 className="text-4xl font-bold text-destructive-foreground">Page Not Found</h1>
+            <p className="text-lg text-muted-foreground">Could not find any content for this page.</p>
+            {process.env.NODE_ENV !== 'production' && (
+              <div className="mt-4 p-5 bg-destructive/10 border border-destructive/20 rounded-lg shadow-sm">
+                <h2 className="text-lg font-semibold text-destructive mb-3">Debug Information</h2>
+                <div className="space-y-2 text-sm">
+                  <div className="grid grid-cols-[120px_1fr] items-start">
+                    <div className="font-medium">Subdomain:</div>
+                    <div className="font-mono bg-muted px-2 py-1 rounded">{subdomain}</div>
+                  </div>
+                  <div className="grid grid-cols-[120px_1fr] items-start">
+                    <div className="font-medium">Path:</div>
+                    <div className="font-mono bg-muted px-2 py-1 rounded">{pathSegment}</div>
+                  </div>
+                  <div className="grid grid-cols-[120px_1fr] items-start">
+                    <div className="font-medium">Host:</div>
+                    <div className="font-mono bg-muted px-2 py-1 rounded">{host}</div>
+                  </div>
+                  <div className="grid grid-cols-[120px_1fr] items-start">
+                    <div className="font-medium">Error:</div>
+                    <div className="font-mono bg-destructive/20 text-destructive px-2 py-1 rounded">Project data not found</div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       );
     }
 
-    const matchingPage = projectData.pages?.find((page: PageData) => page.path === pathSegment);
-
-    if (!matchingPage) {
+    const matchingPage = projectData.pages?.find((page: PageData) => page.path === pathSegment);    if (!matchingPage) {
+      console.error(`Page not found: Subdomain=${subdomain}, Path=${pathSegment}, ProjectID=${projectData.project_id}`);
       return (
         <div className="container mx-auto p-8">
-          <h1 className="text-3xl font-bold mb-6">Page Not Found</h1>
-          {/* <p>No page found matching this path: {pathSegment}</p> */}
+          <div className="flex flex-col gap-3">
+            <h1 className="text-4xl font-bold text-destructive-foreground">Page Not Found</h1>
+            <p className="text-lg text-muted-foreground">No page found matching this path.</p>
+            {process.env.NODE_ENV !== 'production' && (
+              <div className="mt-4 p-5 bg-destructive/10 border border-destructive/20 rounded-lg shadow-sm">
+                <h2 className="text-lg font-semibold text-destructive mb-3">Debug Information</h2>
+                <div className="space-y-2 text-sm">
+                  <div className="grid grid-cols-[120px_1fr] items-start">
+                    <div className="font-medium">Subdomain:</div>
+                    <div className="font-mono bg-muted px-2 py-1 rounded">{subdomain}</div>
+                  </div>
+                  <div className="grid grid-cols-[120px_1fr] items-start">
+                    <div className="font-medium">Path:</div>
+                    <div className="font-mono bg-muted px-2 py-1 rounded">{pathSegment}</div>
+                  </div>
+                  <div className="grid grid-cols-[120px_1fr] items-start">
+                    <div className="font-medium">Project ID:</div>
+                    <div className="font-mono bg-muted px-2 py-1 rounded">{projectData.project_id}</div>
+                  </div>
+                  <div className="grid grid-cols-[120px_1fr] items-start">
+                    <div className="font-medium">Error:</div>
+                    <div className="font-mono bg-destructive/20 text-destructive px-2 py-1 rounded">No matching page for this path</div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       );
     }
 
-    const pageBlocks: BlockInstance[] = projectData.blocks?.filter((block: BlockInstance) => block.page_id === matchingPage.page_id);
-
-    if (!pageBlocks || pageBlocks.length === 0) {
+    const pageBlocks: BlockInstance[] = projectData.blocks?.filter((block: BlockInstance) => block.page_id === matchingPage.page_id);    if (!pageBlocks || pageBlocks.length === 0) {
+      console.warn(`Empty page (no blocks): Subdomain=${subdomain}, Path=${pathSegment}, PageID=${matchingPage.page_id}, ProjectID=${projectData.project_id}`);
       return (
         <div className="container mx-auto p-8">
-          <h1 className="text-3xl font-bold mb-6">Empty Page</h1>
-          <p>This page has no content blocks.</p>
+          <div className="flex flex-col gap-3">
+            <h1 className="text-4xl font-bold text-warning-foreground">Empty Page</h1>
+            <p className="text-lg text-muted-foreground">This page has no content blocks.</p>
+            {process.env.NODE_ENV !== 'production' && (
+              <div className="mt-4 p-5 bg-warning/10 border border-warning/20 rounded-lg shadow-sm">
+                <h2 className="text-lg font-semibold text-warning-foreground mb-3">Debug Information</h2>
+                <div className="space-y-2 text-sm">
+                  <div className="grid grid-cols-[120px_1fr] items-start">
+                    <div className="font-medium">Subdomain:</div>
+                    <div className="font-mono bg-muted px-2 py-1 rounded">{subdomain}</div>
+                  </div>
+                  <div className="grid grid-cols-[120px_1fr] items-start">
+                    <div className="font-medium">Path:</div>
+                    <div className="font-mono bg-muted px-2 py-1 rounded">{pathSegment}</div>
+                  </div>
+                  <div className="grid grid-cols-[120px_1fr] items-start">
+                    <div className="font-medium">Page ID:</div>
+                    <div className="font-mono bg-muted px-2 py-1 rounded">{matchingPage.page_id}</div>
+                  </div>
+                  <div className="grid grid-cols-[120px_1fr] items-start">
+                    <div className="font-medium">Project ID:</div>
+                    <div className="font-mono bg-muted px-2 py-1 rounded">{projectData.project_id}</div>
+                  </div>
+                  <div className="grid grid-cols-[120px_1fr] items-start">
+                    <div className="font-medium">Status:</div>
+                    <div className="font-mono bg-warning/20 text-warning-foreground px-2 py-1 rounded">No content blocks found for this page</div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       );
     }
@@ -69,20 +144,23 @@ export default async function CatchAllPage({ params }: {
     };
 
     return (
-      <div className="site-content">
-        {sortedBlocks.length === 0 ? (
+      <div className="site-content">        {sortedBlocks.length === 0 ? (
           <div className="container mx-auto p-8">
-            <h1 className="text-3xl font-bold mb-6">Empty Page</h1>
-            <p>This page has no content blocks.</p>
+            <div className="flex flex-col gap-3">
+              <h1 className="text-4xl font-bold text-warning-foreground">Empty Page</h1>
+              <p className="text-lg text-muted-foreground">This page has no content blocks.</p>
+            </div>
           </div>
-        ) : (
+        ): (
           sortedBlocks.map(block => {
-            const BlockComponent = UiBlocks.getBlockComponent(block.folderName, block.subFolder);
-
-            if (!BlockComponent) {
+            const BlockComponent = UiBlocks.getBlockComponent(block.folderName, block.subFolder);            if (!BlockComponent) {
               return (
-                <div key={block.instance_id} className="p-4 bg-red-50 border border-red-300 text-red-700">
-                  {/* Failed to load component: {block.folderName}/{block.subFolder} */}
+                <div key={block.instance_id} className="p-4 bg-destructive/10 border border-destructive/20 rounded-md shadow-sm text-destructive">
+                  {process.env.NODE_ENV !== 'production' ? (
+                    <p className="font-mono text-sm">Failed to load component: {block.folderName}/{block.subFolder}</p>
+                  ) : (
+                    <p>This content cannot be displayed</p>
+                  )}
                 </div>
               );
             }
@@ -109,17 +187,50 @@ export default async function CatchAllPage({ params }: {
           })
         )}
       </div>
-    );
-  } catch (error) {
-    console.error('Failed to render page:', error);
+    );  } catch (error) {
+    console.error(`Failed to render page: Subdomain=${subdomain}, Path=${pathSegment}, Host=${host}`, error);
 
     return (
       <div className="container mx-auto p-8">
-        <h1 className="text-3xl font-bold mb-6">Error</h1>
-        <div className="bg-red-50 p-4 rounded-md border border-red-300">
-          <p className="text-xl mb-2">Could not load page content.</p>
-          {/* <p><strong>Subdomain:</strong> {`${subdomain}`}</p>
-          <p><strong>Path:</strong> {`${pathSegment}`}</p> */}
+        <div className="flex flex-col gap-3">
+          <h1 className="text-4xl font-bold text-destructive">Error</h1>
+          <div className="p-5 bg-destructive/10 border border-destructive/30 rounded-lg shadow-sm">
+            <p className="text-xl font-medium text-destructive mb-2">Could not load page content</p>
+            <p className="text-muted-foreground">An unexpected error occurred while trying to load this page.</p>
+            
+            {process.env.NODE_ENV !== 'production' && (
+              <div className="mt-6 p-5 bg-card border rounded-lg shadow-sm">
+                <h2 className="text-lg font-semibold mb-3 text-card-foreground">Debug Information</h2>
+                <div className="space-y-2 text-sm">
+                  <div className="grid grid-cols-[120px_1fr] items-start">
+                    <div className="font-medium">Subdomain:</div>
+                    <div className="font-mono bg-muted px-2 py-1 rounded">{subdomain}</div>
+                  </div>
+                  <div className="grid grid-cols-[120px_1fr] items-start">
+                    <div className="font-medium">Path:</div>
+                    <div className="font-mono bg-muted px-2 py-1 rounded">{pathSegment}</div>
+                  </div>
+                  <div className="grid grid-cols-[120px_1fr] items-start">
+                    <div className="font-medium">Host:</div>
+                    <div className="font-mono bg-muted px-2 py-1 rounded">{host}</div>
+                  </div>
+                  <div className="grid grid-cols-[120px_1fr] items-start">
+                    <div className="font-medium">Error:</div>
+                    <div className="font-mono bg-destructive/20 text-destructive px-2 py-1 rounded">{error instanceof Error ? error.message : String(error)}</div>
+                  </div>
+                  
+                  {error instanceof Error && error.stack && (
+                    <details className="mt-4 border rounded-md">
+                      <summary className="cursor-pointer p-2 bg-muted font-medium">Stack Trace</summary>
+                      <pre className="p-3 text-xs overflow-x-auto bg-card border-t">
+                        {error.stack}
+                      </pre>
+                    </details>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     );
