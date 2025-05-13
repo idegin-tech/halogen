@@ -39,13 +39,27 @@ class App {
   }
 
   private configureSecurityMiddleware(): void {
-    this.app.use(helmet());
-
-    const corsOrigins = env.CORS_ORIGIN.split(',');
+    this.app.use(helmet());    const corsOrigins = env.CORS_ORIGIN.split(',');
     this.app.use(cors({
       origin: (origin, callback) => {
         if (!origin) return callback(null, true);
-        if (corsOrigins.indexOf(origin) !== -1 || env.NODE_ENV === 'development') {
+        if (env.NODE_ENV === 'development') return callback(null, true);
+        
+        // Check if origin matches any allowed origin
+        const isAllowed = corsOrigins.some(allowedOrigin => {
+          // Check for exact match
+          if (allowedOrigin === origin) return true;
+          
+          // Check for wildcard subdomain match (format: https://*.example.com)
+          if (allowedOrigin.includes('*')) {
+            const domainPart = allowedOrigin.replace('*.', '');
+            return origin.endsWith(domainPart);
+          }
+          
+          return false;
+        });
+        
+        if (isAllowed) {
           callback(null, true);
         } else {
           callback(new Error('Not allowed by CORS'));
