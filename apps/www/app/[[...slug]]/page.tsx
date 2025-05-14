@@ -18,8 +18,7 @@ export async function generateMetadata(
   const pathSegment = resolvedParams.slug ? `/${resolvedParams.slug.join('/')}` : '/';
     try {
     const projectData = await fetchProjectData(subdomain, pathSegment, [`${subdomain}-metadata`]);
-    
-    if (!projectData || !projectData.metadata) {
+      if (!projectData || !projectData.metadata) {
      
       const parentMetadata = await parent;
       return {
@@ -27,16 +26,19 @@ export async function generateMetadata(
         description: parentMetadata.description
       };
     }
-
+    
+    // Include favicon from project metadata if available
+    const favicon = projectData.metadata.favicon || undefined;
+    
     console.log('THE META DATA::', projectData.metadata)
     
     const { pageMetadata = {}, siteMetadata = {} } = projectData.metadata || {};
     const title = projectData.metadata.title || siteMetadata.title || 'Halogen Site';
     const description = pageMetadata.description || siteMetadata.description || 'Created with Halogen';
-    
-    return {
+      return {
       title,
       description,
+      icons: favicon ? { icon: favicon, apple: favicon } : undefined,
       openGraph: {
         title,
         description,

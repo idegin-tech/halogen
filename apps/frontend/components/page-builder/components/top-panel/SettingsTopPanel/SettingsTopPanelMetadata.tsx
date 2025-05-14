@@ -47,11 +47,10 @@ export default function SettingsTopPanelMetadata() {
         {},
         [project?._id],
         { enabled: !!project?._id }
-    );
-
-    // Update metadata mutation
+    );    // Update metadata mutation - using PUT method for proper update
     const { mutate: updateMetadata, isLoading: isUpdating } = useMutation<ProjectMetadata, Partial<ProjectMetadata>>(
-        project?._id ? `/project-metadata/project/${project?._id}` : ''
+        'project-metadata', // Base endpoint 
+        { method: 'PUT' } // Specify PUT method to match backend route expectation
     );
 
     // Handle changes in the form fields
@@ -195,9 +194,7 @@ export default function SettingsTopPanelMetadata() {
             });
             setIsFormDirty(false);
         }
-    }, [metadata]);
-
-    // Handle form submission
+    }, [metadata]);    // Handle form submission
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
@@ -213,8 +210,8 @@ export default function SettingsTopPanelMetadata() {
         }
 
         try {
-            // Use the mutate function to update the metadata
-            await updateMetadata({
+            // Use the mutate function with the proper endpoint for updating by project ID
+            await updateMetadata(`project/${project._id}`, {
                 ...formData,
                 project: project._id
             });

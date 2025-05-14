@@ -27,10 +27,12 @@ export async function generateMetadata(
     const { siteMetadata = {} } = projectData.metadata || {};
     const title = projectData.metadata.title || siteMetadata.title || 'Halogen Site';
     const description = siteMetadata.description || 'Created with Halogen';
+    const favicon = projectData.metadata.favicon || undefined;
 
     return {
       title,
       description,
+      icons: favicon ? { icon: favicon, apple: favicon } : undefined,
       openGraph: {
         title,
         description,

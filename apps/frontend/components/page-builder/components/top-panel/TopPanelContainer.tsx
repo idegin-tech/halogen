@@ -150,184 +150,188 @@ export default function TopPanelContainer(
                     '-top-[95vh]': !show,
                 })}
             >
-                <div className='flex-1 bg-background flex'>
-                    {!withoutFirstColumn && (
-                        <div className='min-w-[35%] max-w-[35%] h-full border-r border-border select-none bg-sidebar'>
-                            <header className='h-[var(--header-height)] border-b border-border flex justify-between items-center px-2 select-none'>
-                                <p className='font-bold text-xl text-muted-foreground'>{heading}</p>
-                                <Button variant='ghost' size='sm' className="h-8 w-8 p-0" onClick={handleAddClick}>
-                                    <PlusIcon className="h-4 w-4" />
-                                </Button>
-                            </header>
-                            <div className='flex-1 overflow-x-hidden overflow-y-auto p-2 space-y-2'>
-                                {
-                                    setList.map((set, index) => {
-                                        // Handle string dividers (for backward compatibility)
-                                        if (typeof set === 'string') {
-                                            return (
-                                                <div
-                                                    key={`divider-${index}`}
-                                                    className="px-2 py-1"
-                                                >
-                                                    <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{set}</div>
-                                                    <div className="h-px bg-border mt-1"></div>
-                                                </div>
-                                            );
-                                        }
-                                        
-                                        // Handle items with isHeader property
-                                        if ('isHeader' in set && set.isHeader) {
-                                            return (
-                                                <div
-                                                    key={set.id}
-                                                    className="px-2 py-1"
-                                                >
-                                                    <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{set.name}</div>
-                                                    <div className="h-px bg-border mt-1"></div>
-                                                </div>
-                                            );
-                                        }
+                {
+                    show && <>
+                        <div className='flex-1 bg-background flex'>
+                            {!withoutFirstColumn && (
+                                <div className='min-w-[35%] max-w-[35%] h-full border-r border-border select-none bg-sidebar'>
+                                    <header className='h-[var(--header-height)] border-b border-border flex justify-between items-center px-2 select-none'>
+                                        <p className='font-bold text-xl text-muted-foreground'>{heading}</p>
+                                        <Button variant='ghost' size='sm' className="h-8 w-8 p-0" onClick={handleAddClick}>
+                                            <PlusIcon className="h-4 w-4" />
+                                        </Button>
+                                    </header>
+                                    <div className='flex-1 overflow-x-hidden overflow-y-auto p-2 space-y-2'>
+                                        {
+                                            setList.map((set, index) => {
+                                                // Handle string dividers (for backward compatibility)
+                                                if (typeof set === 'string') {
+                                                    return (
+                                                        <div
+                                                            key={`divider-${index}`}
+                                                            className="px-2 py-1"
+                                                        >
+                                                            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{set}</div>
+                                                            <div className="h-px bg-border mt-1"></div>
+                                                        </div>
+                                                    );
+                                                }
 
-                                        // Handle regular items
-                                        return (
-                                            <div
-                                                key={set.id}
-                                                className={cn(
-                                                    'flex items-center gap-2 p-2 hover:bg-accent cursor-pointer rounded-md',
-                                                    activeSetId === set.id && 'bg-accent hover:bg-accent',
-                                                    activeSetId !== set.id && 'opacity-70 hover:opacity-100',
-                                                )}
-                                                onClick={() => onSetActiveSet(set.id)}
-                                            >
-                                                <div className='text-sm'>
-                                                    {
-                                                        set.isLocked ?
-                                                            <LockIcon className="h-5 w-5" /> :
-                                                            React.isValidElement(set.icon)
-                                                                ? React.cloneElement(set.icon, { className: 'h-5 w-5' })
-                                                                : null
-                                                    }
+                                                // Handle items with isHeader property
+                                                if ('isHeader' in set && set.isHeader) {
+                                                    return (
+                                                        <div
+                                                            key={set.id}
+                                                            className="px-2 py-1"
+                                                        >
+                                                            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{set.name}</div>
+                                                            <div className="h-px bg-border mt-1"></div>
+                                                        </div>
+                                                    );
+                                                }
 
-                                                </div>
-                                                <p className='text-sm flex-1 truncate'>{set.name}</p>
-                                                <DropdownMenu>
-                                                    <DropdownMenuTrigger asChild>
-                                                        <Button variant="ghost" size='sm' className="h-8 w-8 p-0">
-                                                            <Ellipsis className="h-4 w-4" />
-                                                        </Button>
-                                                    </DropdownMenuTrigger>
-                                                    <DropdownMenuContent align="end">
-                                                        <DropdownMenuItem onSelect={() => console.log('Edit')}>
-                                                            Edit
-                                                        </DropdownMenuItem>
-                                                        {!set.isLocked && (
-                                                            <DropdownMenuItem
-                                                                className="text-destructive focus:bg-destructive/10 focus:text-destructive"
-                                                                onSelect={(e) => {
-                                                                    e.stopPropagation();
-                                                                    onRemoveSet(set.id);
-                                                                }}
-                                                            >
-                                                                Delete
-                                                            </DropdownMenuItem>
+                                                // Handle regular items
+                                                return (
+                                                    <div
+                                                        key={set.id}
+                                                        className={cn(
+                                                            'flex items-center gap-2 p-2 hover:bg-accent cursor-pointer rounded-md',
+                                                            activeSetId === set.id && 'bg-accent hover:bg-accent',
+                                                            activeSetId !== set.id && 'opacity-70 hover:opacity-100',
                                                         )}
-                                                    </DropdownMenuContent>
-                                                </DropdownMenu>
-                                            </div>
-                                        );
-                                    })
-                                }
+                                                        onClick={() => onSetActiveSet(set.id)}
+                                                    >
+                                                        <div className='text-sm'>
+                                                            {
+                                                                set.isLocked ?
+                                                                    <LockIcon className="h-5 w-5" /> :
+                                                                    React.isValidElement(set.icon)
+                                                                        ? React.cloneElement(set.icon, { className: 'h-5 w-5' })
+                                                                        : null
+                                                            }
 
-                                {isAddingNew && (
-                                    <div className={cn(
-                                        'flex flex-col gap-1 p-2',
-                                        'bg-muted/70 rounded-md',
-                                        nameError && 'border border-destructive'
-                                    )}>
-                                        <div className="flex items-center gap-2">
-                                            <div className='text-sm'>
-                                                <PlusIcon className="h-5 w-5" />
-                                            </div>
-                                            <input
-                                                ref={newInputRef}
-                                                type="text"
-                                                className={cn(
-                                                    'text-sm flex-1 bg-transparent border-none outline-none focus:ring-0'
+                                                        </div>
+                                                        <p className='text-sm flex-1 truncate'>{set.name}</p>
+                                                        <DropdownMenu>
+                                                            <DropdownMenuTrigger asChild>
+                                                                <Button variant="ghost" size='sm' className="h-8 w-8 p-0">
+                                                                    <Ellipsis className="h-4 w-4" />
+                                                                </Button>
+                                                            </DropdownMenuTrigger>
+                                                            <DropdownMenuContent align="end">
+                                                                <DropdownMenuItem onSelect={() => console.log('Edit')}>
+                                                                    Edit
+                                                                </DropdownMenuItem>
+                                                                {!set.isLocked && (
+                                                                    <DropdownMenuItem
+                                                                        className="text-destructive focus:bg-destructive/10 focus:text-destructive"
+                                                                        onSelect={(e) => {
+                                                                            e.stopPropagation();
+                                                                            onRemoveSet(set.id);
+                                                                        }}
+                                                                    >
+                                                                        Delete
+                                                                    </DropdownMenuItem>
+                                                                )}
+                                                            </DropdownMenuContent>
+                                                        </DropdownMenu>
+                                                    </div>
+                                                );
+                                            })
+                                        }
+
+                                        {isAddingNew && (
+                                            <div className={cn(
+                                                'flex flex-col gap-1 p-2',
+                                                'bg-muted/70 rounded-md',
+                                                nameError && 'border border-destructive'
+                                            )}>
+                                                <div className="flex items-center gap-2">
+                                                    <div className='text-sm'>
+                                                        <PlusIcon className="h-5 w-5" />
+                                                    </div>
+                                                    <input
+                                                        ref={newInputRef}
+                                                        type="text"
+                                                        className={cn(
+                                                            'text-sm flex-1 bg-transparent border-none outline-none focus:ring-0'
+                                                        )}
+                                                        placeholder="Enter name and press Enter"
+                                                        value={newSetName}
+                                                        onChange={handleInputChange}
+                                                        onBlur={handleCreateNewSet}
+                                                        onKeyDown={handleKeyDown}
+                                                    />
+                                                </div>
+                                                {nameError && (
+                                                    <p className="text-xs text-destructive ml-7">{nameError}</p>
                                                 )}
-                                                placeholder="Enter name and press Enter"
-                                                value={newSetName}
-                                                onChange={handleInputChange}
-                                                onBlur={handleCreateNewSet}
-                                                onKeyDown={handleKeyDown}
-                                            />
-                                        </div>
-                                        {nameError && (
-                                            <p className="text-xs text-destructive ml-7">{nameError}</p>
+                                            </div>
                                         )}
                                     </div>
-                                )}
-                            </div>
-                        </div>
-                    )}
-                    <div className={cn('h-full bg-background flex flex-col', {
-                        'flex-1': !withoutFirstColumn,
-                        'w-full': withoutFirstColumn
-                    })}>
-                        <header className='h-[var(--header-height)] border-b border-border flex justify-between items-center px-4 select-none'>
-                            <div className="flex items-center">
-                                <Breadcrumb>
-                                    <BreadcrumbList>
-                                        {breadcrumbs.length > 0 ? (
-                                            breadcrumbs.map((item, index) => (
-                                                <React.Fragment key={index}>
-                                                    <BreadcrumbItem>
-                                                        {index === breadcrumbs.length - 1 ? (
-                                                            <BreadcrumbPage>{item.label}</BreadcrumbPage>
-                                                        ) : (
-                                                            <BreadcrumbLink href={item.href || "#"}>{item.label}</BreadcrumbLink>
-                                                        )}
-                                                    </BreadcrumbItem>
-                                                    {index < breadcrumbs.length - 1 && <BreadcrumbSeparator />}
-                                                </React.Fragment>
-                                            ))
-                                        ) : (
-                                            <>
-                                                <BreadcrumbItem>
-                                                    <BreadcrumbLink href="/">{heading}</BreadcrumbLink>
-                                                </BreadcrumbItem>
-                                                {subPageHeading && (
+                                </div>
+                            )}
+                            <div className={cn('h-full bg-background flex flex-col', {
+                                'flex-1': !withoutFirstColumn,
+                                'w-full': withoutFirstColumn
+                            })}>
+                                <header className='h-[var(--header-height)] border-b border-border flex justify-between items-center px-4 select-none'>
+                                    <div className="flex items-center">
+                                        <Breadcrumb>
+                                            <BreadcrumbList>
+                                                {breadcrumbs.length > 0 ? (
+                                                    breadcrumbs.map((item, index) => (
+                                                        <React.Fragment key={index}>
+                                                            <BreadcrumbItem>
+                                                                {index === breadcrumbs.length - 1 ? (
+                                                                    <BreadcrumbPage>{item.label}</BreadcrumbPage>
+                                                                ) : (
+                                                                    <BreadcrumbLink href={item.href || "#"}>{item.label}</BreadcrumbLink>
+                                                                )}
+                                                            </BreadcrumbItem>
+                                                            {index < breadcrumbs.length - 1 && <BreadcrumbSeparator />}
+                                                        </React.Fragment>
+                                                    ))
+                                                ) : (
                                                     <>
-                                                        <BreadcrumbSeparator />
                                                         <BreadcrumbItem>
-                                                            <BreadcrumbPage>{subPageHeading}</BreadcrumbPage>
+                                                            <BreadcrumbLink href="/">{heading}</BreadcrumbLink>
                                                         </BreadcrumbItem>
+                                                        {subPageHeading && (
+                                                            <>
+                                                                <BreadcrumbSeparator />
+                                                                <BreadcrumbItem>
+                                                                    <BreadcrumbPage>{subPageHeading}</BreadcrumbPage>
+                                                                </BreadcrumbItem>
+                                                            </>
+                                                        )}
                                                     </>
+                                                )}
+                                            </BreadcrumbList>
+                                        </Breadcrumb>
+
+                                        {!secondColumnHeaderContent && (
+                                            <>
+                                                <p className='font-bold text-lg ml-4'>{subPageHeading}</p>
+                                                {subPageDescription && (
+                                                    <p className="text-sm text-muted-foreground">{subPageDescription}</p>
                                                 )}
                                             </>
                                         )}
-                                    </BreadcrumbList>
-                                </Breadcrumb>
-
-                                {!secondColumnHeaderContent && (
-                                    <>
-                                        <p className='font-bold text-lg ml-4'>{subPageHeading}</p>
-                                        {subPageDescription && (
-                                            <p className="text-sm text-muted-foreground">{subPageDescription}</p>
-                                        )}
-                                    </>
-                                )}
-                            </div>
-                            {secondColumnHeaderContent && (
-                                <div className="flex items-center gap-2">
-                                    {secondColumnHeaderContent}
+                                    </div>
+                                    {secondColumnHeaderContent && (
+                                        <div className="flex items-center gap-2">
+                                            {secondColumnHeaderContent}
+                                        </div>
+                                    )}
+                                </header>
+                                <div className='flex-1 overflow-x-hidden overflow-y-auto p-2 max-h-[calc(var(--body-height)-7rem)]'>
+                                    {children}
                                 </div>
-                            )}
-                        </header>
-                        <div className='flex-1 overflow-x-hidden overflow-y-auto p-2 max-h-[calc(var(--body-height)-7rem)]'>
-                            {children}
+                            </div>
                         </div>
-                    </div>
-                </div>
+                    </>
+                }
             </div>
         </>
     )
