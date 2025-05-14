@@ -1,9 +1,10 @@
-import type { Metadata } from "next";
+import type { Metadata, ResolvingMetadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { headers } from "next/headers";
 import "../globals.css";
 import Script from "next/script";
 import { extractSubdomain } from "@/lib/subdomain";
+import { fetchProjectData } from "@/lib/api";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -15,10 +16,61 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-// export const metadata: Metadata = {
-//   title: "My Halogen Site",
-//   description: "This site was generated with Halogen",
-// };
+// Metadata will be generated dynamically through generateMetadata
+
+export async function generateMetadata(
+  { params }: { params: Promise<{ slug: string[] }> }, 
+  parent: ResolvingMetadata
+): Promise<Metadata> {
+  const headersList = await headers();
+  const host = headersList.get('host') || '';
+  const subdomain = extractSubdomain(host);
+  
+  try {
+    // Fetch site-level metadata with root path
+    const projectData = await fetchProjectData(subdomain, '/', [`${subdomain}-layout-metadata`]);
+    
+    if (!projectData || !projectData.metadata) {
+      const parentMetadata = await parent;
+      return {
+        title: parentMetadata.title,
+        description: parentMetadata.description
+      };
+    }
+    
+    const { siteMetadata = {} } = projectData.metadata || {};
+    const title = projectData.metadata.title || siteMetadata.title || 'Halogen Site';
+    const description = siteMetadata.description || 'Created with Halogen';
+    
+    // Return site-level metadata
+    return {
+      title,
+      description,
+      openGraph: {
+        title,
+        description,
+        images: siteMetadata.ogImage ? [{ url: siteMetadata.ogImage }] : undefined,
+        siteName: title,
+        locale: siteMetadata.locale || 'en_US',
+        type: 'website',
+      },
+      twitter: {
+        card: 'summary_large_image',
+        title,
+        description,
+        images: siteMetadata.ogImage ? [siteMetadata.ogImage] : undefined,
+        creator: siteMetadata.twitterCreator || '@halogenhq',
+      },
+    };
+  } catch (error) {
+    console.error('Error generating layout metadata:', error);
+    const parentMetadata = await parent;
+    return {
+      title: parentMetadata.title,
+      description: parentMetadata.description
+    };
+  }
+}
 
 export default async function RootLayout({
   children,
@@ -36,42 +88,21 @@ export default async function RootLayout({
     console.log(`[DEBUG] Layout component subdomain extraction details:
       - Original host: ${host}
       - Extracted subdomain: ${subdomain}
-      - Will be used in API URL: ${process.env.NEXT_PUBLIC_API_URL}/preview/projects/subdomain/${subdomain}/layout-variables
+      - Will be used in API URL: ${process.env.NEXT_PUBLIC_API_URL}/preview/projects/subdomain/${subdomain}?path=/&includeMetadata=true
     `);
   }
 
   let projectVariables: any[] = [];
   try {
-    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL;
-    const apiUrl = `${apiBaseUrl}/preview/projects/subdomain/${subdomain}/layout-variables`;
+    // Use the same endpoint as page.tsx with a root path
+    const projectData = await fetchProjectData(subdomain, '/', [`${subdomain}-layout`]);
     
-    const response = await fetch(apiUrl, {
-      next: { 
-        revalidate: 180,
-        tags: [`layout-variables-${subdomain}`], 
-      },
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      if (response.status === 404) {
-        console.warn(`Layout variables not found for subdomain "${subdomain}". Using default variables.`);
-      } else {
-        throw new Error(`Failed to fetch layout variables: ${response.statusText}`);
-      }
+    if (!projectData) {
+      console.warn(`No project data found for subdomain ${subdomain}. Using default variables.`);
+    } else if (!projectData.variables) {
+      console.warn(`Project data returned but no variables found for subdomain: ${subdomain}`);
     } else {
-      const result = await response.json();
-      const layoutData = result.payload;
-
-      if (!layoutData) {
-        console.error(`No layout data returned for subdomain: ${subdomain}`);
-      } else if (!layoutData.variables) {
-        console.error(`Layout data returned but no variables found for subdomain: ${subdomain}`);
-      } else {
-        projectVariables = layoutData.variables;
-      }
+      projectVariables = projectData.variables;
     }
   } catch (error) {
     console.error(`Failed to load project data for subdomain ${subdomain}:`, error);
