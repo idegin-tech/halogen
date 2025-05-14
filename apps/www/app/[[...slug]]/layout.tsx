@@ -24,29 +24,31 @@ export async function generateMetadata(
       };
     }
 
-    const { siteMetadata = {} } = projectData.metadata || {};
-    const title = projectData.metadata.title || siteMetadata.title || 'Halogen Site';
-    const description = siteMetadata.description || 'Created with Halogen';
-    const favicon = projectData.metadata.favicon || undefined;
+    const metadata = projectData.metadata;
+    const title = metadata.title || 'Halogen Site';
+    const description = metadata.description || 'Created with Halogen';
+    const favicon = metadata.favicon || undefined;
+    const keywords = metadata.keywords || '';
 
     return {
       title,
       description,
+      keywords,
       icons: favicon ? { icon: favicon, apple: favicon } : undefined,
       openGraph: {
-        title,
-        description,
-        images: siteMetadata.ogImage ? [{ url: siteMetadata.ogImage }] : undefined,
+        title: metadata.ogTitle || title,
+        description: metadata.ogDescription || description,
+        images: metadata.ogImage ? [{ url: metadata.ogImage }] : undefined,
         siteName: title,
-        locale: siteMetadata.locale || 'en_US',
+        locale: 'en_US',
         type: 'website',
       },
       twitter: {
         card: 'summary_large_image',
-        title,
-        description,
-        images: siteMetadata.ogImage ? [siteMetadata.ogImage] : undefined,
-        creator: siteMetadata.twitterCreator || '@halogenhq',
+        title: metadata.ogTitle || title,
+        description: metadata.ogDescription || description,
+        images: metadata.ogImage ? [metadata.ogImage] : undefined,
+        creator: '@halogenhq',
       },
     };
   } catch (error) {

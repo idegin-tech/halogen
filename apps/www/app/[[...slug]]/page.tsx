@@ -7,7 +7,7 @@ import { extractSubdomain } from '@/lib/subdomain';
 import { Metadata, ResolvingMetadata } from 'next';
 
 export async function generateMetadata(
-  { params }: { params: Promise<{ slug: string[] }> }, 
+  { params }: { params: Promise<{ slug: string[] }> },
   parent: ResolvingMetadata
 ): Promise<Metadata> {
   const headersList = await headers();
@@ -16,63 +16,46 @@ export async function generateMetadata(
 
   const resolvedParams = await params;
   const pathSegment = resolvedParams.slug ? `/${resolvedParams.slug.join('/')}` : '/';
-    try {
+  try {
     const projectData = await fetchProjectData(subdomain, pathSegment, [`${subdomain}-metadata`]);
-      if (!projectData || !projectData.metadata) {
-     
+    if (!projectData || !projectData.metadata) {
+
       const parentMetadata = await parent;
       return {
         title: parentMetadata.title,
         description: parentMetadata.description
       };
     }
-    
-    // Include favicon from project metadata if available
+
     const favicon = projectData.metadata.favicon || undefined;
-    
-    console.log('THE META DATA::', projectData.metadata)
-    
-    const { pageMetadata = {}, siteMetadata = {} } = projectData.metadata || {};
-    const title = projectData.metadata.title || siteMetadata.title || 'Halogen Site';
-    const description = pageMetadata.description || siteMetadata.description || 'Created with Halogen';
-      return {
+
+    const metadata = projectData.metadata;
+    const title = metadata.title || 'Halogen Site';
+    const description = metadata.description || 'Created with Halogen';
+    const keywords = metadata.keywords || '';
+
+    return {
       title,
       description,
+      keywords,
       icons: favicon ? { icon: favicon, apple: favicon } : undefined,
       openGraph: {
-        title,
-        description,
-        images: pageMetadata.ogImage 
-          ? [{ url: pageMetadata.ogImage }] 
-          : siteMetadata.ogImage 
-            ? [{ url: siteMetadata.ogImage }] 
-            : undefined,
-        siteName: projectData.metadata.title || 'Halogen Site',
-        locale: siteMetadata.locale || 'en_US',
+        title: metadata.ogTitle || title,
+        description: metadata.ogDescription || description,
+        images: metadata.ogImage ? [{ url: metadata.ogImage }] : undefined,
+        siteName: title,
+        locale: 'en_US',
         type: 'website',
       },
       twitter: {
         card: 'summary_large_image',
-        title,
-        description,
-        images: pageMetadata.twitterImage 
-          ? [pageMetadata.twitterImage] 
-          : pageMetadata.ogImage 
-            ? [pageMetadata.ogImage] 
-            : siteMetadata.ogImage 
-              ? [siteMetadata.ogImage] 
-              : undefined,
-        creator: siteMetadata.twitterCreator || '@halogenhq',
-      },
-      alternates: {
-        canonical: pageMetadata.canonicalUrl || undefined,
-      },
-      robots: {
-        index: pageMetadata.noIndex === true ? false : true,
-        follow: pageMetadata.noFollow === true ? false : true,
-        googleBot: pageMetadata.googleBot || undefined,
+        title: metadata.ogTitle || title,
+        description: metadata.ogDescription || description,
+        images: metadata.ogImage ? [metadata.ogImage] : undefined,
+        creator: '@halogenhq',
       }
-    };  } catch (error) {
+    };
+  } catch (error) {
     console.error('Error generating metadata:', error);
     // Create a new metadata object instead of returning parent directly
     const parentMetadata = await parent;
@@ -87,15 +70,15 @@ const extractNestedValues = (obj: any): any => {
   if (!obj || typeof obj !== 'object') {
     return obj;
   }
-  
+
   if ('value' in obj && Object.keys(obj).length === 1) {
     return extractNestedValues(obj.value);
   }
-  
+
   if (Array.isArray(obj)) {
     return obj.map(item => extractNestedValues(item));
   }
-  
+
   return Object.fromEntries(
     Object.entries(obj).map(([key, val]) => [key, extractNestedValues(val)])
   );
@@ -121,7 +104,7 @@ export default async function CatchAllPage({ params }: Props) {
   }
   const resolvedParams = await params;
   const pathSegment = resolvedParams.slug ? `/${resolvedParams.slug.join('/')}` : '/';
-  
+
   try {
     const projectData = await fetchProjectData(subdomain, pathSegment, [subdomain]);
 
@@ -285,7 +268,8 @@ export default async function CatchAllPage({ params }: Props) {
                   <p>This content cannot be displayed</p>
                 )}
               </div>
-            );          }          const rootBlock = getRootBlock(block);
+            );
+          } const rootBlock = getRootBlock(block);
           const blockValues = rootBlock.value || {};
 
           return (
