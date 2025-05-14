@@ -98,10 +98,12 @@ const extractNestedValues = (obj: any): any => {
   );
 };
 
-export default async function CatchAllPage({ params }: {
-  params: { slug: string[] }
-  searchParams?: { [key: string]: string | string[] | undefined }
-}) {
+type Props = {
+  params: Promise<{ slug: string[] }>
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>
+}
+
+export default async function CatchAllPage({ params }: Props) {
   const headersList = await headers();
   const host = headersList.get('host') || '';
   const subdomain = extractSubdomain(host);
@@ -114,7 +116,8 @@ export default async function CatchAllPage({ params }: {
       - Will be used in API URL: ${process.env.NEXT_PUBLIC_API_URL}/preview/projects/subdomain/${subdomain}
     `);
   }
-  const pathSegment = params.slug ? `/${params.slug.join('/')}` : '/';
+  const resolvedParams = await params;
+  const pathSegment = resolvedParams.slug ? `/${resolvedParams.slug.join('/')}` : '/';
   
   try {
     const projectData = await fetchProjectData(subdomain, pathSegment, [subdomain]);
