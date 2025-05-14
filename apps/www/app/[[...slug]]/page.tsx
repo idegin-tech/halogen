@@ -7,14 +7,15 @@ import { extractSubdomain } from '@/lib/subdomain';
 import { Metadata, ResolvingMetadata } from 'next';
 
 export async function generateMetadata(
-  { params }: { params: { slug: string[] } }, 
+  { params }: { params: Promise<{ slug: string[] }> }, 
   parent: ResolvingMetadata
 ): Promise<Metadata> {
   const headersList = await headers();
   const host = headersList.get('host') || '';
   const subdomain = extractSubdomain(host);
 
-  const pathSegment = params.slug ? `/${params.slug.join('/')}` : '/';
+  const resolvedParams = await params;
+  const pathSegment = resolvedParams.slug ? `/${resolvedParams.slug.join('/')}` : '/';
     try {
     const projectData = await fetchProjectData(subdomain, pathSegment, [`${subdomain}-metadata`]);
     
