@@ -5,19 +5,52 @@ import { BlockInstance, PageData } from '@halogen/common/types';
 import { fetchProjectData } from '@/lib/api';
 import { extractSubdomain } from '@/lib/subdomain';
 
+/**
+ * Recursively extracts values from nested objects that have a 'value' property
+ */
+const extractNestedValues = (obj: any): any => {
+  if (!obj || typeof obj !== 'object') {
+    return obj;
+  }
+  
+  // Direct value extraction if the object has a 'value' property
+  if ('value' in obj && Object.keys(obj).length === 1) {
+    return extractNestedValues(obj.value);
+  }
+  
+  // Handle arrays
+  if (Array.isArray(obj)) {
+    return obj.map(item => extractNestedValues(item));
+  }
+  
+  // Handle objects by recursively extracting values from each property
+  return Object.fromEntries(
+    Object.entries(obj).map(([key, val]) => [key, extractNestedValues(val)])
+  );
+};
+
 export default async function CatchAllPage({ params }: {
   params: Promise<{ slug: string[] }>
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }) {
   const headersList = await headers();
   const host = headersList.get('host') || '';
-
   const subdomain = extractSubdomain(host);
   console.log(`Page component resolved subdomain: ${subdomain} from host: ${host}`);
+
+  if (process.env.NODE_ENV === 'development') {
+    console.log(`[DEBUG] Page component subdomain extraction details:
+      - Original host: ${host}
+      - Extracted subdomain: ${subdomain}
+      - Will be used in API URL: ${process.env.NEXT_PUBLIC_API_URL}/preview/projects/subdomain/${subdomain}
+    `);
+  }
 
   const allParams = await params;
   const pathSegment = allParams.slug ? `/${allParams.slug.join('/')}` : '/'; try {
     const projectData = await fetchProjectData(subdomain, pathSegment, [subdomain]);
+
+    // console.log('THE DATA:::', projectData)
 
     if (!projectData) {
       console.error(`Project not found: Subdomain=${subdomain}, Path=${pathSegment}, Host=${host}`);
@@ -28,7 +61,8 @@ export default async function CatchAllPage({ params }: {
             <p className="text-lg text-muted-foreground">Could not find any content for this page.</p>
             {process.env.NODE_ENV !== 'production' && (
               <div className="mt-4 p-5 bg-destructive/10 border border-destructive/20 rounded-lg shadow-sm">
-                <h2 className="text-lg font-semibold text-destructive mb-3">Debug Information</h2>                <div className="space-y-2 text-sm">
+                <h2 className="text-lg font-semibold text-destructive mb-3">Debug Information</h2>
+                <div className="space-y-2 text-sm">
                   <div className="grid grid-cols-[120px_1fr] items-start">
                     <div className="font-medium">Subdomain:</div>
                     <div className="font-mono bg-muted px-2 py-1 rounded">{subdomain}</div>
@@ -177,25 +211,13 @@ export default async function CatchAllPage({ params }: {
                 )}
               </div>
             );
-          }
-
-          const rootBlock = getRootBlock(block);
+          }          const rootBlock = getRootBlock(block);
+          // Get the values from the root block (no intermediate processing needed)
           const blockValues = rootBlock.value || {};
-          const safeBlockValues = typeof blockValues === 'object' && blockValues !== null
-            ? Object.fromEntries(
-              Object.entries(blockValues)
-                .map(([key, val]) => {
-                  if (val && typeof val === 'object' && 'value' in val) {
-                    return [key, val.value];
-                  }
-                  return [key, val];
-                })
-            )
-            : {};
 
           return (
             <div key={block.instance_id} className="block-wrapper">
-              <BlockComponent {...safeBlockValues} />
+              <BlockComponent {...blockValues} />
             </div>
           );
         })

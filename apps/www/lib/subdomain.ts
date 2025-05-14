@@ -7,7 +7,14 @@
  * @returns The extracted subdomain
  */
 export function extractSubdomain(host: string, defaultSubdomain = 'demo'): string {
-  // Handle development environment
+  // Handle local development with .localhost domains (e.g., kinetic-choir44.localhost)
+  if (host.endsWith('.localhost') || host.includes('.localhost:')) {
+    // Extract the part before .localhost, ignoring any port
+    const subdomain = host.split('.localhost')[0];
+    return subdomain || defaultSubdomain;
+  }
+  
+  // Handle standard localhost
   if (host.includes('localhost')) {
     return host.split(':')[0] === 'localhost' ? defaultSubdomain : host.split(':')[0];
   }
@@ -17,7 +24,7 @@ export function extractSubdomain(host: string, defaultSubdomain = 'demo'): strin
     return defaultSubdomain;
   }
   
-  // Handle domains
+  // Handle production domains
   const hostParts = host.split('.');
   
   // If we have a multi-part domain (more than 2 parts)

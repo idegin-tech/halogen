@@ -30,6 +30,15 @@ export default async function RootLayout({
   
   const subdomain = extractSubdomain(host);
   console.log('[DEBUG] Layout resolved subdomain:', subdomain, 'from host:', host);
+  
+  // Additional debug logging for local development
+  if (process.env.NODE_ENV === 'development') {
+    console.log(`[DEBUG] Layout component subdomain extraction details:
+      - Original host: ${host}
+      - Extracted subdomain: ${subdomain}
+      - Will be used in API URL: ${process.env.NEXT_PUBLIC_API_URL}/preview/projects/subdomain/${subdomain}/layout-variables
+    `);
+  }
 
   let projectVariables: any[] = [];
   try {
