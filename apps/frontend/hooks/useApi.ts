@@ -102,17 +102,15 @@ export function useMutation<T, D = any>(endpoint: string, config?: AxiosRequestC
     error: null,
   });
 
-  const mutate = useCallback(async (path?: string, data?: D) => {
+  const mutate = useCallback(async (path?: any, data?: D) => {
     setState(prev => ({ ...prev, isLoading: true, error: null }));
     try {
-      // Support for path parameters - if first arg is string it's treated as path, otherwise as data
       const requestEndpoint = typeof path === 'string' ? `${endpoint}/${path}` : endpoint;
       const requestData = typeof path === 'string' ? data : path;
       const method = config?.method?.toLowerCase() || 'post';
       
       let response: AxiosResponse<ApiResponse<T>>;
       
-      // Use the specified method or default to POST
       if (method === 'put') {
         response = await api.put<ApiResponse<T>>(requestEndpoint, requestData, config);
       } else if (method === 'patch') {

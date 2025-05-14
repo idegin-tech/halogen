@@ -58,7 +58,7 @@ export default function SettingsTopPanelUsers() {
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteRole, setInviteRole] = useState(ProjectUserRole.MANAGER);
+  const [inviteRole, setInviteRole] = useState<ProjectUserRole>(ProjectUserRole.MANAGER);
   const [confirmDialog, setConfirmDialog] = useState<{ 
     open: boolean, 
     userId: string | null, 
@@ -104,7 +104,6 @@ export default function SettingsTopPanelUsers() {
       .join('')
       .toUpperCase();
   };
-
   // Invite user handler
   const handleInvite = async () => {
     if (!project?._id) {
@@ -113,10 +112,12 @@ export default function SettingsTopPanelUsers() {
     }
     
     try {
-      const result = await createUserMutation.mutate({
+      // Using the correct syntax based on updated useMutation hook
+      // First parameter is empty string for no path suffix, second is the data payload
+      const result = await createUserMutation.mutate("", {
         project: project._id,
         email: inviteEmail,
-        role: inviteRole
+        role: inviteRole,
       });
       
       if (result) {
@@ -192,8 +193,7 @@ export default function SettingsTopPanelUsers() {
   // Handle page change
   const handlePageChange = (newPage: number) => {
     setPage(newPage);
-  };
-  const roleColorMap = {
+  };  const roleColorMap = {
     'owner': 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-300', // Keep for backward compatibility
     [ProjectUserRole.MANAGER]: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-300',
     [ProjectUserRole.DEVELOPER]: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300'
@@ -274,12 +274,19 @@ export default function SettingsTopPanelUsers() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           {user.user._id !== project?.user && (
-                            <>
-                              <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                              <DropdownMenuItem onClick={() => openChangeRoleDialog(user._id, ProjectUserRole.MANAGER)}>
-                                <Shield className="mr-2 h-4 w-4" />
-                                <span>Change to Manager</span>
-                              </DropdownMenuItem>
+                            <>                              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                              {user.role !== ProjectUserRole.MANAGER && (
+                                <DropdownMenuItem onClick={() => openChangeRoleDialog(user._id, ProjectUserRole.MANAGER)}>
+                                  <Shield className="mr-2 h-4 w-4" />
+                                  <span>Change to Manager</span>
+                                </DropdownMenuItem>
+                              )}
+                              {user.role !== ProjectUserRole.DEVELOPER && (
+                                <DropdownMenuItem onClick={() => openChangeRoleDialog(user._id, ProjectUserRole.DEVELOPER)}>
+                                  <Shield className="mr-2 h-4 w-4" />
+                                  <span>Change to Developer</span>
+                                </DropdownMenuItem>
+                              )}
                               <DropdownMenuSeparator />
                               <DropdownMenuItem 
                                 className="text-red-600"
@@ -440,17 +447,18 @@ export default function SettingsTopPanelUsers() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="role">Role</Label>
-              <Select value={inviteRole} onValueChange={(value: any) => setInviteRole(value)}>
+              <Label htmlFor="role">Role</Label>              <Select value={inviteRole} onValueChange={(value: any) => setInviteRole(value)}>
                 <SelectTrigger id="role">
                   <SelectValue placeholder="Select role" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={ProjectUserRole.MANAGER}>Manager</SelectItem>
+                  <SelectItem value={ProjectUserRole.DEVELOPER}>Developer</SelectItem>
                 </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground mt-1">
-                Managers can edit but not delete the project or transfer ownership.
+              </Select>              <p className="text-xs text-muted-foreground mt-1">
+                {inviteRole === ProjectUserRole.MANAGER 
+                  ? "Managers can edit project content and settings but cannot delete the project or transfer ownership."
+                  : "Developers can edit project content but have limited access to project settings."}
               </p>
             </div>
           </div>

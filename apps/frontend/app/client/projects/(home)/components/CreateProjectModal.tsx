@@ -45,7 +45,7 @@ export function CreateProjectModal({ onProjectCreated }: CreateProjectModalProps
         }]
       };
       
-      const newProject = await createProject.mutate(projectData);
+      const newProject = await createProject.mutate(projectData as any);
       
       if (newProject && newProject._id) {
         toast.success('Project created successfully!');
