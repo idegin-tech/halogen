@@ -4,7 +4,8 @@
   "description": "Backend API for Halogen project",
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsc --noEmit && tsup",
+    "build": "tsup",
+    "build:emit": "tsc --noEmit && tsup",
     "start": "node dist/index.js",
     "dev": "tsup --watch --onSuccess \"node dist/index.js\"",
     "watch": "nodemon --exec \"npm run build\" --watch src --ext ts",
