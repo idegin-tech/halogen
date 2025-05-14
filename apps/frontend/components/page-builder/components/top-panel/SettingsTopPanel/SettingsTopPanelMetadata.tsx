@@ -63,21 +63,72 @@ export default function SettingsTopPanelMetadata() {
         }));
         setIsFormDirty(true);
     };
+    
+    // Delete a file from the server
+    const deleteFile = async (type: 'favicon' | 'ogImage'): Promise<boolean> => {
+        try {
+            if (!project?._id) {
+                throw new Error('Project ID is required');
+            }
+            
+            setFileUploading(prev => ({ ...prev, [type]: true }));
+            setUploadError(null);
+            
+            // Use the specific endpoint based on the file type
+            const endpoint = type === 'favicon'
+                ? `/uploads/project/${project._id}/favicon`
+                : `/uploads/project/${project._id}/og-image`;
+                
+            // Delete the file using API client
+            const response = await axios.delete<ApiResponse<{ projectId: string }>>(
+                `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1'}${endpoint}`,
+                {
+                    withCredentials: true
+                }
+            );
+              // Update the form data
+            setFormData(prev => ({
+                ...prev,
+                [type === 'favicon' ? 'favicon' : 'ogImage']: ''
+            }));
+            setIsFormDirty(true);
+            
+            toast.success(`${type === 'favicon' ? 'Favicon' : 'Open Graph image'} deleted successfully`);
+            
+            // Refresh metadata from server to ensure we have the latest data
+            refetch();
+            return true;
+        } catch (error) {
+            console.error(`Error deleting ${type}:`, error);
+            setUploadError(`Failed to delete ${type === 'favicon' ? 'favicon' : 'image'}`);
+            return false;
+        } finally {
+            setFileUploading(prev => ({ ...prev, [type]: false }));
+        }
+    };
 
     // Upload a file to the server
     const uploadFile = async (file: File, type: 'favicon' | 'ogImage'): Promise<string | null> => {
         try {
             setFileUploading(prev => ({ ...prev, [type]: true }));
             setUploadError(null);
+            
+            if (!project?._id) {
+                throw new Error('Project ID is required');
+            }
 
             // Create form data for file upload
             const formData = new FormData();
             formData.append('file', file);
-            formData.append('type', type);
+            
+            // Use the specific endpoint based on the file type
+            const endpoint = type === 'favicon'
+                ? `/uploads/project/${project._id}/favicon`
+                : `/uploads/project/${project._id}/og-image`;
 
             // Normally we'd use our API client, but for file uploads we need multipart/form-data
             const response = await axios.post<ApiResponse<FileUploadResponse>>(
-                `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1'}/uploads`,
+                `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1'}${endpoint}`,
                 formData,
                 {
                     withCredentials: true,
@@ -117,9 +168,7 @@ export default function SettingsTopPanelMetadata() {
             ...prev,
             [type]: localUrl
         }));
-        setIsFormDirty(true);
-
-        // Upload the file
+        setIsFormDirty(true);        // Upload the file
         const uploadedUrl = await uploadFile(file, type);
         if (uploadedUrl) {
             setFormData(prev => ({
@@ -127,6 +176,9 @@ export default function SettingsTopPanelMetadata() {
                 [type]: uploadedUrl
             }));
             toast.success(`${type === 'favicon' ? 'Favicon' : 'Open Graph image'} uploaded successfully`);
+            
+            // Refresh metadata from server to ensure we have the latest data
+            refetch();
         }
     };
 
@@ -277,20 +329,13 @@ export default function SettingsTopPanelMetadata() {
                                     onChange={(e) => handleFileChange(e, 'favicon')}
                                 />
                             </label>
-                        </div>
-                        {formData.favicon && (
+                        </div>                        {formData.favicon && (
                             <Button
                                 type="button"
                                 variant="ghost"
                                 size="sm"
                                 className="mt-2"
-                                onClick={() => {
-                                    setFormData(prev => ({
-                                        ...prev,
-                                        favicon: ''
-                                    }));
-                                    setIsFormDirty(true);
-                                }}
+                                onClick={() => deleteFile('favicon')}
                             >
                                 Remove favicon
                             </Button>
@@ -366,21 +411,14 @@ export default function SettingsTopPanelMetadata() {
                                     onChange={(e) => handleFileChange(e, 'ogImage')}
                                 />
                             </label>
-                        </div>
-                        {formData.ogImage && (
+                        </div>                        {formData.ogImage && (
                             <div className="flex justify-end">
                                 <Button
                                     type="button"
                                     variant="ghost"
                                     size="sm"
                                     className="text-muted-foreground"
-                                    onClick={() => {
-                                        setFormData(prev => ({
-                                            ...prev,
-                                            ogImage: ''
-                                        }));
-                                        setIsFormDirty(true);
-                                    }}
+                                    onClick={() => deleteFile('ogImage')}
                                 >
                                     Remove image
                                 </Button>

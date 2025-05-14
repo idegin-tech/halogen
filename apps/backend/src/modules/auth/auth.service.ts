@@ -64,6 +64,7 @@ export class AuthService {
       
       return userToReturn;
     } catch (error) {
+      console.log(error)
       Logger.error(`Registration error: ${error instanceof Error ? error.message : 'Unknown error'}`);
       throw error;
     }
@@ -106,6 +107,7 @@ export class AuthService {
         isNewSession: true
       };
     } catch (error) {
+      console.log(error)
       Logger.error(`Login error: ${error instanceof Error ? error.message : 'Unknown error'}`);
       throw error;
     }
@@ -128,6 +130,7 @@ export class AuthService {
       
       return userToReturn;
     } catch (error) {
+      console.log(error)
       Logger.error(`Get current user error: ${error instanceof Error ? error.message : 'Unknown error'}`);
       throw error;
     }
@@ -156,6 +159,7 @@ export class AuthService {
       
       Logger.info(`Password reset token for ${email}: ${resetToken}`);
     } catch (error) {
+      console.log(error)
       Logger.error(`Reset password request error: ${error instanceof Error ? error.message : 'Unknown error'}`);
       throw error;
     }
@@ -180,6 +184,7 @@ export class AuthService {
       
       await userSecret.save();
     } catch (error) {
+      console.log(error)
       Logger.error(`Reset password error: ${error instanceof Error ? error.message : 'Unknown error'}`);
       throw error;
     }
@@ -202,6 +207,7 @@ export class AuthService {
       userSecret.passwordHash = passwordHash;
       await userSecret.save();
     } catch (error) {
+      console.log(error)
       Logger.error(`Change password error: ${error instanceof Error ? error.message : 'Unknown error'}`);
       throw error;
     }

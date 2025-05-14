@@ -6,16 +6,16 @@ import { extractSubdomain } from "@/lib/subdomain";
 import { fetchProjectData } from "@/lib/api";
 
 export async function generateMetadata(
-  { params }: { params: Promise<{ slug: string[] }> }, 
+  { params }: { params: Promise<{ slug: string[] }> },
   parent: ResolvingMetadata
 ): Promise<Metadata> {
   const headersList = await headers();
   const host = headersList.get('host') || '';
   const subdomain = extractSubdomain(host);
-  
+
   try {
     const projectData = await fetchProjectData(subdomain, '/', [`${subdomain}-layout-metadata`]);
-    
+
     if (!projectData || !projectData.metadata) {
       const parentMetadata = await parent;
       return {
@@ -23,11 +23,11 @@ export async function generateMetadata(
         description: parentMetadata.description
       };
     }
-    
+
     const { siteMetadata = {} } = projectData.metadata || {};
     const title = projectData.metadata.title || siteMetadata.title || 'Halogen Site';
     const description = siteMetadata.description || 'Created with Halogen';
-    
+
     return {
       title,
       description,
@@ -64,11 +64,10 @@ export default async function RootLayout({
 }>) {
   const headersList = await headers();
   const host = headersList.get('host') || '';
-  
+
   const subdomain = extractSubdomain(host);
   console.log('[DEBUG] Layout resolved subdomain:', subdomain, 'from host:', host);
-  
-  // Additional debug logging for local development
+
   if (process.env.NODE_ENV === 'development') {
     console.log(`[DEBUG] Layout component subdomain extraction details:
       - Original host: ${host}
@@ -80,7 +79,7 @@ export default async function RootLayout({
   let projectVariables: any[] = [];
   try {
     const projectData = await fetchProjectData(subdomain, '/', [`${subdomain}-layout`]);
-    
+
     if (!projectData) {
       console.warn(`No project data found for subdomain ${subdomain}. Using default variables.`);
     } else if (!projectData.variables) {

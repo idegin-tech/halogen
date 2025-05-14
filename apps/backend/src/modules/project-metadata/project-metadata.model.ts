@@ -20,7 +20,8 @@ const ProjectMetadataSchema: Schema = new Schema<ProjectMetadata>({
   description: {
     type: String,
     trim: true
-  },  keywords: {
+  },  
+  keywords: {
     type: String,
     trim: true
   },
@@ -36,24 +37,10 @@ const ProjectMetadataSchema: Schema = new Schema<ProjectMetadata>({
     type: String,
     trim: true
   },
-  twitterTitle: {
-    type: String,
-    trim: true
-  },
-  twitterDescription: {
-    type: String,
-    trim: true
-  },  twitterImage: {
-    type: String,
-    trim: true
-  },
   favicon: {
     type: String,
-    trim: true
-  },
-  appleTouchIcon: {
-    type: String,
-    trim: true
+    trim: true,
+    default: null
   }
 }, {
   timestamps: true,

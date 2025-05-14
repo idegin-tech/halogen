@@ -25,10 +25,13 @@ export function validateEnv() {
       EMAIL_PORT: port({ default: 587 }),
       EMAIL_USER: str({ default: undefined }),
       EMAIL_PASS: str({ default: undefined }),
-      EMAIL_FROM: str({ default: 'no-reply@halogen.com' }),
-      
+      EMAIL_FROM: str({ default: 'no-reply@halogen.com' }),      
       JWT_SECRET: str({ default: undefined }),
       JWT_EXPIRES_IN: str({ default: '1d' }),
+      
+      CLOUDINARY_CLOUD_NAME: str({ default: undefined }),
+      CLOUDINARY_API_KEY: str({ default: undefined }),
+      CLOUDINARY_API_SECRET: str({ default: undefined }),
     });
     
     Logger.info('Environment variables validated successfully');

@@ -19,6 +19,7 @@ import { projectUsersRoutes } from './modules/project-users';
 import { projectMetadataRoutes } from './modules/project-metadata';
 import { pagesRoutes, variablesRoutes, blockInstancesRoutes } from './modules/artifacts';
 import { previewRoutes } from './modules/www';
+import { uploadsRoutes } from './modules/uploads';
 
 declare module 'express' {
   interface Request {
@@ -132,6 +133,7 @@ class App {
     this.app.use(`${apiPrefix}/variables`, variablesRoutes);
     this.app.use(`${apiPrefix}/block-instances`, blockInstancesRoutes);
     this.app.use(`${apiPrefix}/preview`, previewRoutes);
+    this.app.use(`${apiPrefix}/uploads`, uploadsRoutes);
   }
 
   private configureErrorHandlers(): void {
