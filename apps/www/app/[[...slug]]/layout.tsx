@@ -1,22 +1,9 @@
 import type { Metadata, ResolvingMetadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import { headers } from "next/headers";
 import "../globals.css";
 import Script from "next/script";
 import { extractSubdomain } from "@/lib/subdomain";
 import { fetchProjectData } from "@/lib/api";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
-// Metadata will be generated dynamically through generateMetadata
 
 export async function generateMetadata(
   { params }: { params: Promise<{ slug: string[] }> }, 
@@ -27,7 +14,6 @@ export async function generateMetadata(
   const subdomain = extractSubdomain(host);
   
   try {
-    // Fetch site-level metadata with root path
     const projectData = await fetchProjectData(subdomain, '/', [`${subdomain}-layout-metadata`]);
     
     if (!projectData || !projectData.metadata) {
@@ -42,7 +28,6 @@ export async function generateMetadata(
     const title = projectData.metadata.title || siteMetadata.title || 'Halogen Site';
     const description = siteMetadata.description || 'Created with Halogen';
     
-    // Return site-level metadata
     return {
       title,
       description,
@@ -94,7 +79,6 @@ export default async function RootLayout({
 
   let projectVariables: any[] = [];
   try {
-    // Use the same endpoint as page.tsx with a root path
     const projectData = await fetchProjectData(subdomain, '/', [`${subdomain}-layout`]);
     
     if (!projectData) {
@@ -129,7 +113,7 @@ export default async function RootLayout({
         </style>
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
+        className={`antialiased bg-background text-foreground min-h-screen grid grid-cols-1`}
       >
         {children}
       </body>
