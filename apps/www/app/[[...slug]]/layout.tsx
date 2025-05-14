@@ -15,10 +15,10 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "My Halogen Site",
-  description: "This site was generated with Halogen",
-};
+// export const metadata: Metadata = {
+//   title: "My Halogen Site",
+//   description: "This site was generated with Halogen",
+// };
 
 export default async function RootLayout({
   children,

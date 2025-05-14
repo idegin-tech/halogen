@@ -4,34 +4,103 @@ import * as UiBlocks from '@repo/ui/blocks';
 import { BlockInstance, PageData } from '@halogen/common/types';
 import { fetchProjectData } from '@/lib/api';
 import { extractSubdomain } from '@/lib/subdomain';
+import { Metadata, ResolvingMetadata } from 'next';
 
-/**
- * Recursively extracts values from nested objects that have a 'value' property
- */
+export async function generateMetadata(
+  { params }: { params: { slug: string[] } }, 
+  parent: ResolvingMetadata
+): Promise<Metadata> {
+  const headersList = await headers();
+  const host = headersList.get('host') || '';
+  const subdomain = extractSubdomain(host);
+
+  const pathSegment = params.slug ? `/${params.slug.join('/')}` : '/';
+    try {
+    const projectData = await fetchProjectData(subdomain, pathSegment, [`${subdomain}-metadata`]);
+    
+    if (!projectData || !projectData.metadata) {
+     
+      const parentMetadata = await parent;
+      return {
+        title: parentMetadata.title,
+        description: parentMetadata.description
+      };
+    }
+
+    console.log('THE META DATA::', projectData.metadata)
+    
+    const { pageMetadata = {}, siteMetadata = {} } = projectData.metadata || {};
+    const title = projectData.metadata.title || siteMetadata.title || 'Halogen Site';
+    const description = pageMetadata.description || siteMetadata.description || 'Created with Halogen';
+    
+    return {
+      title,
+      description,
+      openGraph: {
+        title,
+        description,
+        images: pageMetadata.ogImage 
+          ? [{ url: pageMetadata.ogImage }] 
+          : siteMetadata.ogImage 
+            ? [{ url: siteMetadata.ogImage }] 
+            : undefined,
+        siteName: projectData.metadata.title || 'Halogen Site',
+        locale: siteMetadata.locale || 'en_US',
+        type: 'website',
+      },
+      twitter: {
+        card: 'summary_large_image',
+        title,
+        description,
+        images: pageMetadata.twitterImage 
+          ? [pageMetadata.twitterImage] 
+          : pageMetadata.ogImage 
+            ? [pageMetadata.ogImage] 
+            : siteMetadata.ogImage 
+              ? [siteMetadata.ogImage] 
+              : undefined,
+        creator: siteMetadata.twitterCreator || '@halogenhq',
+      },
+      alternates: {
+        canonical: pageMetadata.canonicalUrl || undefined,
+      },
+      robots: {
+        index: pageMetadata.noIndex === true ? false : true,
+        follow: pageMetadata.noFollow === true ? false : true,
+        googleBot: pageMetadata.googleBot || undefined,
+      }
+    };  } catch (error) {
+    console.error('Error generating metadata:', error);
+    // Create a new metadata object instead of returning parent directly
+    const parentMetadata = await parent;
+    return {
+      title: parentMetadata.title,
+      description: parentMetadata.description
+    };
+  }
+}
+
 const extractNestedValues = (obj: any): any => {
   if (!obj || typeof obj !== 'object') {
     return obj;
   }
   
-  // Direct value extraction if the object has a 'value' property
   if ('value' in obj && Object.keys(obj).length === 1) {
     return extractNestedValues(obj.value);
   }
   
-  // Handle arrays
   if (Array.isArray(obj)) {
     return obj.map(item => extractNestedValues(item));
   }
   
-  // Handle objects by recursively extracting values from each property
   return Object.fromEntries(
     Object.entries(obj).map(([key, val]) => [key, extractNestedValues(val)])
   );
 };
 
 export default async function CatchAllPage({ params }: {
-  params: Promise<{ slug: string[] }>
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>
+  params: { slug: string[] }
+  searchParams?: { [key: string]: string | string[] | undefined }
 }) {
   const headersList = await headers();
   const host = headersList.get('host') || '';
@@ -45,9 +114,9 @@ export default async function CatchAllPage({ params }: {
       - Will be used in API URL: ${process.env.NEXT_PUBLIC_API_URL}/preview/projects/subdomain/${subdomain}
     `);
   }
-
-  const allParams = await params;
-  const pathSegment = allParams.slug ? `/${allParams.slug.join('/')}` : '/'; try {
+  const pathSegment = params.slug ? `/${params.slug.join('/')}` : '/';
+  
+  try {
     const projectData = await fetchProjectData(subdomain, pathSegment, [subdomain]);
 
     // console.log('THE DATA:::', projectData)
@@ -210,9 +279,7 @@ export default async function CatchAllPage({ params }: {
                   <p>This content cannot be displayed</p>
                 )}
               </div>
-            );
-          }          const rootBlock = getRootBlock(block);
-          // Get the values from the root block (no intermediate processing needed)
+            );          }          const rootBlock = getRootBlock(block);
           const blockValues = rootBlock.value || {};
 
           return (
