@@ -52,7 +52,7 @@ export class ProjectsService {
 
             await projectUser.save();
 
-            const homePageId = `page_home_${savedProject._id.toString().substring(0, 6)}`;
+            const homePageId = `page_home_${savedProject?._id?.toString().substring(0, 6)}`;
 
             const homePage = new PageModel({
                 name: 'Home',
@@ -129,7 +129,8 @@ export class ProjectsService {
             Logger.error(`Get project error: ${error instanceof Error ? error.message : 'Unknown error'}`);
             throw error;
         }
-    } static async getProjectBySubdomain(subdomain: string): Promise<ProjectData | null> {
+    }
+    static async getProjectBySubdomain(subdomain: string): Promise<any> {
         try {
             const project = await ProjectModel.findOne({ subdomain }).populate('user', 'name displayName email avatarUrl');
             if (!project) return null;
@@ -140,9 +141,12 @@ export class ProjectsService {
                     ? project._id
                     : '';
 
+            // Get all related data needed by the www app
             const projectSettings = await ProjectSettingsService.getByProjectId(projectId);
-
             const projectMetadata = await ProjectMetadataService.getProjectMetadataByProjectId(projectId);
+            const pages = await PageModel.find({ project: projectId }).lean();
+            const variables = await VariableModel.find({ project: projectId }).lean();
+            const blockInstances = await BlockInstanceModel.find({ project: projectId }).lean();
 
             const projectObj = project.toObject();
             return {
@@ -152,7 +156,10 @@ export class ProjectsService {
                     headingFont: projectSettings.headingFont,
                     bodyFont: projectSettings.bodyFont
                 } : null,
-                metadata: projectMetadata || null
+                metadata: projectMetadata || null,
+                pages: pages,
+                variables: variables,
+                blockInstances: blockInstances
             };
         } catch (error) {
             Logger.error(`Get project by subdomain error: ${error instanceof Error ? error.message : 'Unknown error'}`);

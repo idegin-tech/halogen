@@ -182,21 +182,8 @@ export default function ThemeTopPanel({show, onHide}:{show: boolean, onHide: () 
                 isSection: true
             }
         ];
-        
-        // Add variable sets from state (under a heading)
-        const objectSets = state.variableSets.map(set => ({
-            id: set.set_id,
-            name: set.name,
-            icon: set.key === 'radius' ? <CircleIcon /> : <PaletteIcon />,
-            isLocked: set.set_id === 'set_colors' || set.set_id === 'set_radius'
-        }));
-        
-        // First add the sections, then add themes with a header for separation
         return [
             ...fixedSets,
-            // Add a string divider for themes to avoid TypeScript issue with isHeader
-            "THEME SETS",
-            ...objectSets
         ];
     }, [state.variableSets]);
     

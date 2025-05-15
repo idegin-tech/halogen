@@ -1,6 +1,6 @@
 import { Types } from 'mongoose';
-import ProjectSettings, { IProjectSettings } from '../models/project-settings.model';
-import Logger from '../../../config/logger.config';
+import ProjectSettings, { IProjectSettings } from './project-settings.model';
+import Logger from '../../config/logger.config';
 
 /**
  * Project Settings Service class with methods to manage project settings

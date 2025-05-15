@@ -1,8 +1,14 @@
-import ProjectSettings, { IProjectSettings } from './models/project-settings.model';
-import ProjectSettingsService from './services/project-settings.service';
+import ProjectSettings, { IProjectSettings } from './project-settings.model';
+import ProjectSettingsService from './project-settings.service';
+import ProjectSettingsController from './project-settings.controller';
+import { UpdateProjectFontsDTO } from './project-settings.dto';
+import projectSettingsRoutes from './project-settings.routes';
 
 export {
   ProjectSettings,
   IProjectSettings,
-  ProjectSettingsService
+  ProjectSettingsService,
+  ProjectSettingsController,
+  UpdateProjectFontsDTO,
+  projectSettingsRoutes
 };

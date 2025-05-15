@@ -295,11 +295,11 @@ export default function SettingsTopPanelMetadata() {
                             <label htmlFor="favicon-upload" className="w-full flex flex-col items-center cursor-pointer">
                                 {formData.favicon ? (
                                     <div className="flex flex-col items-center space-y-4">
-                                        <div className="h-24 w-24 border rounded-md flex items-center justify-center bg-muted p-2 shadow-sm">
+                                        <div className="h-24 w-24 border rounded-md flex items-center justify-center bg-muted p-2- shadow-sm overflow-hidden">
                                             <img
                                                 src={formData.favicon}
                                                 alt="Favicon"
-                                                className="max-h-full max-w-full object-contain"
+                                                className="w-[70%] object-contain"
                                             />
                                         </div>
                                         <div className="text-center">
