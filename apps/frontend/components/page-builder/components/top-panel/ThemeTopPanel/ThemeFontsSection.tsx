@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Separator } from "@/components/ui/separator"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useBuilderContext } from '@/context/builder.context'
+import { usePreviewContext } from '@/context/preview.context'
 import { useMutation } from '@/hooks/useApi'
 import {
   Popover,
@@ -42,18 +43,19 @@ interface FontOption {
 
 export default function ThemeFontsSection() {
   const [fonts, setFonts] = useState<FontOption[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [displayFonts, setDisplayFonts] = useState<FontOption[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
   const [initialLoading, setInitialLoading] = useState<boolean>(true);
-  const [loadingMore, setLoadingMore] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [selectedFont, setSelectedFont] = useState<string>('Inter');
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [hasMore, setHasMore] = useState<boolean>(true);
   const [fontPreviewsLoaded, setFontPreviewsLoaded] = useState<Set<string>>(new Set());
   const [isPopoverOpen, setIsPopoverOpen] = useState<boolean>(false);
-
+  
+  const { state: previewState } = usePreviewContext();
+  
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loaderRef = useRef<HTMLDivElement>(null);
   const commandListRef = useRef<HTMLDivElement>(null);
@@ -61,9 +63,11 @@ export default function ThemeFontsSection() {
   const [selectedHeadingFont, setSelectedHeadingFont] = useState<string>('Inter');
   const [selectedBodyFont, setSelectedBodyFont] = useState<string>('Inter');
   const { state, updateBuilderState } = useBuilderContext();
-
   const updateProjectFonts = useMutation<any, { headingFont: string; bodyFont: string }>(
-    `/api/v1/project-settings/${state.project?._id}/fonts`
+    `/project-settings/${state.project?._id}/fonts`,
+    {
+      method: 'PUT'
+    }
   );
 
   const categorizeFonts = (googleCategory: string): 'heading' | 'body' => {
@@ -75,82 +79,54 @@ export default function ThemeFontsSection() {
         return 'body';
     }
   };
-
-  const debouncedSearch = useCallback(
-    debounce((value: string) => {
-      if (value !== debouncedSearchTerm) {
-        setDebouncedSearchTerm(value);
-        setCurrentPage(1);
-      }
-    }, 300),
-    [debouncedSearchTerm]
-  );
-
+  // Process the fonts from the preview context
   useEffect(() => {
-    debouncedSearch(searchTerm);
-  }, [searchTerm, debouncedSearch]);
-
+    if (previewState.googleFonts.length > 0) {
+      const fontOptions: FontOption[] = previewState.googleFonts.map(font => ({
+        name: font.family,
+        value: `${font.family}, ${font.category}`,
+        category: categorizeFonts(font.category)
+      }));
+      
+      setFonts(fontOptions);
+      setInitialLoading(false);
+    }
+  }, [previewState.googleFonts]);
+  
+  // Handle search and pagination
   useEffect(() => {
-    if (isPopoverOpen && fonts.length === 0 && !initialLoading && !loadingMore) {
+    if (fonts.length === 0) return;
+    
+    // Reset to page 1 when search changes
+    if (searchTerm) {
       setCurrentPage(1);
     }
-  }, [isPopoverOpen, fonts.length, initialLoading, loadingMore]);
+    
+    const filtered = searchTerm 
+      ? fonts.filter(font => 
+          font.name.toLowerCase().includes(searchTerm.toLowerCase()))
+      : fonts;
+    
+    // Calculate pagination
+    const pageSize = 20;
+    const endIndex = currentPage * pageSize;
+    const paginatedFonts = filtered.slice(0, endIndex);
+    
+    setDisplayFonts(paginatedFonts);
+    setHasMore(endIndex < filtered.length);
+    
+    // Load font previews for this batch
+    loadFontPreviews(paginatedFonts);
+  }, [fonts, searchTerm, currentPage]);
 
+  // Handle popover opening
   useEffect(() => {
-    const fetchFonts = async () => {
-      try {
-        if (currentPage === 1) {
-          setInitialLoading(true);
-          setFonts([]);
-        } else {
-          setLoadingMore(true);
-        }
-
-        setError(null);
-
-        const queryParams = new URLSearchParams({
-          page: currentPage.toString(),
-          limit: '20',
-        });
-
-        if (debouncedSearchTerm) {
-          queryParams.append('search', debouncedSearchTerm);
-        }
-
-        const response = await fetch(`/api/fonts?${queryParams.toString()}`);
-
-        if (!response.ok) {
-          throw new Error('Failed to fetch fonts');
-        }
-
-        const data: PaginatedFontsResponse = await response.json();
-
-        const fontOptions: FontOption[] = data.items.map(font => ({
-          name: font.family,
-          value: `${font.family}, ${font.category}`,
-          category: categorizeFonts(font.category)
-        }));
-
-        setHasMore(data.hasMore);
-
-        if (currentPage === 1) {
-          setFonts(fontOptions);
-        } else {
-          setFonts(prev => [...prev, ...fontOptions]);
-        }
-
-        loadFontPreviews(fontOptions);
-      } catch (err: any) {
-        setError(err.message || 'Failed to load fonts');
-      } finally {
-        setInitialLoading(false);
-        setLoadingMore(false);
-      }
-    };
-
-    fetchFonts();
-  }, [currentPage, debouncedSearchTerm]);
-
+    if (isPopoverOpen && displayFonts.length === 0 && !initialLoading && fonts.length > 0) {
+      // Initial load of first page when popover opens
+      setCurrentPage(1);
+    }
+  }, [isPopoverOpen, displayFonts.length, initialLoading, fonts.length]);
+  // Setup intersection observer for infinite scrolling
   useEffect(() => {
     if (!isPopoverOpen) return;
 
@@ -169,7 +145,7 @@ export default function ThemeFontsSection() {
 
       observerRef.current = new IntersectionObserver((entries) => {
         const [entry] = entries;
-        if (entry.isIntersecting && hasMore && !loadingMore && !initialLoading) {
+        if (entry.isIntersecting && hasMore && !initialLoading) {
           setCurrentPage(prev => prev + 1);
         }
       }, options);
@@ -185,23 +161,31 @@ export default function ThemeFontsSection() {
         observerRef.current.disconnect();
       }
     };
-  }, [hasMore, loadingMore, initialLoading, isPopoverOpen]);
-
+  }, [hasMore, initialLoading, isPopoverOpen]);
   const loadFontPreviews = useCallback((fontOptions: FontOption[]) => {
+    // Skip if not in browser environment
+    if (typeof window === 'undefined') return;
+    
     const fontsToLoad = fontOptions.filter(font => !fontPreviewsLoaded.has(font.name));
-
+    
     if (fontsToLoad.length === 0) return;
 
     const updatedLoadedFonts = new Set(fontPreviewsLoaded);
     fontsToLoad.forEach(font => updatedLoadedFonts.add(font.name));
     setFontPreviewsLoaded(updatedLoadedFonts);
 
-    const fontFamilies = fontsToLoad.map(font => font.name.replace(/\s/g, '+')).join('|');
-    if (fontFamilies) {
-      const link = document.createElement('link');
-      link.rel = 'stylesheet';
-      link.href = `https://fonts.googleapis.com/css?family=${fontFamilies}&display=swap`;
-      document.head.appendChild(link);
+    // Batch fonts in groups of 10 to avoid URL length limitations
+    const batchSize = 10;
+    for (let i = 0; i < fontsToLoad.length; i += batchSize) {
+      const batch = fontsToLoad.slice(i, i + batchSize);
+      const fontFamilies = batch.map(font => font.name.replace(/\s/g, '+')).join('|');
+      
+      if (fontFamilies) {
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = `https://fonts.googleapis.com/css?family=${fontFamilies}&display=swap`;
+        document.head.appendChild(link);
+      }
     }
   }, [fontPreviewsLoaded]);
 
@@ -211,9 +195,7 @@ export default function ThemeFontsSection() {
     setSelectedBodyFont(fontName);
 
     const selectedFontOption = fonts.find(f => f.name === fontName);
-    if (!selectedFontOption) return;
-
-    if (state.variables) {
+    if (!selectedFontOption) return;    if (state.variables) {
       const updatedVariables = state.variables.map(variable => {
         if (variable.key === '--heading-font') {
           return { ...variable, value: `${fontName}, sans-serif` };
@@ -222,8 +204,28 @@ export default function ThemeFontsSection() {
         }
         return variable;
       });
-
-      updateBuilderState({ variables: updatedVariables });
+        // Update both variables and project settings to ensure the preview updates
+      const projectSettings = {
+        ...(state.projectSettings || {}),
+        headingFont: fontName,
+        bodyFont: fontName,
+        project: state.project?._id || ''  // Ensure project is always a string
+      };
+      
+      const projectWithUpdatedSettings = state.project ? {
+        ...state.project,
+        settings: {
+          ...(state.project.settings || {}),
+          headingFont: fontName,
+          bodyFont: fontName
+        }
+      } : state.project;
+      
+      updateBuilderState({ 
+        variables: updatedVariables,
+        projectSettings,
+        project: projectWithUpdatedSettings
+      });
 
       if (state.project?._id) {
         updateProjectFonts.mutate(
@@ -235,10 +237,14 @@ export default function ThemeFontsSection() {
       }
     }
   };
-
   const getSelectedFontValue = (fontName: string): string => {
-    const font = fonts.find(f => f.name === fontName);
-    return font ? font.value : `"${fontName}", sans-serif`;
+    // First check in display fonts which is more likely to have loaded previews
+    const fontInDisplay = displayFonts.find(f => f.name === fontName);
+    if (fontInDisplay) return fontInDisplay.value;
+    
+    // Otherwise check all fonts
+    const fontInAll = fonts.find(f => f.name === fontName);
+    return fontInAll ? fontInAll.value : `"${fontName}", sans-serif`;
   };
 
   useEffect(() => {
@@ -297,11 +303,10 @@ export default function ThemeFontsSection() {
                 value={searchTerm}
                 onValueChange={setSearchTerm}
                 className="h-9"
-              />
-              <CommandList className="max-h-[300px] overflow-auto" ref={commandListRef}>
+              />              <CommandList className="max-h-[300px] overflow-auto" ref={commandListRef}>
                 <CommandEmpty>No fonts found.</CommandEmpty>
                 <CommandGroup>
-                  {fonts.map((font) => (
+                  {displayFonts.map((font) => (
                     <CommandItem
                       key={font.name}
                       value={font.name}
@@ -320,14 +325,14 @@ export default function ThemeFontsSection() {
                     </CommandItem>
                   ))}
 
-                  {(initialLoading || loadingMore) && (
+                  {initialLoading && (
                     <div className="flex items-center justify-center p-4">
                       <Loader2 className="h-4 w-4 animate-spin" />
                       <span className="ml-2 text-sm">Loading fonts...</span>
                     </div>
                   )}
 
-                  {!initialLoading && !loadingMore && hasMore && (
+                  {!initialLoading && hasMore && (
                     <div ref={loaderRef} className="py-2" />
                   )}
                 </CommandGroup>

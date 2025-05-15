@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { BrushIcon, PaletteIcon, CircleIcon, TypeIcon } from 'lucide-react'
 import { useBuilderContext } from '@/context/builder.context'
-import { Variable, VariableSet } from '@halogen/common/types'
+import { Variable } from '@halogen/common/types'
 import TopPanelContainer from '../TopPanelContainer'
 import ThemeColorSection from './ThemeColorSection'
 import ThemeRoundnessSection from './ThemeRoundnessSection'
-import { extractNumericValue, hslToHex, hexToHsl } from './utils'
+import { extractNumericValue, hslToHex } from './utils'
 import ThemeFontsSection from './ThemeFontsSection'
 
 

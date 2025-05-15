@@ -13,7 +13,7 @@ export class ProjectSettingsService {
    * @param projectId - The ID of the project
    * @returns The created project settings document
    */
-  public static async createDefaultSettings(projectId: Types.ObjectId | string) {
+  public static async createDefaultSettings(projectId: Types.ObjectId | string): Promise<ProjectSettingsType> {
     try {
       const defaultSettings = new ProjectSettings({
         project: projectId,
@@ -22,9 +22,14 @@ export class ProjectSettingsService {
       });
       
       await defaultSettings.save();
-      Logger.info(`Created default project settings for project: ${projectId}`);
-      
-      return defaultSettings;
+      Logger.info(`Created default project settings for project: ${projectId}`);      const settingsObj = defaultSettings.toObject();
+      return {
+        ...settingsObj,
+        _id: settingsObj._id?.toString(),
+        project: settingsObj.project?.toString(),
+        createdAt: settingsObj.createdAt?.toISOString(),
+        updatedAt: settingsObj.updatedAt?.toISOString()
+      };
     } catch (error) {
       Logger.error(`Failed to create default project settings for project ${projectId}: ${error}`);
       throw error;
@@ -37,9 +42,17 @@ export class ProjectSettingsService {
    * @param projectId - The ID of the project
    * @returns The project settings or null if not found
    */
-  public static async getByProjectId(projectId: Types.ObjectId | string) {
+  public static async getByProjectId(projectId: Types.ObjectId | string): Promise<ProjectSettingsType | null> {
     try {
-      return await ProjectSettings.findOne({ project: projectId });
+      const settings = await ProjectSettings.findOne({ project: projectId });
+      if (!settings) return null;      const settingsObj = settings.toObject();
+      return {
+        ...settingsObj,
+        _id: settingsObj._id?.toString(),
+        project: settingsObj.project?.toString(),
+        createdAt: settingsObj.createdAt?.toISOString(),
+        updatedAt: settingsObj.updatedAt?.toISOString()
+      };
     } catch (error) {
       Logger.error(`Error fetching project settings for project ${projectId}: ${error}`);
       throw error;
@@ -52,16 +65,26 @@ export class ProjectSettingsService {
    * @param projectId - The ID of the project
    * @param settings - The settings to update
    * @returns The updated project settings
-   */  public static async updateSettings(
+   */  
+  public static async updateSettings(
     projectId: Types.ObjectId | string,
     settings: Partial<Pick<ProjectSettingsType, 'headingFont' | 'bodyFont'>>
-  ) {
+  ): Promise<ProjectSettingsType | null> {
     try {
-      return await ProjectSettings.findOneAndUpdate(
+      const updatedSettings = await ProjectSettings.findOneAndUpdate(
         { project: projectId },
         { $set: settings },
         { new: true, runValidators: true }
       );
+      
+      if (!updatedSettings) return null;      const settingsObj = updatedSettings.toObject();
+      return {
+        ...settingsObj,
+        _id: settingsObj._id?.toString(),
+        project: settingsObj.project?.toString(),
+        createdAt: settingsObj.createdAt?.toISOString(),
+        updatedAt: settingsObj.updatedAt?.toISOString()
+      };
     } catch (error) {
       Logger.error(`Error updating settings for project ${projectId}: ${error}`);
       throw error;

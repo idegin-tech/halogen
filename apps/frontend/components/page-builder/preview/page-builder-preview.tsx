@@ -22,23 +22,21 @@ export default function PageBuilderPreview({ }: Props) {
     const varName = v.key.startsWith('--') ? v.key : `--${v.key}`;
     return `${varName}: ${v.primaryValue};`;
   }).join('\n                              ');
-  // Get fonts from project settings
-  // Try to get from project.settings first, then fall back to projectSettings (both should be the same)
+
   const headingFont = state.project?.settings?.headingFont || state.projectSettings?.headingFont;
   const bodyFont = state.project?.settings?.bodyFont || state.projectSettings?.bodyFont;
 
-  // Create Google Fonts URL if fonts are defined
   let googleFontsUrl = null;
   if (headingFont || bodyFont) {
     const fontFamilies = [];
     if (headingFont) fontFamilies.push(headingFont.replace(/\s/g, '+'));
     if (bodyFont && bodyFont !== headingFont) fontFamilies.push(bodyFont.replace(/\s/g, '+'));
-    
+
     if (fontFamilies.length > 0) {
       googleFontsUrl = `https://fonts.googleapis.com/css2?family=${fontFamilies.join('&family=')}&display=swap`;
     }
   }
-  // Create font CSS variables
+
   const fontStyles = `
                             ${headingFont ? `--heading-font: "${headingFont}", var(--font-sans), sans-serif;` : ''}
                             ${bodyFont ? `--body-font: "${bodyFont}", var(--font-sans), sans-serif;` : ''}
@@ -61,7 +59,6 @@ export default function PageBuilderPreview({ }: Props) {
     }
   }, [isLoading, state.selectedPageId, state.pages, state.project, state.projectSettings, headingFont, bodyFont, colorVariablesFromState]);
 
-  // Update the frameKey to include fonts so iframe refreshes when fonts change
   const frameKey = JSON.stringify({ ...colorVariablesFromState, headingFont, bodyFont, show });
 
   return (

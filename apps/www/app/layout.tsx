@@ -54,7 +54,7 @@ async function getProjectBySubdomain(subdomain: string) {
 }
 
 export async function generateMetadata(): Promise<Metadata> {
-  const headersList = headers();
+  const headersList = await headers();
   const host = headersList.get('host') || '';
   const subdomain = getSubdomain(host);
   
@@ -80,7 +80,7 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const headersList = headers();
+  const headersList = await headers();
   const host = headersList.get('host') || '';
   const subdomain = getSubdomain(host);
   

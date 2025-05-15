@@ -3,6 +3,7 @@ import PageBuilder from "@/components/page-builder/PageBuilder";
 import { BuilderProvider } from "@/context/builder.context";
 import { SyncProvider } from "@/context/sync.context";
 import { notFound } from "next/navigation";
+import { PreviewProvider } from "@/context/preview.context";
 
 export default async function BuilderPage({
   params
@@ -28,7 +29,9 @@ export default async function BuilderPage({
   return (
     <BuilderProvider>
       <SyncProvider projectId={projectId}>
-        <PageBuilder projectData={projectData} />
+        <PreviewProvider>
+          <PageBuilder projectData={projectData} />
+        </PreviewProvider>
       </SyncProvider>
     </BuilderProvider>
   );
