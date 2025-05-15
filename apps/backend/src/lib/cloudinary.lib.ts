@@ -1,6 +1,7 @@
 import { v2 as cloudinary } from 'cloudinary';
 import { appConfig } from '@halogen/common';
 import Logger from '../config/logger.config';
+import { UploadApiOptions, UploadApiResponse } from 'cloudinary';
 
 cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -23,12 +24,31 @@ export const uploadToCloudinary = async (
 ): Promise<CloudinaryUploadResponse> => {
     try {
         const fullFolderPath = `${appConfig.cloudinaryPath}/${folder}`;
-
-        const uploadResult = await cloudinary.uploader.upload(filePath, {
+        
+        const isImage = options.resource_type === 'image' || filePath.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i);
+        
+        const uploadOptions: UploadApiOptions = {
             folder: fullFolderPath,
-            resource_type: 'auto',
-            ...options
+            resource_type: (options.resource_type as "image" | "auto" | "video" | "raw") || 'auto'
+        };
+        
+        Object.keys(options).forEach(key => {
+            if (key !== 'resource_type') {
+                (uploadOptions as any)[key] = options[key];
+            }
         });
+        
+        if (isImage && !options.eager) {
+            uploadOptions.eager = [
+                { width: 200, height: 200, crop: 'fill', format: 'jpg' }
+            ];
+        }
+
+        const uploadResult = await cloudinary.uploader.upload(filePath, uploadOptions) as UploadApiResponse;      
+        let thumbnailUrl;
+        if (uploadResult.eager && uploadResult.eager[0]) {
+            thumbnailUrl = uploadResult.eager[0].secure_url;
+        }
 
         return {
             url: uploadResult.secure_url,
@@ -36,7 +56,8 @@ export const uploadToCloudinary = async (
             format: uploadResult.format,
             width: uploadResult.width,
             height: uploadResult.height,
-            size: uploadResult.bytes
+            size: uploadResult.bytes,
+            thumbnail_url: thumbnailUrl
         };
     } catch (error) {
         console.error(error)

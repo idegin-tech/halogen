@@ -52,18 +52,26 @@ export class FilesController {
             });
             await deleteLocalFile(file.path);
             continue;
+          }          // Configure upload options based on file type
+          const uploadOptions: Record<string, any> = {
+            resource_type: file.mimetype.startsWith('image')
+              ? 'image' as const
+              : file.mimetype.startsWith('video')
+              ? 'video' as const
+              : 'raw' as const,
+          };
+          
+          // For images, ensure we generate a thumbnail
+          if (file.mimetype.startsWith('image')) {
+            uploadOptions.eager = [
+              { width: 200, height: 200, crop: 'fill', format: 'jpg', quality: 80 }
+            ];
           }
-
+          
           const uploadResult = await uploadToCloudinary(
             file.path,
             `${projectId}/files`,
-            {
-              resource_type: file.mimetype.startsWith('image')
-                ? 'image'
-                : file.mimetype.startsWith('video')
-                ? 'video'
-                : 'raw',
-            }
+            uploadOptions
           );
 
           const fileExtension = path.extname(file.originalname).substring(1).toLowerCase();
