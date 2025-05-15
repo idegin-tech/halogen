@@ -6,6 +6,12 @@ import { createProjectSchema, updateProjectSchema, projectsQuerySchema, syncProj
 
 const router = Router();
 
+// Make the subdomain route public (before auth middleware)
+router.get('/subdomain/:subdomain', 
+  ProjectsController.getProjectBySubdomain
+);
+
+// Apply auth middleware to all other routes
 router.use(AuthMiddleware.requireAuth);
 
 router.post('/', 
@@ -20,10 +26,6 @@ router.get('/',
 
 router.get('/:id', 
   ProjectsController.getProjectById
-);
-
-router.get('/subdomain/:subdomain', 
-  ProjectsController.getProjectBySubdomain
 );
 
 router.put('/:id', 

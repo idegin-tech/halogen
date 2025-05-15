@@ -4,11 +4,12 @@ import { CreateProjectDTO, UpdateProjectDTO, SyncProjectDTO } from './projects.d
 import ProjectModel from './projects.model';
 import ProjectUserModel from '../project-users/project-users.model';
 import Logger from '../../config/logger.config';
-import mongoose from 'mongoose';
+import mongoose, { Types } from 'mongoose';
 import PageModel from '../artifacts/pages/pages.model';
 import VariableModel from '../artifacts/variables/variables.model';
 import BlockInstanceModel from '../artifacts/block-instance/block-instances.model';
 import { ProjectMetadataService } from '../project-metadata';
+import { ProjectSettingsService } from '../project-settings';
 
 export class ProjectsService {
     static async generateUniqueSubdomain(): Promise<string> {
@@ -43,7 +44,7 @@ export class ProjectsService {
                 user: userId
             });
 
-            const savedProject = await newProject.save();            const projectUser = new ProjectUserModel({
+            const savedProject = await newProject.save(); const projectUser = new ProjectUserModel({
                 project: savedProject._id as string,
                 user: userId,
                 role: ProjectUserRole.MANAGER
@@ -51,7 +52,6 @@ export class ProjectsService {
 
             await projectUser.save();
 
-            //@ts-ignore
             const homePageId = `page_home_${savedProject._id.toString().substring(0, 6)}`;
 
             const homePage = new PageModel({
@@ -75,13 +75,13 @@ export class ProjectsService {
 
                     await page.save();
                 }
-            }             const defaultMetadata = {
+            } const defaultMetadata = {
                 project: savedProject._id?.toString() || '',
                 title: projectFields.name,
                 description: projectFields.description || ''
             };
-
             await ProjectMetadataService.createProjectMetadata(defaultMetadata);
+            await ProjectSettingsService.createDefaultSettings(savedProject._id ? savedProject._id.toString() : '');
 
             const projectObj = savedProject.toObject();
             return {
@@ -108,6 +108,9 @@ export class ProjectsService {
 
             const variables = await VariableModel.find({ project: projectId }).lean();
             const blockInstances = await BlockInstanceModel.find({ project: projectId }).lean();
+            const projectSettings = await ProjectSettingsService.getByProjectId(projectId);
+
+            const projectMetadata = await ProjectMetadataService.getProjectMetadataByProjectId(projectId);
 
             return {
                 ...projectObj,
@@ -115,21 +118,41 @@ export class ProjectsService {
                 users: projectUsers as any[],
                 pages: pages,
                 variables: variables,
-                blockInstances: blockInstances
+                blockInstances: blockInstances,
+                settings: projectSettings ? {
+                    headingFont: projectSettings.headingFont,
+                    bodyFont: projectSettings.bodyFont
+                } : null,
+                metadata: projectMetadata || null
             };
         } catch (error) {
             Logger.error(`Get project error: ${error instanceof Error ? error.message : 'Unknown error'}`);
             throw error;
         }
-    }    static async getProjectBySubdomain(subdomain: string): Promise<ProjectData | null> {
+    } static async getProjectBySubdomain(subdomain: string): Promise<ProjectData | null> {
         try {
             const project = await ProjectModel.findOne({ subdomain }).populate('user', 'name displayName email avatarUrl');
             if (!project) return null;
 
+            const projectId = (project._id instanceof Types.ObjectId)
+                ? project._id.toString()
+                : (typeof project._id === 'string')
+                    ? project._id
+                    : '';
+
+            const projectSettings = await ProjectSettingsService.getByProjectId(projectId);
+
+            const projectMetadata = await ProjectMetadataService.getProjectMetadataByProjectId(projectId);
+
             const projectObj = project.toObject();
             return {
                 ...projectObj,
-                _id: projectObj._id as string
+                _id: projectObj._id as string,
+                settings: projectSettings ? {
+                    headingFont: projectSettings.headingFont,
+                    bodyFont: projectSettings.bodyFont
+                } : null,
+                metadata: projectMetadata || null
             };
         } catch (error) {
             Logger.error(`Get project by subdomain error: ${error instanceof Error ? error.message : 'Unknown error'}`);

@@ -48,7 +48,7 @@ interface ProjectUserItem {
   updatedAt: string;
 }
 
-interface ProjectUsersResponse extends PaginatedResponse<ProjectUserItem> {}
+interface ProjectUsersResponse extends PaginatedResponse<ProjectUserItem> { }
 
 export default function SettingsTopPanelUsers() {
   const { state: { project } } = useBuilderContext();
@@ -59,9 +59,9 @@ export default function SettingsTopPanelUsers() {
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<ProjectUserRole>(ProjectUserRole.MANAGER);
-  const [confirmDialog, setConfirmDialog] = useState<{ 
-    open: boolean, 
-    userId: string | null, 
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean,
+    userId: string | null,
     action: 'remove' | 'changeRole' | null,
     newRole?: ProjectUserRole
   }>({
@@ -73,28 +73,28 @@ export default function SettingsTopPanelUsers() {
   const createUserMutation = useMutation('/project-users');
   const updateUserMutation = useMutation('/project-users');
   const removeUserMutation = useMutation('/project-users');
-  
+
   // Debounce search term
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearchTerm(searchTerm);
       setPage(1); // Reset to first page when search changes
     }, 500);
-    
+
     return () => clearTimeout(timer);
-  }, [searchTerm]); 
+  }, [searchTerm]);
   const { data, isLoading, error, refetch } = useQuery<ProjectUsersResponse>(
-    project?._id ? `/project-users/project/${project?._id}` :'',
-    { 
-      params: { 
-        page, 
+    project?._id ? `/project-users/project/${project?._id}` : '',
+    {
+      params: {
+        page,
         limit,
         search: debouncedSearchTerm || undefined
-      } 
-    },    [page, limit, debouncedSearchTerm, project?._id],
+      }
+    }, [page, limit, debouncedSearchTerm, project?._id],
     { enabled: !!project?._id, }
   );
-  
+
   // Function to get initials from name
   const getInitials = (name: string) => {
     if (!name) return '';
@@ -110,7 +110,7 @@ export default function SettingsTopPanelUsers() {
       toast.error("Project data is not available");
       return;
     }
-    
+
     try {
       // Using the correct syntax based on updated useMutation hook
       // First parameter is empty string for no path suffix, second is the data payload
@@ -119,7 +119,7 @@ export default function SettingsTopPanelUsers() {
         email: inviteEmail,
         role: inviteRole,
       });
-      
+
       if (result) {
         toast.success("Invitation sent successfully");
         setInviteDialogOpen(false);
@@ -131,11 +131,11 @@ export default function SettingsTopPanelUsers() {
       toast.error("Failed to invite user");
     }
   };
-  
+
   // Remove user handler
   const handleRemoveUser = async () => {
     if (!confirmDialog.userId) return;
-    
+
     try {
       const result = await removeUserMutation.remove(confirmDialog.userId);
       if (result !== null) {
@@ -149,16 +149,16 @@ export default function SettingsTopPanelUsers() {
       setConfirmDialog({ open: false, userId: null, action: null });
     }
   };
-  
+
   // Change role handler
   const handleChangeRole = async () => {
     if (!confirmDialog.userId || !confirmDialog.newRole) return;
-    
+
     try {
       const result = await updateUserMutation.update(confirmDialog.userId, {
         role: confirmDialog.newRole
       });
-      
+
       if (result) {
         toast.success("User role updated successfully");
         refetch();
@@ -173,9 +173,9 @@ export default function SettingsTopPanelUsers() {
 
   // Open role change confirmation dialog
   const openChangeRoleDialog = (userId: string, newRole: ProjectUserRole) => {
-    setConfirmDialog({ 
-      open: true, 
-      userId, 
+    setConfirmDialog({
+      open: true,
+      userId,
       action: 'changeRole',
       newRole
     });
@@ -183,17 +183,17 @@ export default function SettingsTopPanelUsers() {
 
   // Open remove user confirmation dialog
   const openRemoveDialog = (userId: string) => {
-    setConfirmDialog({ 
-      open: true, 
-      userId, 
-      action: 'remove' 
+    setConfirmDialog({
+      open: true,
+      userId,
+      action: 'remove'
     });
   };
 
   // Handle page change
   const handlePageChange = (newPage: number) => {
     setPage(newPage);
-  };  const roleColorMap = {
+  }; const roleColorMap = {
     'owner': 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-300', // Keep for backward compatibility
     [ProjectUserRole.MANAGER]: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-300',
     [ProjectUserRole.DEVELOPER]: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300'
@@ -248,12 +248,12 @@ export default function SettingsTopPanelUsers() {
                 {data.docs.map(user => (
                   <div key={user._id} className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-accent/5 transition-colors">
                     <div className="flex items-center gap-3">                        <Avatar className="h-10 w-10">
-                        {user.user.avatarUrl ? (
-                          <AvatarImage src={user.user.avatarUrl} alt={user.user.displayName || user.user.name} />
-                        ) : (
-                          <AvatarFallback>{getInitials(user.user.displayName || user.user.name)}</AvatarFallback>
-                        )}
-                      </Avatar>
+                      {user.user.avatarUrl ? (
+                        <AvatarImage src={user.user.avatarUrl} alt={user.user.displayName || user.user.name} />
+                      ) : (
+                        <AvatarFallback>{getInitials(user.user.displayName || user.user.name)}</AvatarFallback>
+                      )}
+                    </Avatar>
                       <div>
                         <div className="font-medium">{user.user.displayName || user.user.name}</div>
                         <div className="text-sm text-muted-foreground">{user.user.email}</div>
@@ -288,7 +288,7 @@ export default function SettingsTopPanelUsers() {
                                 </DropdownMenuItem>
                               )}
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem 
+                              <DropdownMenuItem
                                 className="text-red-600"
                                 onClick={() => openRemoveDialog(user._id)}
                               >
@@ -322,7 +322,7 @@ export default function SettingsTopPanelUsers() {
                       </PaginationItem>
                       <PaginationItem>
                         <Button
-                          variant="outline" 
+                          variant="outline"
                           size="icon"
                           className="h-8 w-8"
                           disabled={!data.hasPrevPage}
@@ -332,14 +332,14 @@ export default function SettingsTopPanelUsers() {
                           <span className="sr-only">Previous page</span>
                         </Button>
                       </PaginationItem>
-                      
+
                       {/* Page numbers */}
                       {Array.from({ length: data.totalPages }, (_, i) => i + 1)
                         .filter(pageNum => {
                           // Show current page and pages close to it
                           return (
-                            pageNum === 1 || 
-                            pageNum === data.totalPages || 
+                            pageNum === 1 ||
+                            pageNum === data.totalPages ||
                             Math.abs(pageNum - data.page) <= 1
                           );
                         })
@@ -352,7 +352,7 @@ export default function SettingsTopPanelUsers() {
                                   <PaginationEllipsis />
                                 </PaginationItem>
                                 <PaginationItem key={pageNum}>
-                                  <PaginationLink 
+                                  <PaginationLink
                                     isActive={pageNum === data.page}
                                     onClick={() => handlePageChange(pageNum)}
                                   >
@@ -362,10 +362,10 @@ export default function SettingsTopPanelUsers() {
                               </React.Fragment>
                             );
                           }
-                          
+
                           return (
                             <PaginationItem key={pageNum}>
-                              <PaginationLink 
+                              <PaginationLink
                                 isActive={pageNum === data.page}
                                 onClick={() => handlePageChange(pageNum)}
                               >
@@ -374,7 +374,7 @@ export default function SettingsTopPanelUsers() {
                             </PaginationItem>
                           );
                         })}
-                      
+
                       <PaginationItem>
                         <Button
                           variant="outline"
@@ -446,17 +446,19 @@ export default function SettingsTopPanelUsers() {
                 />
               </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="role">Role</Label>              <Select value={inviteRole} onValueChange={(value: any) => setInviteRole(value)}>
-                <SelectTrigger id="role">
+            <div className="space-y-2 w-full">
+              <Label htmlFor="role">Role</Label>
+              <Select value={inviteRole} onValueChange={(value: any) => setInviteRole(value)}>
+                <SelectTrigger id="role" className="w-full">
                   <SelectValue placeholder="Select role" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={ProjectUserRole.MANAGER}>Manager</SelectItem>
                   <SelectItem value={ProjectUserRole.DEVELOPER}>Developer</SelectItem>
                 </SelectContent>
-              </Select>              <p className="text-xs text-muted-foreground mt-1">
-                {inviteRole === ProjectUserRole.MANAGER 
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                {inviteRole === ProjectUserRole.MANAGER
                   ? "Managers can edit project content and settings but cannot delete the project or transfer ownership."
                   : "Developers can edit project content but have limited access to project settings."}
               </p>

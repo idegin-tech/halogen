@@ -10,6 +10,11 @@ export type ProjectData = {
   thumbnail?: string;
   createdAt: string;
   updatedAt: string;
+  settings?: {
+    headingFont: string;
+    bodyFont: string;
+  } | null;
+  metadata?: any | null; // Using any as a temporary solution, could be replaced with a proper type
 }
 
 export type PageData = {
