@@ -63,11 +63,13 @@ export const deleteFromCloudinary = async (publicId: string): Promise<boolean> =
 
 export interface CloudinaryUploadResponse {
     url: string;
+    secure_url?: string;
     publicId: string;
     format: string;
     width: number;
     height: number;
     size: number;
+    thumbnail_url?: string;
 }
 
 export default {

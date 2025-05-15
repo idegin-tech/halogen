@@ -126,9 +126,7 @@ export default function PagesTopPanel({show, onHide}:{show: boolean, onHide: () 
                 }))}
                 activeSetId={selectedPageId}
                 onAddSet={handleAddPage}
-                onRemoveSet={handleRemovePage}
                 onSetActiveSet={setActivePage}
-                onSetChange={handleSetChange}
                 breadcrumbs={breadcrumbs}
             >
                 <div className='flex-1 overflow-x-hidden overflow-y-auto'>

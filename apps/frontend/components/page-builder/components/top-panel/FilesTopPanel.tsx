@@ -411,8 +411,6 @@ export default function FilesTopPanel({ show, onHide }: { show: boolean; onHide:
       setList={[]}
       activeSetId={null}
       onSetActiveSet={() => {}}
-      onRemoveSet={() => {}}
-      onSetChange={() => {}}
       breadcrumbs={breadcrumbs}
     >
       <div 

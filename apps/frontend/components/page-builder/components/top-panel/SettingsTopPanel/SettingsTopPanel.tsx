@@ -61,9 +61,7 @@ export default function SettingsTopPanel({ show, onHide }: Props) {
             ]}
             activeSetId={activeSection}
             onAddSet={() => 'settings'}
-            onRemoveSet={() => {}}
             onSetActiveSet={setActiveSection}
-            onSetChange={() => {}}
             breadcrumbs={breadcrumbs}
         >            <div className='flex-1 overflow-x-hidden overflow-y-auto'>
                 {activeSection === 'project' && <SettingsTopPanelProject />}

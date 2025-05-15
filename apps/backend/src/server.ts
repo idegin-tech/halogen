@@ -13,13 +13,13 @@ import Database from './config/db.config';
 import { validateEnv } from './config/env.config';
 import { SessionConfig } from './config/session.config';
 import { ErrorHandlerMiddleware } from './middleware/error.middleware';
-import authRoutes from './modules/auth/auth.routes';
-import { projectsRoutes } from './modules/projects';
 import { projectUsersRoutes } from './modules/project-users';
 import { projectMetadataRoutes } from './modules/project-metadata';
-import { projectSettingsRoutes } from './modules/project-settings';
 import { pagesRoutes, variablesRoutes, blockInstancesRoutes } from './modules/artifacts';
 import { previewRoutes } from './modules/www';
+import authRoutes from './modules/auth/auth.routes';
+import { projectsRoutes } from './modules/projects';
+import { projectSettingsRoutes } from './modules/project-settings';
 import { uploadsRoutes } from './modules/uploads';
 
 declare module 'express' {
@@ -48,12 +48,9 @@ class App {
         if (!origin) return callback(null, true);
         if (env.NODE_ENV === 'development') return callback(null, true);
         
-        // Check if origin matches any allowed origin
         const isAllowed = corsOrigins.some(allowedOrigin => {
-          // Check for exact match
           if (allowedOrigin === origin) return true;
           
-          // Check for wildcard subdomain match (format: https://*.example.com)
           if (allowedOrigin.includes('*')) {
             const domainPart = allowedOrigin.replace('*.', '');
             return origin.endsWith(domainPart);
@@ -126,7 +123,9 @@ class App {
         version: '1.0.0',
         environment: env.NODE_ENV
       });
-    });    this.app.use(`${apiPrefix}/auth`, authRoutes);    this.app.use(`${apiPrefix}/projects`, projectsRoutes);
+    });    
+    this.app.use(`${apiPrefix}/auth`, authRoutes);   
+     this.app.use(`${apiPrefix}/projects`, projectsRoutes);
     this.app.use(`${apiPrefix}/project-users`, projectUsersRoutes);
     this.app.use(`${apiPrefix}/project-metadata`, projectMetadataRoutes);
     this.app.use(`${apiPrefix}/project-settings`, projectSettingsRoutes);

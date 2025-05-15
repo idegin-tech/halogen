@@ -7,3 +7,4 @@ export * from "./builder.types";
 export * from "./project-metadata.types";
 export * from "./project-settings.types";
 export * from "./google-fonts";
+export * from "./files.types";

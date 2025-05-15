@@ -356,9 +356,7 @@ export default function BlocksTopPanel({ show, onHide }: { show: boolean, onHide
                 setList={panelSetList as any[]}
                 activeSetId={selectedFolder}
                 onAddSet={handleAddBlockFolder}
-                onRemoveSet={handleRemoveBlockFolder}
                 onSetActiveSet={setSelectedFolder}
-                onSetChange={handleSetChange}
                 breadcrumbs={breadcrumbs} // Pass the breadcrumbs to the TopPanelContainer
             >
                 <div className='flex-1 overflow-x-hidden overflow-y-auto'>
