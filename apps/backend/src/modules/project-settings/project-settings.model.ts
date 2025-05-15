@@ -1,9 +1,9 @@
 import mongoose, { Schema, Document, Types } from 'mongoose';
+import { ProjectSettings as ProjectSettingsType } from '@halogen/common/types';
 
-export interface IProjectSettings extends Document {
+// Interface extending Document for mongoose use
+interface IProjectSettings extends Document, Omit<ProjectSettingsType, '_id' | 'project' | 'createdAt' | 'updatedAt'> {
   project: Types.ObjectId;
-  headingFont: string;
-  bodyFont: string;
   createdAt: Date;
   updatedAt: Date;
 }

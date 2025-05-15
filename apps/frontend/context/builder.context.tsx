@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, ReactNode, useCallback } from "react";
-import { PageData, ProjectData, Variable, VariableSet } from "@halogen/common";
+import { PageData, ProjectData, Variable, VariableSet, ProjectSettings } from "@halogen/common";
 import { BlockInstance } from "@halogen/common";
 
 
@@ -11,6 +11,7 @@ type BuilderState = {
   blocks: BlockInstance[];
   selectedPageId: string | null;
   selectedBlockId: string | null;
+  projectSettings: ProjectSettings | null;
 
   variableSets: VariableSet[];
   variables: Variable[]
@@ -23,13 +24,13 @@ interface BuilderContextInterface {
 
 const BuilderContext = createContext<BuilderContextInterface | undefined>(undefined);
 
-export function BuilderProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<BuilderState>({
+export function BuilderProvider({ children }: { children: ReactNode }) {  const [state, setState] = useState<BuilderState>({
     project: null,
     pages: [],
     blocks: [],
     selectedPageId: null,
     selectedBlockId: null,
+    projectSettings: null,
 
     variables: [],
     variableSets: []

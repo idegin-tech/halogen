@@ -27,6 +27,7 @@ export default function PageBuilder({ projectData }: PageBuilderProps) {
         pages: projectData.pages || [],
         blocks: projectData.blockInstances || [],
         variables: projectData.variables || [],
+        projectSettings: projectData.settings || null,
       });
 
       const timeout = setTimeout(() => {

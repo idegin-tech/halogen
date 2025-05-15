@@ -60,11 +60,10 @@ export default function ThemeFontsSection() {
 
   const [selectedHeadingFont, setSelectedHeadingFont] = useState<string>('Inter');
   const [selectedBodyFont, setSelectedBodyFont] = useState<string>('Inter');
-
   const { state, updateBuilderState } = useBuilderContext();
 
   const updateProjectFonts = useMutation<any, { headingFont: string; bodyFont: string }>(
-    `/project-settings/${state.project?._id}/fonts`
+    `/api/v1/project-settings/${state.project?._id}/fonts`
   );
 
   const categorizeFonts = (googleCategory: string): 'heading' | 'body' => {

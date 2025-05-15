@@ -1,6 +1,7 @@
 import { Types } from 'mongoose';
-import ProjectSettings, { IProjectSettings } from './project-settings.model';
+import ProjectSettings from './project-settings.model';
 import Logger from '../../config/logger.config';
+import { ProjectSettings as ProjectSettingsType } from '@halogen/common/types';
 
 /**
  * Project Settings Service class with methods to manage project settings
@@ -12,7 +13,7 @@ export class ProjectSettingsService {
    * @param projectId - The ID of the project
    * @returns The created project settings document
    */
-  public static async createDefaultSettings(projectId: Types.ObjectId | string): Promise<IProjectSettings> {
+  public static async createDefaultSettings(projectId: Types.ObjectId | string) {
     try {
       const defaultSettings = new ProjectSettings({
         project: projectId,
@@ -36,7 +37,7 @@ export class ProjectSettingsService {
    * @param projectId - The ID of the project
    * @returns The project settings or null if not found
    */
-  public static async getByProjectId(projectId: Types.ObjectId | string): Promise<IProjectSettings | null> {
+  public static async getByProjectId(projectId: Types.ObjectId | string) {
     try {
       return await ProjectSettings.findOne({ project: projectId });
     } catch (error) {
@@ -51,11 +52,10 @@ export class ProjectSettingsService {
    * @param projectId - The ID of the project
    * @param settings - The settings to update
    * @returns The updated project settings
-   */
-  public static async updateSettings(
+   */  public static async updateSettings(
     projectId: Types.ObjectId | string,
-    settings: Partial<Pick<IProjectSettings, 'headingFont' | 'bodyFont'>>
-  ): Promise<IProjectSettings | null> {
+    settings: Partial<Pick<ProjectSettingsType, 'headingFont' | 'bodyFont'>>
+  ) {
     try {
       return await ProjectSettings.findOneAndUpdate(
         { project: projectId },

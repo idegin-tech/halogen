@@ -8,9 +8,6 @@ import ThemeRoundnessSection from './ThemeRoundnessSection'
 import { extractNumericValue, hslToHex, hexToHsl } from './utils'
 import ThemeFontsSection from './ThemeFontsSection'
 
-interface ExtendedVariableSet extends VariableSet {
-  isLocked?: boolean;
-}
 
 export default function ThemeTopPanel({show, onHide}:{show: boolean, onHide: () => void}) {
     const { state, updateBuilderState } = useBuilderContext();
@@ -58,7 +55,7 @@ export default function ThemeTopPanel({show, onHide}:{show: boolean, onHide: () 
                 return {
                     ...variable,
                     primaryValue: value,
-                    secondaryValue: value // Keep secondaryValue in sync with primaryValue for compatibility
+                    secondaryValue: value
                 };
             }
             return variable;
@@ -91,94 +88,24 @@ export default function ThemeTopPanel({show, onHide}:{show: boolean, onHide: () 
         }
     };
     
-    const handleAddVariableSet = (name?: string) => {
-        const setName = name || 'New Theme';
-        const newSetId = `set_${Date.now()}`;
-        
-        const newVariableSet: ExtendedVariableSet = {
-            set_id: newSetId,
-            name: setName,
-            key: setName.toLowerCase().replace(/\s+/g, '-'),
-        };
-        
-        const currentSetType = currentVariableSet?.key === 'radius' ? 'radius' : 'colors';
-        const templateSetId = currentSetType === 'radius' ? 'set_radius' : 'set_colors';
-        
-        const templateVariables = state.variables.filter(v => {
-            const setId = typeof v.variableSet === 'string' ? v.variableSet : v.variableSet.set_id;
-            return setId === templateSetId;
-        });
-        
-        const newVariables = templateVariables.map(variable => {
-            let primaryValue = variable.primaryValue;
-            if (variable.type === 'color' && !variable.primaryValue.startsWith('#')) {
-                primaryValue = hslToHex(variable.primaryValue);
-            }
-            
-            return {
-                ...variable,
-                variable_id: `${variable.variable_id}_${Date.now()}`,
-                primaryValue,
-                secondaryValue: primaryValue, // Keep them in sync
-                variableSet: newSetId
-            };
-        });
-        
-        updateBuilderState({ 
-            variableSets: [...state.variableSets, newVariableSet],
-            variables: [...state.variables, ...newVariables]
-        });
-        
-        return newSetId;
-    };
-      const handleRemoveVariableSet = (id: string) => {
-        // Prevent removing sections or built-in theme sets
-        if (id === 'set_colors' || id === 'set_radius' || id === 'set_fonts' ||
-            id === 'section_colors' || id === 'section_roundness' || id === 'section_fonts') return;
-        
-        const updatedVariableSets = state.variableSets.filter(set => set.set_id !== id);
-        const updatedVariables = state.variables.filter(variable => {
-            const variableSetId = typeof variable.variableSet === 'string' 
-                ? variable.variableSet 
-                : variable.variableSet.set_id;
-            return variableSetId !== id;
-        });
-        
-        updateBuilderState({ 
-            variableSets: updatedVariableSets,
-            variables: updatedVariables 
-        });
-        
-        if (selectedVariableSetId === id) {
-            setSelectedVariableSetId('section_colors');
-        }
-    };
-      const handleSetChange = (data: any) => {
-        console.log('Set change:', data);
-    };
-    
     const mappedVariableSets = useMemo(() => {
-        // Create fixed sections for Colors, Roundness and Fonts
         const fixedSets = [
             {
                 id: 'section_colors',
                 name: 'Colors', 
                 icon: <PaletteIcon />,
-                isLocked: true,
                 isSection: true
             },
             {
                 id: 'section_roundness',
                 name: 'Roundness',
                 icon: <CircleIcon />,
-                isLocked: true,
                 isSection: true
             },
             {
                 id: 'section_fonts',
                 name: 'Fonts',
                 icon: <TypeIcon />,
-                isLocked: true,
                 isSection: true
             }
         ];
@@ -201,7 +128,6 @@ export default function ThemeTopPanel({show, onHide}:{show: boolean, onHide: () 
             .sort((a, b) => a.name.localeCompare(b.name));
     }, [currentVariables]);
     
-    // Convert all existing color variables to hex on component mount
     useEffect(() => {
         if (hasColorVariables) {
             const needsUpdate = state.variables.some(
@@ -215,7 +141,7 @@ export default function ThemeTopPanel({show, onHide}:{show: boolean, onHide: () 
                         return {
                             ...variable,
                             primaryValue: hexValue,
-                            secondaryValue: hexValue // Keep them in sync
+                            secondaryValue: hexValue
                         };
                     }
                     return variable;
@@ -224,8 +150,8 @@ export default function ThemeTopPanel({show, onHide}:{show: boolean, onHide: () 
                 updateBuilderState({ variables: updatedVariables });
             }
         }
-    }, [selectedVariableSetId, hasColorVariables, state.variables]); // Remove updateBuilderState and hslToHex from dependencies
-      // Generate breadcrumbs based on the selected set
+    }, [selectedVariableSetId, hasColorVariables, state.variables]);
+      
     const breadcrumbs = useMemo(() => {
         const items: {label: string, href?: string}[] = [
             { label: "Theme", href: "#" }
@@ -249,7 +175,6 @@ export default function ThemeTopPanel({show, onHide}:{show: boolean, onHide: () 
         return items;
     }, [selectedVariableSetId, state.variableSets]);
 
-    // Get radius variables from current variables
     const radiusVariables = useMemo(() => {
         return currentVariables
             .filter(v => v.type === 'size')
@@ -257,7 +182,6 @@ export default function ThemeTopPanel({show, onHide}:{show: boolean, onHide: () 
     }, [currentVariables]);
 
     const sectionColorVariables = useMemo(() => {
-        // For section_colors, we want to use the variables from 'set_colors'
         const defaultColorSetId = 'set_colors';
         if (selectedVariableSetId === 'section_colors') {
             return state.variables
@@ -273,7 +197,6 @@ export default function ThemeTopPanel({show, onHide}:{show: boolean, onHide: () 
     }, [selectedVariableSetId, state.variables, colorVariables]);
 
     const sectionRadiusVariables = useMemo(() => {
-        // For section_roundness, we want to use the variables from 'set_radius'
         const defaultRadiusSetId = 'set_radius';
         if (selectedVariableSetId === 'section_roundness') {
             return state.variables
@@ -295,9 +218,7 @@ export default function ThemeTopPanel({show, onHide}:{show: boolean, onHide: () 
             show={show}
             setList={mappedVariableSets}
             activeSetId={selectedVariableSetId}
-            onAddSet={handleAddVariableSet}            onRemoveSet={handleRemoveVariableSet}
             onSetActiveSet={setSelectedVariableSetId}
-            onSetChange={handleSetChange}
             subPageHeading={
                 selectedVariableSetId === 'section_colors' ? 
                     "Colors" :
@@ -308,17 +229,17 @@ export default function ThemeTopPanel({show, onHide}:{show: boolean, onHide: () 
                 selectedVariableSetId ? 
                     state.variableSets.find(set => set.set_id === selectedVariableSetId)?.name :
                     "Theme"
-            }            breadcrumbs={breadcrumbs}
+            }
+            breadcrumbs={breadcrumbs}
         >
             <div className='flex-1 overflow-x-hidden overflow-y-auto'>
                 {selectedVariableSetId ? (
                     <div className="p-4">
-                        {/* Show section content based on selectedVariableSetId */}
                         {selectedVariableSetId === 'section_colors' && (
                             <ThemeColorSection
                                 colorVariables={sectionColorVariables}
                                 variableSetName={"Colors"}
-                                setVariableSetName={() => {}} // Not editable for section
+                                setVariableSetName={() => {}}
                                 handleVariableChange={handleVariableChange}
                                 validation={{ invalid: false, message: '' }}
                                 handleSubmit={(e) => e.preventDefault()}
@@ -337,7 +258,6 @@ export default function ThemeTopPanel({show, onHide}:{show: boolean, onHide: () 
                             <ThemeFontsSection />
                         )}
                         
-                        {/* Handle regular theme sets */}
                         {!['section_colors', 'section_roundness', 'section_fonts'].includes(selectedVariableSetId) && (
                             <ThemeColorSection
                                 colorVariables={colorVariables}

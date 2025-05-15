@@ -18,11 +18,32 @@ export default function PageBuilderPreview({ }: Props) {
     const setId = typeof v.variableSet === 'string' ? v.variableSet : v.variableSet?.set_id;
     return v.type === 'color' && (!activeColorSet || setId === activeColorSet?.set_id);
   });
-
   const cssVariables = colorVariablesFromState.map(v => {
     const varName = v.key.startsWith('--') ? v.key : `--${v.key}`;
     return `${varName}: ${v.primaryValue};`;
   }).join('\n                              ');
+  // Get fonts from project settings
+  // Try to get from project.settings first, then fall back to projectSettings (both should be the same)
+  const headingFont = state.project?.settings?.headingFont || state.projectSettings?.headingFont;
+  const bodyFont = state.project?.settings?.bodyFont || state.projectSettings?.bodyFont;
+
+  // Create Google Fonts URL if fonts are defined
+  let googleFontsUrl = null;
+  if (headingFont || bodyFont) {
+    const fontFamilies = [];
+    if (headingFont) fontFamilies.push(headingFont.replace(/\s/g, '+'));
+    if (bodyFont && bodyFont !== headingFont) fontFamilies.push(bodyFont.replace(/\s/g, '+'));
+    
+    if (fontFamilies.length > 0) {
+      googleFontsUrl = `https://fonts.googleapis.com/css2?family=${fontFamilies.join('&family=')}&display=swap`;
+    }
+  }
+  // Create font CSS variables
+  const fontStyles = `
+                            ${headingFont ? `--heading-font: "${headingFont}", var(--font-sans), sans-serif;` : ''}
+                            ${bodyFont ? `--body-font: "${bodyFont}", var(--font-sans), sans-serif;` : ''}
+                            ${bodyFont ? `font-family: "${bodyFont}", var(--font-sans), sans-serif;` : ''}
+                          `;
 
   useEffect(() => {
     const requirementsMet = !isLoading &&
@@ -38,9 +59,10 @@ export default function PageBuilderPreview({ }: Props) {
     } else {
       setShow(false);
     }
-  }, [isLoading, state.selectedPageId, state.pages, state.project, colorVariablesFromState]);
+  }, [isLoading, state.selectedPageId, state.pages, state.project, state.projectSettings, headingFont, bodyFont, colorVariablesFromState]);
 
-  const frameKey = JSON.stringify({ ...colorVariablesFromState, show });
+  // Update the frameKey to include fonts so iframe refreshes when fonts change
+  const frameKey = JSON.stringify({ ...colorVariablesFromState, headingFont, bodyFont, show });
 
   return (
     <main className="h-[var(--body-height)] max-h-[var(--body-height)] bg-white flex-1 overflow-hidden grid grid-cols-1">
@@ -55,10 +77,12 @@ export default function PageBuilderPreview({ }: Props) {
                       <head>
                         <meta charset="utf-8">
                         <meta name="viewport" content="width=1024">
+                        ${googleFontsUrl ? `<link href="${googleFontsUrl}" rel="stylesheet">` : ''}
                         <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
                         <style type="text/tailwindcss">
                             :root {
                               ${cssVariables}
+                              ${fontStyles}
                             }
                             @theme {
                                 --color-primary: var(--primary);
@@ -78,6 +102,14 @@ export default function PageBuilderPreview({ }: Props) {
                                 --color-border: var(--border);
                                 --color-input: var(--input);
                                 --color-ring: var(--ring);
+                            }
+                            
+                            body {
+                              ${bodyFont ? `font-family: "${bodyFont}", var(--font-sans), sans-serif;` : ''}
+                            }
+                            
+                            h1, h2, h3, h4, h5, h6 {
+                              ${headingFont ? `font-family: "${headingFont}", var(--font-sans), sans-serif;` : ''}
                             }
                         </style>
                       </head>
