@@ -9,7 +9,7 @@
     "check-types": "turbo run check-types",
     "pm2:start": "turbo run pm2:start",
     "setup": "turbo run setup && npm run pm2:start",
-    "redeploy": "turbo run redeploy && npm run restart-services",
+    "redeploy": "git pull && npm install && turbo run redeploy && npm run restart-services",
     "restart-services": "pm2 stop all || true && pm2 delete all || true && npm run pm2:start"
   },
   "devDependencies": {

@@ -4,6 +4,7 @@ import "../globals.css";
 import Script from "next/script";
 import { extractSubdomain } from "@/lib/subdomain";
 import { fetchProjectData } from "@/lib/api";
+import Link from "next/link";
 
 export async function generateMetadata(
   { params }: { params: Promise<{ slug: string[] }> },
@@ -81,8 +82,13 @@ export default async function RootLayout({
   }
 
   let projectVariables: any[] = [];
+  let headingFont: string | null = null;
+  let bodyFont: string | null = null;
+  let googleFontsUrl: string | null = null;
+  
   try {
     const projectData = await fetchProjectData(subdomain, '/', [`${subdomain}-layout`]);
+    console.log('THE PROJECT KEYS::', Object.keys(projectData))
 
     if (!projectData) {
       console.warn(`No project data found for subdomain ${subdomain}. Using default variables.`);
@@ -90,6 +96,21 @@ export default async function RootLayout({
       console.warn(`Project data returned but no variables found for subdomain: ${subdomain}`);
     } else {
       projectVariables = projectData.variables;
+      
+      if (projectData.settings) {
+        headingFont = projectData.settings.headingFont;
+        bodyFont = projectData.settings.bodyFont;
+        
+        if (headingFont || bodyFont) {
+          const fontFamilies = [];
+          if (headingFont) fontFamilies.push(headingFont.replace(/\s/g, '+'));
+          if (bodyFont && bodyFont !== headingFont) fontFamilies.push(bodyFont.replace(/\s/g, '+'));
+          
+          if (fontFamilies.length > 0) {
+            googleFontsUrl = `https://fonts.googleapis.com/css2?family=${fontFamilies.join('&family=')}&display=swap`;
+          }
+        }
+      }
     }
   } catch (error) {
     console.error(`Failed to load project data for subdomain ${subdomain}:`, error);
@@ -103,20 +124,40 @@ export default async function RootLayout({
     })
     .join('\n        ');
 
+    console.log('\n\n')
+    console.log({
+      headingFont,
+      bodyFont,
+      googleFontsUrl
+    })
+
   return (
     <html lang="en">
       <head>
         <Script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></Script>
+        {googleFontsUrl && (
+          <link 
+            rel="stylesheet" 
+            href={googleFontsUrl} 
+            crossOrigin="anonymous" 
+          />
+        )}
         <style type="text/tailwindcss">
           {`
             @theme {
               ${tailwindThemeVariables}
             }
+            
+            ${headingFont ? `h1, h2, h3, h4, h5, h6 { font-family: "${headingFont}", sans-serif; }` : ''}
+            ${bodyFont ? `body { font-family: "${bodyFont}", sans-serif; }` : ''}
           `}
         </style>
       </head>
       <body
         className={`antialiased bg-background text-foreground min-h-screen grid grid-cols-1`}
+        style={{
+          fontFamily: bodyFont ? `"${bodyFont}", sans-serif` : undefined
+        }}
       >
         {children}
       </body>
