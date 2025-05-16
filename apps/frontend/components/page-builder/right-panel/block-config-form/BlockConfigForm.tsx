@@ -12,8 +12,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Plus,
   Trash2,
@@ -29,7 +27,7 @@ import {
 import { getBlockProperties } from '@repo/ui/blocks';
 import { BlockConfigListValue, BlockFieldConfig, BlockProperties } from '@halogen/common/types';
 import { motion } from 'framer-motion';
-import { ImageInput } from './ImageInput';
+import { ImageInput } from './fixed-ImageInput';
 
 export default function BlockConfigForm() {
   const { state, updateBuilderState } = useBuilderContext();
@@ -132,9 +130,15 @@ export default function BlockConfigForm() {
   };
 
   const commitFieldChange = (fieldName: string) => {
-    if (!(fieldName in localFormState)) return;
+    if (!(fieldName in localFormState)) {
+      console.log(`Field ${fieldName} not found in localFormState, unable to commit change`);
+      return;
+    }
 
-    handleFieldChange(fieldName, localFormState[fieldName]);
+    const valueToCommit = localFormState[fieldName];
+    console.log(`Committing field change for ${fieldName} with value:`, valueToCommit);
+    
+    handleFieldChange(fieldName, valueToCommit);
 
     setLocalFormState(prev => {
       const { [fieldName]: _, ...rest } = prev;
@@ -661,8 +665,7 @@ export default function BlockConfigForm() {
               <p className="text-xs text-muted-foreground">{field.description}</p>
             )}
           </div>
-        ); 
-      case 'image':
+        );      case 'image':
         return (
           <ImageInput
             label={field.label}
@@ -671,8 +674,9 @@ export default function BlockConfigForm() {
             onChange={(value) => updateLocalFieldValue(fieldName, value)}
             onBlur={() => commitFieldChange(fieldName)}
             description={field.description}
+            fieldName={fieldName}
           />
-        ); case 'color':
+        );case 'color':
         return (
           <div className="grid gap-1.5">
             <label className="text-sm font-medium text-muted-foreground">{field.label}</label>
