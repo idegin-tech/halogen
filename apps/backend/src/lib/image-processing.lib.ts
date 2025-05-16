@@ -11,6 +11,90 @@ if (!fs.existsSync(tempDir)) {
 }
 
 /**
+ * Optimize uploaded image while preserving quality
+ * @param inputPath - Path to input image
+ * @param originalName - Original filename
+ * @returns Path to optimized image
+ */
+export const optimizeImage = async (inputPath: string, originalName: string): Promise<string> => {
+  try {
+    const extension = path.extname(originalName).toLowerCase();
+    const outputPath = path.join(tempDir, `optimized-${uuidv4()}${extension}`);
+    
+    // Get image metadata
+    const metadata = await sharp(inputPath).metadata();
+    
+    // Only process if it's an image we can optimize
+    if (['.jpg', '.jpeg', '.png', '.webp'].includes(extension)) {
+      let sharpImage = sharp(inputPath);
+      
+      // Process based on image format
+      switch (extension) {
+        case '.jpg':
+        case '.jpeg':
+          await sharpImage
+            .jpeg({ 
+              quality: 80, 
+              mozjpeg: true, 
+              // Preserve original size
+              force: false
+            })
+            .toFile(outputPath);
+          break;
+        case '.png':
+          await sharpImage
+            .png({ 
+              quality: 80, 
+              compressionLevel: 9, 
+              palette: true,
+              // Only use palette for smaller images
+              adaptiveFiltering: true,
+              force: false
+            })
+            .toFile(outputPath);
+          break;
+        case '.webp':
+          await sharpImage
+            .webp({ 
+              quality: 80,
+              // Reduce file size while maintaining quality
+              effort: 6, 
+              force: false
+            })
+            .toFile(outputPath);
+          break;
+        default:
+          // For unsupported extensions, copy the file as is
+          await fs.promises.copyFile(inputPath, outputPath);
+      }
+      
+      // Check if optimization actually reduced file size
+      const originalStats = await fs.promises.stat(inputPath);
+      const optimizedStats = await fs.promises.stat(outputPath);
+      
+      // If optimization didn't reduce size, use the original
+      if (optimizedStats.size >= originalStats.size) {
+        await fs.promises.unlink(outputPath);
+        Logger.info(`Optimization didn't reduce size for ${originalName}, using original`);
+        return inputPath;
+      }
+      
+      const savingsPercent = ((originalStats.size - optimizedStats.size) / originalStats.size * 100).toFixed(2);
+      Logger.info(`Optimized image ${originalName}: Reduced by ${savingsPercent}% (${originalStats.size} → ${optimizedStats.size} bytes)`);
+      return outputPath;
+    } else {
+      // For unsupported types, copy the file as is
+      await fs.promises.copyFile(inputPath, outputPath);
+      return outputPath;
+    }
+  } catch (error) {
+    Logger.error(`Error optimizing image: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    // Return original file path if optimization fails
+    return inputPath;
+  }
+};
+
+/**
  * Resize and process an image to favicon format (32x32)
  * @param inputPath - Path to input image
  * @returns Path to processed favicon

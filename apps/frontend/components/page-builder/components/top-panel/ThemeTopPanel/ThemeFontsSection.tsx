@@ -53,9 +53,9 @@ export default function ThemeFontsSection() {
   const [hasMore, setHasMore] = useState<boolean>(true);
   const [fontPreviewsLoaded, setFontPreviewsLoaded] = useState<Set<string>>(new Set());
   const [isPopoverOpen, setIsPopoverOpen] = useState<boolean>(false);
-  
+
   const { state: previewState } = usePreviewContext();
-  
+
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loaderRef = useRef<HTMLDivElement>(null);
   const commandListRef = useRef<HTMLDivElement>(null);
@@ -87,34 +87,34 @@ export default function ThemeFontsSection() {
         value: `${font.family}, ${font.category}`,
         category: categorizeFonts(font.category)
       }));
-      
+
       setFonts(fontOptions);
       setInitialLoading(false);
     }
   }, [previewState.googleFonts]);
-  
+
   // Handle search and pagination
   useEffect(() => {
     if (fonts.length === 0) return;
-    
+
     // Reset to page 1 when search changes
     if (searchTerm) {
       setCurrentPage(1);
     }
-    
-    const filtered = searchTerm 
-      ? fonts.filter(font => 
-          font.name.toLowerCase().includes(searchTerm.toLowerCase()))
+
+    const filtered = searchTerm
+      ? fonts.filter(font =>
+        font.name.toLowerCase().includes(searchTerm.toLowerCase()))
       : fonts;
-    
+
     // Calculate pagination
     const pageSize = 20;
     const endIndex = currentPage * pageSize;
     const paginatedFonts = filtered.slice(0, endIndex);
-    
+
     setDisplayFonts(paginatedFonts);
     setHasMore(endIndex < filtered.length);
-    
+
     // Load font previews for this batch
     loadFontPreviews(paginatedFonts);
   }, [fonts, searchTerm, currentPage]);
@@ -165,9 +165,9 @@ export default function ThemeFontsSection() {
   const loadFontPreviews = useCallback((fontOptions: FontOption[]) => {
     // Skip if not in browser environment
     if (typeof window === 'undefined') return;
-    
+
     const fontsToLoad = fontOptions.filter(font => !fontPreviewsLoaded.has(font.name));
-    
+
     if (fontsToLoad.length === 0) return;
 
     const updatedLoadedFonts = new Set(fontPreviewsLoaded);
@@ -179,7 +179,7 @@ export default function ThemeFontsSection() {
     for (let i = 0; i < fontsToLoad.length; i += batchSize) {
       const batch = fontsToLoad.slice(i, i + batchSize);
       const fontFamilies = batch.map(font => font.name.replace(/\s/g, '+')).join('|');
-      
+
       if (fontFamilies) {
         const link = document.createElement('link');
         link.rel = 'stylesheet';
@@ -195,7 +195,7 @@ export default function ThemeFontsSection() {
     setSelectedBodyFont(fontName);
 
     const selectedFontOption = fonts.find(f => f.name === fontName);
-    if (!selectedFontOption) return;    if (state.variables) {
+    if (!selectedFontOption) return; if (state.variables) {
       const updatedVariables = state.variables.map(variable => {
         if (variable.key === '--heading-font') {
           return { ...variable, value: `${fontName}, sans-serif` };
@@ -204,14 +204,14 @@ export default function ThemeFontsSection() {
         }
         return variable;
       });
-        // Update both variables and project settings to ensure the preview updates
+      // Update both variables and project settings to ensure the preview updates
       const projectSettings = {
         ...(state.projectSettings || {}),
         headingFont: fontName,
         bodyFont: fontName,
         project: state.project?._id || ''  // Ensure project is always a string
       };
-      
+
       const projectWithUpdatedSettings = state.project ? {
         ...state.project,
         settings: {
@@ -220,8 +220,8 @@ export default function ThemeFontsSection() {
           bodyFont: fontName
         }
       } : state.project;
-      
-      updateBuilderState({ 
+
+      updateBuilderState({
         variables: updatedVariables,
         projectSettings,
         project: projectWithUpdatedSettings
@@ -241,7 +241,7 @@ export default function ThemeFontsSection() {
     // First check in display fonts which is more likely to have loaded previews
     const fontInDisplay = displayFonts.find(f => f.name === fontName);
     if (fontInDisplay) return fontInDisplay.value;
-    
+
     // Otherwise check all fonts
     const fontInAll = fonts.find(f => f.name === fontName);
     return fontInAll ? fontInAll.value : `"${fontName}", sans-serif`;
@@ -263,7 +263,7 @@ export default function ThemeFontsSection() {
   }, [state.project?.settings]);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 grid grid-cols-1">
       <div>
         <h3 className="text-lg font-medium mb-2">Typography Settings</h3>
         <p className="text-sm text-muted-foreground mb-4">
@@ -303,7 +303,8 @@ export default function ThemeFontsSection() {
                 value={searchTerm}
                 onValueChange={setSearchTerm}
                 className="h-9"
-              />              <CommandList className="max-h-[300px] overflow-auto" ref={commandListRef}>
+              />
+              <CommandList className="max-h-[300px] overflow-auto" ref={commandListRef}>
                 <CommandEmpty>No fonts found.</CommandEmpty>
                 <CommandGroup>
                   {displayFonts.map((font) => (

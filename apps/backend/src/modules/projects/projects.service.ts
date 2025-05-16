@@ -36,12 +36,11 @@ export class ProjectsService {
 
             if (!projectFields.project_id) {
                 projectFields.project_id = `proj_${Date.now()}`;
-            }
-
-            const newProject = new ProjectModel({
+            }            const newProject = new ProjectModel({
                 ...projectFields,
                 subdomain,
-                user: userId
+                user: userId,
+                tier: projectFields.tier !== undefined ? projectFields.tier : 0
             });
 
             const savedProject = await newProject.save(); const projectUser = new ProjectUserModel({

@@ -3,9 +3,10 @@ import path from 'path';
 import { ResponseHelper } from '../../lib/response.helper';
 import { uploadToCloudinary, deleteFromCloudinary } from '../../lib/cloudinary.lib';
 import { deleteLocalFile } from '../../lib/upload.lib';
+import { optimizeImage } from '../../lib/image-processing.lib';
 import Logger from '../../config/logger.config';
 import { FilesService } from './files.service';
-import { MAX_FILE_SIZE, MAX_FILES_PER_UPLOAD, SUPPORTED_FILE_TYPES } from '@halogen/common';
+import { MAX_FILE_SIZE, MAX_FILES_PER_UPLOAD, SUPPORTED_FILE_TYPES, SUPPORTED_IMAGE_TYPES } from '@halogen/common';
 
 export class FilesController {
   static async uploadFiles(req: Request, res: Response): Promise<void> {
@@ -43,16 +44,24 @@ export class FilesController {
             });
             await deleteLocalFile(file.path);
             continue;
-          }
-
-          if (!SUPPORTED_FILE_TYPES.includes(file.mimetype)) {
+          }          if (!SUPPORTED_FILE_TYPES.includes(file.mimetype)) {
             errors.push({
               name: file.originalname,
               error: 'File type not supported'
             });
             await deleteLocalFile(file.path);
             continue;
-          }          // Configure upload options based on file type
+          }
+          
+          // Optimize images before upload
+          let filePathToUpload = file.path;
+          if (SUPPORTED_IMAGE_TYPES.includes(file.mimetype)) {
+            const optimizedPath = await optimizeImage(file.path, file.originalname);
+            if (optimizedPath !== file.path) {
+              filePathToUpload = optimizedPath;
+            }
+          }
+          
           const uploadOptions: Record<string, any> = {
             resource_type: file.mimetype.startsWith('image')
               ? 'image' as const
@@ -60,16 +69,24 @@ export class FilesController {
               ? 'video' as const
               : 'raw' as const,
           };
-          
-          // For images, ensure we generate a thumbnail
-          if (file.mimetype.startsWith('image')) {
+            if (file.mimetype.startsWith('image')) {
+            // Generate thumbnail
             uploadOptions.eager = [
               { width: 200, height: 200, crop: 'fill', format: 'jpg', quality: 80 }
             ];
+            
+            // Apply compression to the original image on Cloudinary
+            if (file.mimetype.includes('jpeg') || file.mimetype.includes('jpg')) {
+              uploadOptions.quality = 80;
+            } else if (file.mimetype.includes('png')) {
+              uploadOptions.quality = 80;
+              uploadOptions.compression = 'low';
+            } else if (file.mimetype.includes('webp')) {
+              uploadOptions.quality = 80;
+            }
           }
-          
-          const uploadResult = await uploadToCloudinary(
-            file.path,
+            const uploadResult = await uploadToCloudinary(
+            filePathToUpload,
             `${projectId}/files`,
             uploadOptions
           );
@@ -85,11 +102,13 @@ export class FilesController {
             downloadUrl: uploadResult.secure_url || uploadResult.url,
             thumbnailUrl: uploadResult.thumbnail_url,
             user: req.user?.id || ''
-          });
+          });          uploadedFiles.push(fileEntry);
 
-          uploadedFiles.push(fileEntry);
-
+          // Clean up both original and optimized files if needed
           await deleteLocalFile(file.path);
+          if (filePathToUpload !== file.path) {
+            await deleteLocalFile(filePathToUpload);
+          }
         } catch (error) {
           Logger.error(`Error processing file ${file.originalname}: ${error instanceof Error ? error.message : 'Unknown error'}`);
           errors.push({

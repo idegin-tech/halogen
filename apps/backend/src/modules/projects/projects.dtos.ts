@@ -5,6 +5,7 @@ export const createProjectSchema = z.object({
   description: z.string().optional(),
   project_id: z.string().optional(),
   thumbnail: z.string().optional(),
+  tier: z.number().int().min(0).default(0).optional(),
   pages: z.array(z.object({
     page_id: z.string(),
     name: z.string(),
@@ -16,7 +17,9 @@ export const createProjectSchema = z.object({
 export const updateProjectSchema = z.object({
   name: z.string().min(3, 'Project name must be at least 3 characters').optional(),
   subdomain: z.string().min(3, 'Subdomain must be at least 3 characters').optional(),
-  thumbnail: z.string().optional()
+  thumbnail: z.string().optional(),
+  description: z.string().optional(),
+  tier: z.number().int().min(0).optional()
 });
 
 export const projectsQuerySchema = z.object({
@@ -31,7 +34,8 @@ export const syncProjectSchema = z.object({
   project: z.object({
     name: z.string(),
     description: z.string().optional(),
-    thumbnail: z.string().optional()
+    thumbnail: z.string().optional(),
+    tier: z.number().int().min(0).optional()
   })
 }).strict();
 

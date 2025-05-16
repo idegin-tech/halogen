@@ -8,6 +8,7 @@ export type ProjectData = {
   subdomain: string;
   user: string;
   thumbnail?: string;
+  tier?: number;
   createdAt: string;
   updatedAt: string;
   settings?: {

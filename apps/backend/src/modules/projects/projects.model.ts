@@ -32,6 +32,14 @@ const ProjectSchema: Schema = new Schema<ProjectData>({
   },
   thumbnail: {
     type: String
+  },
+  description: {
+    type: String,
+    trim: true
+  },
+  tier: {
+    type: Number,
+    default: 0
   }
 }, {
   timestamps: true,

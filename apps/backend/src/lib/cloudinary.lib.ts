@@ -31,17 +31,25 @@ export const uploadToCloudinary = async (
             folder: fullFolderPath,
             resource_type: (options.resource_type as "image" | "auto" | "video" | "raw") || 'auto'
         };
-        
-        Object.keys(options).forEach(key => {
+          Object.keys(options).forEach(key => {
             if (key !== 'resource_type') {
                 (uploadOptions as any)[key] = options[key];
             }
         });
         
-        if (isImage && !options.eager) {
-            uploadOptions.eager = [
-                { width: 200, height: 200, crop: 'fill', format: 'jpg' }
-            ];
+        // Apply default compression settings for images if not already specified
+        if (isImage) {
+            if (!options.eager) {
+                uploadOptions.eager = [
+                    { width: 200, height: 200, crop: 'fill', format: 'jpg', quality: 80 }
+                ];
+            }
+            
+            // Add default quality settings if not specified
+            if (!options.quality) {
+                uploadOptions.quality = 'auto';
+                uploadOptions.fetch_format = 'auto';
+            }
         }
 
         const uploadResult = await cloudinary.uploader.upload(filePath, uploadOptions) as UploadApiResponse;      
