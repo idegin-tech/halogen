@@ -167,7 +167,6 @@ export default function FilesTopPanel({ show, onHide }: { show: boolean; onHide:
     }
   }, []);
 
-  // Get file type label
   const getFileTypeLabel = useCallback((fileType: string) => {
     if (fileType.startsWith('image/')) {
       return 'Image';
@@ -186,7 +185,6 @@ export default function FilesTopPanel({ show, onHide }: { show: boolean; onHide:
     }
   }, []);
 
-  // File selection handlers
   const toggleFileSelection = useCallback((fileId: string) => {
     setSelectedFiles(prev => 
       prev.includes(fileId)
@@ -203,7 +201,6 @@ export default function FilesTopPanel({ show, onHide }: { show: boolean; onHide:
     setSelectedFiles([]);
   }, []);
 
-  // Handle file upload
   const handleUploadClick = () => {
     fileInputRef.current?.click();
   };
@@ -235,7 +232,6 @@ export default function FilesTopPanel({ show, onHide }: { show: boolean; onHide:
       } finally {
         setIsUploading(false);
         
-        // Reset the file input
         if (fileInputRef.current) {
           fileInputRef.current.value = '';
         }
@@ -259,7 +255,6 @@ export default function FilesTopPanel({ show, onHide }: { show: boolean; onHide:
     
     if (!projectId) return;
     
-    // Handle file drop
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       setIsUploading(true);
       
@@ -269,7 +264,6 @@ export default function FilesTopPanel({ show, onHide }: { show: boolean; onHide:
         
         if (response.files.length > 0) {
           toast.success(`Successfully uploaded ${response.files.length} files`);
-          // Refresh the file list after upload
           loadFiles(1, true);
         }
         
@@ -287,14 +281,12 @@ export default function FilesTopPanel({ show, onHide }: { show: boolean; onHide:
     }
   }, [projectId, loadFiles]);
 
-  // File action handling
   const handleFileAction = useCallback((action: string, fileId: string) => {
     console.log(`${action} file with ID: ${fileId}`);
     
     if (action === 'download') {
       const file = files.find(f => f._id === fileId);
       if (file && file.downloadUrl) {
-        // Create an anchor element and simulate a click to download the file
         const anchor = document.createElement('a');
         anchor.href = file.downloadUrl;
         anchor.download = file.name;
@@ -307,7 +299,6 @@ export default function FilesTopPanel({ show, onHide }: { show: boolean; onHide:
     }
   }, [files]);
 
-  // Handle bulk delete
   const handleDeleteFiles = async () => {
     if (!projectId || filesToDelete.length === 0) return;
     
@@ -316,10 +307,8 @@ export default function FilesTopPanel({ show, onHide }: { show: boolean; onHide:
       await deleteProjectFiles(projectId, filesToDelete);
       toast.success(`Successfully deleted ${filesToDelete.length} files`);
       
-      // Remove the deleted files from the local state
       setFiles(prev => prev.filter(file => !filesToDelete.includes(file._id)));
       
-      // If deleted files were selected, clear them from selection
       setSelectedFiles(prev => prev.filter(id => !filesToDelete.includes(id)));
       
     } catch (error) {
@@ -332,12 +321,11 @@ export default function FilesTopPanel({ show, onHide }: { show: boolean; onHide:
     }
   };
 
-  // Bulk actions for multiple selected files
   const handleBulkAction = useCallback((action: string) => {
     if (action === 'clear') {
       clearSelections();
     } else if (action === 'download') {
-      // Download all selected files
+      
       selectedFiles.forEach(fileId => {
         handleFileAction('download', fileId);
       });
@@ -347,7 +335,6 @@ export default function FilesTopPanel({ show, onHide }: { show: boolean; onHide:
     }
   }, [selectedFiles, clearSelections, handleFileAction]);
 
-  // Header content for the second column with search and upload button
   const headerContent = (
     <div className="flex items-center gap-2 w-full">
       <div className="relative flex-1 max-w-md">
@@ -470,7 +457,6 @@ export default function FilesTopPanel({ show, onHide }: { show: boolean; onHide:
     </div>
   );
 
-  // File skeleton loader for list view
   const FileListSkeleton = () => (
     <div className="overflow-hidden rounded-lg border">
       <Table className="[&_tr:last-child_td]:border-0">
@@ -532,7 +518,6 @@ export default function FilesTopPanel({ show, onHide }: { show: boolean; onHide:
     </div>
   );
 
-  // Selection controls
   const SelectionControls = () => {
     if (selectedFiles.length === 0) return null;
     
@@ -562,9 +547,6 @@ export default function FilesTopPanel({ show, onHide }: { show: boolean; onHide:
       </motion.div>
     );
   };
-
-  // Motion-enhanced table row component
-  const MotionTableRow = motion(TableRow);
 
   return (
     <>
@@ -666,7 +648,7 @@ export default function FilesTopPanel({ show, onHide }: { show: boolean; onHide:
                       <ContextMenuTrigger>
                         <Card 
                           className={cn(
-                            "group overflow-hidden border cursor-pointer transition-all duration-200",
+                            "group overflow-hidden border cursor-pointer p-0 transition-all duration-200",
                             isFileSelected(file._id) 
                               ? "border-primary ring-2 ring-primary/20" 
                               : "hover:border-primary/30 hover:shadow-md"
@@ -706,30 +688,6 @@ export default function FilesTopPanel({ show, onHide }: { show: boolean; onHide:
                               </div>
                             )}
                             
-                            {/* Quick actions */}
-                            <div className="absolute top-2 right-2 flex gap-1">
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="h-8 w-8 bg-background/80 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <MoreHorizontal className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="w-48">
-                                  <DropdownMenuItem onClick={() => handleFileAction('download', file._id)}>
-                                    <Download className="mr-2 h-4 w-4" /> Download
-                                  </DropdownMenuItem>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem 
-                                    onClick={() => handleFileAction('delete', file._id)} 
-                                    className="text-destructive"
-                                  >
-                                    <Trash2 className="mr-2 h-4 w-4" /> Delete
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </div>
-                            
-                            {/* Selection overlay for click */}
                             <div 
                               className="absolute inset-0 z-10"
                               onClick={() => toggleFileSelection(file._id)}

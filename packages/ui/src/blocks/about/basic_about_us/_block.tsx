@@ -1,8 +1,6 @@
-import Image from "next/image";
 import { BlockProperties } from "@halogen/common/types";
 
 export function BasicAboutUs(fields: typeof properties.fields) {
-  // Use values directly from fields
   const values = fields?.values?.value || [];
 
   return (
@@ -11,7 +9,6 @@ export function BasicAboutUs(fields: typeof properties.fields) {
       id={fields?.sectionId?.value || "about"}
       style={fields?.backgroundColor?.value ? { backgroundColor: fields.backgroundColor.value } : {}}
     >
-      {/* Background decorative elements */}
       <div className="absolute top-0 right-0 w-1/3 h-1/3 bg-primary/5 rounded-full blur-3xl -translate-y-1/2"></div>
       <div className="absolute bottom-0 left-0 w-1/3 h-1/3 bg-secondary/10 rounded-full blur-3xl translate-y-1/2"></div>
 
@@ -187,7 +184,6 @@ export function BasicAboutUs(fields: typeof properties.fields) {
   );
 }
 
-// Block properties for the page builder
 export const properties: BlockProperties = {
   name: "Basic About Us",
   description: "A basic about us section with mission, values, and team image",
@@ -240,13 +236,13 @@ export const properties: BlockProperties = {
       label: "Background Color",
       description: "Background color of the section",
       defaultValue: ""
-    },
-    teamImageSrc: {
-      type: "text",
+    },    teamImageSrc: {
+      type: "image",
       name: "teamImageSrc",
-      label: "Team Image Source",
-      description: "URL for the team image",
-      defaultValue: "/placeholder.svg?height=600&width=600"
+      label: "Team Image",
+      description: "Select or upload an image for the team",
+      defaultValue: "/placeholder.png",
+      placeholder: "Select or enter image URL"
     },
     teamImageAlt: {
       type: "text",

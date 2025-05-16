@@ -126,14 +126,13 @@ export const properties: BlockProperties = {
             description: "The testimonial text from the customer",
             required: true,
             placeholder: "Enter the testimonial quote"
-          },
-          image: {
-            type: "url",
+          },          image: {
+            type: "image",
             name: "image",
-            label: "Profile Image URL",
-            description: "URL to the customer's profile image",
+            label: "Profile Image",
+            description: "Select or upload an image for the customer profile",
             required: false,
-            placeholder: "Enter image URL"
+            placeholder: "Select or enter image URL"
           }
         }
       },

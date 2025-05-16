@@ -29,6 +29,7 @@ import {
 import { getBlockProperties } from '@repo/ui/blocks';
 import { BlockConfigListValue, BlockFieldConfig, BlockProperties } from '@halogen/common/types';
 import { motion } from 'framer-motion';
+import { ImageInput } from './ImageInput';
 
 export default function BlockConfigForm() {
   const { state, updateBuilderState } = useBuilderContext();
@@ -353,7 +354,7 @@ export default function BlockConfigForm() {
               <p className="text-xs text-muted-foreground">{itemField.description}</p>
             )}
           </div>
-        ); case 'url':
+        );        case 'url':
         return (
           <div className="grid gap-1.5">
             <label htmlFor={`${fieldName}-${itemIndex}-${itemFieldName}`} className="text-sm font-medium text-muted-foreground">
@@ -376,6 +377,21 @@ export default function BlockConfigForm() {
             {itemField.description && (
               <p className="text-xs text-muted-foreground">{itemField.description}</p>
             )}
+          </div>
+        );
+        case 'image':
+        return (
+          <div className="grid gap-1.5">
+            <label htmlFor={`${fieldName}-${itemIndex}-${itemFieldName}`} className="text-sm font-medium text-muted-foreground">
+              {itemField.label}
+            </label>
+            <ImageInput
+              value={getListItemValue(fieldName, itemIndex, itemFieldName) ?? (value || itemField.defaultValue || '')}
+              onChange={(value) => updateLocalListItemValue(fieldName, itemIndex, itemFieldName, value)}
+              onBlur={() => commitListItemChange(fieldName, itemIndex, itemFieldName)}
+              placeholder={itemField.placeholder || `Enter image URL or select from project`}
+              description={itemField.description}
+            />
           </div>
         ); default:
         return (
@@ -624,7 +640,7 @@ export default function BlockConfigForm() {
               />
             </div>
           </div>
-        ); case 'url':
+        );      case 'url':
         return (
           <div className="grid gap-1.5">
             <label className="text-sm font-medium text-muted-foreground">{field.label}</label>
@@ -645,6 +661,17 @@ export default function BlockConfigForm() {
               <p className="text-xs text-muted-foreground">{field.description}</p>
             )}
           </div>
+        ); 
+      case 'image':
+        return (
+          <ImageInput
+            label={field.label}
+            placeholder={field.placeholder || `Enter image URL or select from project`}
+            value={getFieldValue(fieldName) ?? value}
+            onChange={(value) => updateLocalFieldValue(fieldName, value)}
+            onBlur={() => commitFieldChange(fieldName)}
+            description={field.description}
+          />
         ); case 'color':
         return (
           <div className="grid gap-1.5">

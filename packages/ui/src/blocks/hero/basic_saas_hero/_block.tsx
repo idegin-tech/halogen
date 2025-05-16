@@ -24,21 +24,21 @@ export function SaasHeroSection(fields: typeof properties.fields) {
                   {fields.badgeText.value}
                 </div>
               )}
-              
+
               <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl xl:text-6xl/none text-foreground">
                 {fields?.title?.value}
                 {fields?.brandName?.value && (
                   <> <span className="text-primary">{fields.brandName.value}</span></>
                 )}
               </h1>
-              
+
               {fields?.subtitle?.value && (
                 <p className="mt-4 max-w-[600px] text-lg text-muted-foreground md:text-xl">
                   {fields.subtitle.value}
                 </p>
               )}
             </div>
-            
+
             <div className="flex flex-col gap-3 min-[400px]:flex-row">
               {fields?.ctaText?.value && fields?.ctaLink?.value && (
                 <Link
@@ -48,7 +48,7 @@ export function SaasHeroSection(fields: typeof properties.fields) {
                   {fields.ctaText.value}
                 </Link>
               )}
-              
+
               {fields?.secondaryCtaText?.value && fields?.secondaryCtaLink?.value && (
                 <Link
                   href={fields.secondaryCtaLink.value}
@@ -68,11 +68,11 @@ export function SaasHeroSection(fields: typeof properties.fields) {
                         key={i}
                         className="h-10 w-10 rounded-full border-2 border-background bg-muted flex items-center justify-center overflow-hidden"
                       >
-                        <img 
-                          src={client.imageUrl || `/placeholder.svg?height=40&width=40`} 
-                          width={40} 
-                          height={40} 
-                          alt={client.imageAlt || `Client ${i+1}`} 
+                        <img
+                          src={client.imageUrl || `/placeholder.svg?height=40&width=40`}
+                          width={40}
+                          height={40}
+                          alt={client.imageAlt || `Client ${i + 1}`}
                         />
                       </div>
                     ))
@@ -88,7 +88,7 @@ export function SaasHeroSection(fields: typeof properties.fields) {
                     ))
                   )}
                 </div>
-                
+
                 <div className="text-sm">
                   <p className="font-medium text-foreground">
                     {fields?.clientCountText?.value || "Trusted by 200+ companies"}
@@ -115,16 +115,13 @@ export function SaasHeroSection(fields: typeof properties.fields) {
           </div>
 
           <div className="relative mx-auto lg:mr-0">
-            <div className={`relative z-10 overflow-hidden rounded-2xl ${
-              fields?.imageBorderWidth?.value 
+            <div className={`relative z-10 overflow-hidden rounded-2xl ${fields?.imageBorderWidth?.value
                 ? `border-[${fields.imageBorderWidth.value}px]`
                 : 'border'
-              } border-border/40 bg-background/50 ${
-              fields?.imagePadding?.value !== undefined 
+              } border-border/40 bg-background/50 ${fields?.imagePadding?.value !== undefined
                 ? `p-[${fields.imagePadding.value}px]`
                 : 'p-2'
-              } ${
-              fields?.imageShadowSize?.value
+              } ${fields?.imageShadowSize?.value
                 ? fields.imageShadowSize.value === 'none'
                   ? ''
                   : `shadow-${fields.imageShadowSize.value}`
@@ -233,9 +230,8 @@ export const properties: BlockProperties = {
       required: true,
       defaultValue: "Explore Services",
       placeholder: "Enter text for your primary call to action",
-    },
-    ctaLink: {
-      type: "url",
+    }, ctaLink: {
+      type: "text",
       name: "ctaLink",
       label: "Primary CTA Link",
       description: "The URL for the primary call to action button.",
@@ -251,9 +247,9 @@ export const properties: BlockProperties = {
       required: false,
       defaultValue: "Contact Us",
       placeholder: "Enter text for your secondary call to action",
-    },
+    }, 
     secondaryCtaLink: {
-      type: "url",
+      type: "text",
       name: "secondaryCtaLink",
       label: "Secondary CTA Link",
       description: "The URL for the secondary call to action button.",
@@ -308,13 +304,13 @@ export const properties: BlockProperties = {
         description: "Configure client avatars",
         items: {
           imageUrl: {
-            type: "url",
+            type: "image",
             name: "imageUrl",
-            label: "Avatar Image URL",
-            description: "URL to the client avatar image.",
+            label: "Avatar Image",
+            description: "Select or upload an image for the client avatar.",
             required: true,
-            defaultValue: "https://plus.unsplash.com/premium_photo-1746420146061-0256c1335fe4?q=80&w=1934&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-            placeholder: "Enter image URL"
+            defaultValue: "https://randomuser.me/api/portraits/women/44.jpg",
+            placeholder: "Select or enter image URL"
           },
           imageAlt: {
             type: "text",
@@ -329,7 +325,7 @@ export const properties: BlockProperties = {
       },
       defaultValue: [
         {
-          imageUrl: "https://randomuser.me/api/portraits/women/44.jpg", 
+          imageUrl: "https://randomuser.me/api/portraits/women/44.jpg",
           imageAlt: "Client 1"
         },
         {
@@ -345,15 +341,14 @@ export const properties: BlockProperties = {
           imageAlt: "Client 4"
         }
       ]
-    },
-    imageUrl: {
-      type: "url",
+    }, imageUrl: {
+      type: "image",
       name: "imageUrl",
       label: "Hero Image",
-      description: "The URL for the hero section image.",
+      description: "Select or upload an image for the hero section.",
       required: true,
-      defaultValue: "/placeholder.svg?height=600&width=600",
-      placeholder: "Enter image URL",
+      defaultValue: "/placeholder.png",
+      placeholder: "Select or enter image URL",
     },
     imageAlt: {
       type: "text",
