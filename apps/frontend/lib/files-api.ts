@@ -10,13 +10,17 @@ import {
 
 // Get project files
 export const getProjectFiles = async (projectId: string, options: FileQueryOptions = {}): Promise<FileListResponse> => {
-  const { page, limit, search, sort } = options;
+  const { page, limit, search, sort, type, mimeTypes } = options;
   const queryParams = new URLSearchParams();
   
   if (page) queryParams.append('page', page.toString());
   if (limit) queryParams.append('limit', limit.toString());
   if (search) queryParams.append('search', search);
   if (sort) queryParams.append('sort', sort);
+  if (type) queryParams.append('type', type);
+  if (mimeTypes && mimeTypes.length > 0) {
+    queryParams.append('mimeTypes', mimeTypes.join(','));
+  }
 
   const response = await apiClient.get(`/uploads/project/${projectId}/files?${queryParams.toString()}`);
   return extractResponseData<FileListResponse>(response);

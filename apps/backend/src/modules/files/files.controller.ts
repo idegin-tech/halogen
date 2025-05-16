@@ -119,11 +119,10 @@ export class FilesController {
       );
     }
   }
-
   static async getProjectFiles(req: Request, res: Response): Promise<void> {
     try {
       const { projectId } = req.params;
-      const { page, limit, search, sort } = req.query;
+      const { page, limit, search, sort, type, mimeTypes } = req.query;
       
       if (!projectId) {
         ResponseHelper.error(res, 'Project ID is required', 400);
@@ -134,7 +133,12 @@ export class FilesController {
         page: page ? Number(page) : undefined,
         limit: limit ? Number(limit) : undefined,
         search: search ? String(search) : undefined,
-        sort: sort ? String(sort) : undefined
+        sort: sort ? String(sort) : undefined,
+        type: type ? String(type) : undefined,
+        mimeTypes: mimeTypes ? (Array.isArray(mimeTypes) 
+          ? mimeTypes.map(String) 
+          : String(mimeTypes).split(','))
+          : undefined
       });
 
       ResponseHelper.success(res, files, 'Files retrieved successfully');

@@ -46,6 +46,8 @@ export interface FileQueryOptions {
   limit?: number;
   search?: string;
   sort?: string;
+  type?: string; // Filter by file type (e.g., image, video, audio)
+  mimeTypes?: string[]; // Filter by specific mime types
 }
 
 export const SUPPORTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'];

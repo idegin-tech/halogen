@@ -26,18 +26,36 @@ export class FilesService {
   static async createManyFiles(filesData: FileCreatePayload[]): Promise<FileDocument[]> {
     const result = await FileModel.insertMany(filesData);
     return result;
-  }
-  static async getProjectFiles(
+  }  static async getProjectFiles(
     projectId: string,
     options: FileQueryOptions
   ): Promise<PaginateResult<FileDocument>> {
     try {
-      const { page = 1, limit = 10, search, sort = '-createdAt' } = options;
+      const { page = 1, limit = 10, search, sort = '-createdAt', type, mimeTypes } = options;
 
       const query: FilterQuery<FileDocument> = { project: projectId };
 
       if (search) {
         query.$text = { $search: search };
+      }
+      
+      // Add filter by file type
+      if (type) {
+        // Different types of mime type prefixes
+        const typeMap: Record<string, string> = {
+          'image': 'image/',
+          'video': 'video/',
+          'audio': 'audio/'
+        };
+        
+        if (typeMap[type]) {
+          query.mimeType = { $regex: new RegExp(`^${typeMap[type]}`) };
+        }
+      }
+      
+      // Filter by specific mime types if provided
+      if (mimeTypes && mimeTypes.length > 0) {
+        query.mimeType = { $in: mimeTypes };
       }
 
       const paginateOptions: PaginateOptions = {

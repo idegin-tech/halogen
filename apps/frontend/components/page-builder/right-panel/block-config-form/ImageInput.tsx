@@ -1,13 +1,15 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { ImageIcon, LinkIcon, LoaderCircleIcon, X, Trash2 } from 'lucide-react';
+import { ImageIcon, LinkIcon, LoaderCircleIcon, X, Trash2, UploadIcon } from 'lucide-react';
 import Image from 'next/image';
+import { getProjectFiles } from '@/lib/files-api';
+import { FileData, FileListResponse } from '@halogen/common';
 
 interface ImageInputProps {
     value: string;
@@ -19,52 +21,87 @@ interface ImageInputProps {
 }
 
 export function ImageInput({
-    value,
-    onChange,
-    onBlur,
-    placeholder = 'Enter image URL or select from project',
-    label,
-    description,
+  value,
+  onChange,
+  onBlur,
+  placeholder = 'Enter image URL or select from project',
+  label,
+  description,
 }: ImageInputProps) {
-    const [open, setOpen] = useState(false);
-    const [activeTab, setActiveTab] = useState<string>("url");
-    const [urlInput, setUrlInput] = useState<string>(value || "");
-    const [selectedImage, setSelectedImage] = useState<string>(value || "");
-    const [previewHover, setPreviewHover] = useState<boolean>(false);
+  const [open, setOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<string>("url");
+  const [urlInput, setUrlInput] = useState<string>(value || "");
+  const [selectedImage, setSelectedImage] = useState<string>(value || "");
+  const [previewHover, setPreviewHover] = useState<boolean>(false);
 
-    useEffect(() => {
-        setUrlInput(value || "");
-        setSelectedImage(value || "");
-    }, [value]);
+  useEffect(() => {
+    setUrlInput(value || "");
+    setSelectedImage(value || "");
+  }, [value]);
+  
+  // State for handling project images with pagination
+  const [projectImages, setProjectImages] = useState<FileData[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const observer = useRef<IntersectionObserver | null>(null);
+  const projectId = "default"; // Replace with actual project ID from context
+  
+  // Reset pagination when tab changes or popover opens
+  useEffect(() => {
+    if (open && activeTab === 'project') {
+      setPage(1);
+      setProjectImages([]);
+      setHasMore(true);
+      fetchProjectImages(1, true);
+    }
+  }, [open, activeTab]);
 
-    // State for handling project images
-    const [projectImages, setProjectImages] = useState<any[]>([]);
-    const [isLoading, setIsLoading] = useState<boolean>(false);
-
-    // Fetch project images when popup opens and tab is on project
-    useEffect(() => {
-        const fetchImages = async () => {
-            if (open && activeTab === 'project') {
-                setIsLoading(true);
-                try {
-                    // This is just UI placeholder - actual API call would happen here
-                    setProjectImages([
-                        { id: 1, url: '/placeholder.jpg', thumbnail: '/placeholder.jpg', filename: 'placeholder-1.jpg' },
-                        { id: 2, url: 'https://randomuser.me/api/portraits/women/44.jpg', thumbnail: 'https://randomuser.me/api/portraits/women/44.jpg', filename: 'user-1.jpg' },
-                        { id: 3, url: 'https://randomuser.me/api/portraits/men/32.jpg', thumbnail: 'https://randomuser.me/api/portraits/men/32.jpg', filename: 'user-2.jpg' },
-                        { id: 4, url: 'https://randomuser.me/api/portraits/women/68.jpg', thumbnail: 'https://randomuser.me/api/portraits/women/68.jpg', filename: 'user-3.jpg' },
-                        { id: 5, url: 'https://randomuser.me/api/portraits/men/75.jpg', thumbnail: 'https://randomuser.me/api/portraits/men/75.jpg', filename: 'user-4.jpg' }
-                    ]);
-                } catch (error) {
-                    console.error('Error fetching images:', error);
-                } finally {
-                    setIsLoading(false);
-                }
-            }
-        };
-
-        fetchImages();
-    }, [open, activeTab]);
+  // Function to fetch images from the API
+  const fetchProjectImages = async (pageNum: number, reset: boolean = false) => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      // Call the API with image type filter
+      const response = await getProjectFiles(projectId, {
+        page: pageNum,
+        limit: 12,
+        type: 'image',
+        sort: '-createdAt'
+      });
+      
+      if (reset) {
+        setProjectImages(response.docs);
+      } else {
+        setProjectImages(prev => [...prev, ...response.docs]);
+      }
+      
+      setHasMore(response.hasNextPage);
+      setPage(response.page);
+    } catch (err) {
+      console.error('Error fetching project images:', err);
+      setError('Failed to load images. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // Setup intersection observer for infinite scroll
+  const lastImageElementRef = useCallback((node: HTMLDivElement) => {
+    if (isLoading) return;
+    
+    if (observer.current) observer.current.disconnect();
+    
+    observer.current = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting && hasMore) {
+        fetchProjectImages(page + 1);
+      }
+    });
+    
+    if (node) observer.current.observe(node);
+  }, [isLoading, hasMore, page]);
 
     const handleUrlInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setUrlInput(e.target.value);
@@ -204,55 +241,86 @@ export function ImageInput({
                                         </p>
                                         <p className="text-xs text-center text-muted-foreground mt-1 max-w-[250px]">
                                             Upload images in the Media section to use them here
-                                        </p>
-                                        <Button variant="outline" size="sm" className="mt-4 border-primary/30 text-primary hover:bg-primary/10">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1 h-3.5 w-3.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                                        </p>                                        <Button variant="outline" size="sm" className="mt-4 border-primary/30 text-primary hover:bg-primary/10">
+                                            <UploadIcon className="mr-1 h-3.5 w-3.5" />
                                             Upload Images
-                                        </Button>
-                                    </div>
+                                        </Button></div>
                                 ) : (
-                                    <ScrollArea className="h-[320px]">
+                                    <div className="h-[320px] overflow-y-auto relative">
                                         <div className="grid grid-cols-3 gap-2 p-4">
-                                            {projectImages.map((image: any) => (
-                                                <div
-                                                    key={image.id}
-                                                    className="group relative"
-                                                >
-                                                    <div
-                                                        className={`
-                              aspect-square relative border rounded-md overflow-hidden cursor-pointer 
-                              transition-all hover:border-primary hover:shadow-sm
-                              ${selectedImage === image.url ? 'ring-2 ring-primary border-primary' : 'border-border/60'}
-                            `}
-                                                        onClick={() => handleImageSelect(image.url)}
+                                            {projectImages.map((image, index) => {
+                                                const isLastElement = index === projectImages.length - 1;
+                                                return (
+                                                    <div 
+                                                        key={image._id} 
+                                                        ref={isLastElement ? lastImageElementRef : undefined}
+                                                        className="group relative"
                                                     >
-                                                        <img
-                                                            src={image.thumbnail || image.url}
-                                                            alt={image.filename || 'Project image'}
-                                                            className="w-full h-full object-cover"
-                                                        />
-
-                                                        {selectedImage === image.url && (
-                                                            <div className="absolute inset-0 bg-primary/10 flex items-center justify-center">
-                                                                <div className="h-6 w-6 rounded-full bg-primary flex items-center justify-center text-primary-foreground">
-                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                                        <div
+                                                            className={`
+                                                              aspect-square relative border rounded-md overflow-hidden cursor-pointer 
+                                                              transition-all hover:border-primary hover:shadow-sm
+                                                              ${selectedImage === image.downloadUrl ? 'ring-2 ring-primary border-primary' : 'border-border/60'}
+                                                            `}
+                                                            onClick={() => handleImageSelect(image.downloadUrl)}
+                                                        >
+                                                            <img
+                                                                src={image.thumbnailUrl || image.downloadUrl}
+                                                                alt={image.name || 'Project image'}
+                                                                className="w-full h-full object-cover"
+                                                            />
+                                                            
+                                                            {selectedImage === image.downloadUrl && (
+                                                                <div className="absolute inset-0 bg-primary/10 flex items-center justify-center">
+                                                                    <div className="h-6 w-6 rounded-full bg-primary flex items-center justify-center text-primary-foreground">
+                                                                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                                                    </div>
                                                                 </div>
-                                                            </div>
-                                                        )}
+                                                            )}
+                                                        </div>
+                                                        <p className="text-xs text-center mt-1 truncate text-muted-foreground">
+                                                            {image.name}
+                                                        </p>
                                                     </div>
-                                                    <p className="text-xs text-center mt-1 truncate text-muted-foreground">
-                                                        {image.filename || 'Image'}
-                                                    </p>
-                                                </div>
-                                            ))}
+                                                );
+                                            })}
                                         </div>
-                                    </ScrollArea>
+                                        
+                                        {/* Loading indicator at bottom during pagination */}
+                                        {isLoading && projectImages.length > 0 && (
+                                            <div className="p-4 flex justify-center">
+                                                <LoaderCircleIcon className="h-6 w-6 animate-spin text-primary" />
+                                            </div>
+                                        )}
+                                        
+                                        {/* Error message */}
+                                        {error && (
+                                            <div className="p-4 text-center">
+                                                <p className="text-xs text-red-500">{error}</p>
+                                                <Button 
+                                                    variant="ghost" 
+                                                    size="sm" 
+                                                    className="mt-2" 
+                                                    onClick={() => fetchProjectImages(page, false)}
+                                                >
+                                                    Try Again
+                                                </Button>
+                                            </div>
+                                        )}
+                                        
+                                        {/* End of results message */}
+                                        {!hasMore && !isLoading && projectImages.length > 0 && (
+                                            <div className="p-4 text-center">
+                                                <p className="text-xs text-muted-foreground">No more images</p>
+                                            </div>
+                                        )}
+                                    </div>
                                 )}
                             </TabsContent>
                         </Tabs>
                     </PopoverContent>
                 </Popover>
-                
+
                 <div className="relative flex-1">
                     <Input
                         value={urlInput}

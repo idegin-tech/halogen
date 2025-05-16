@@ -7,7 +7,12 @@ export const fileQuerySchema = z.object({
   page: z.string().optional().transform(val => (val ? parseInt(val, 10) : 1)),
   limit: z.string().optional().transform(val => (val ? parseInt(val, 10) : 10)),
   search: z.string().optional(),
-  sort: z.string().optional()
+  sort: z.string().optional(),
+  type: z.string().optional(),
+  mimeTypes: z.union([
+    z.string().optional(),
+    z.array(z.string()).optional()
+  ]).optional()
 });
 
 export const fileDeleteSchema = z.object({
