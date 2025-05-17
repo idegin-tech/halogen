@@ -263,7 +263,7 @@ export default function ThemeFontsSection() {
   }, [state.project?.settings]);
 
   return (
-    <div className="space-y-8 grid grid-cols-1">
+    <div className="space-y-8 grid grid-cols-1 select-none">
       <div>
         <h3 className="text-lg font-medium mb-2">Typography Settings</h3>
         <p className="text-sm text-muted-foreground mb-4">
