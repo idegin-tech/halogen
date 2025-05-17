@@ -3,12 +3,10 @@ import path from 'path';
 import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 import Logger from '../config/logger.config';
+import { FileSystemUtil } from './fs.util';
 
-// Temporary directory for processed images
-const tempDir = path.join(__dirname, '../../../uploads/temp');
-if (!fs.existsSync(tempDir)) {
-  fs.mkdirSync(tempDir, { recursive: true });
-}
+// Use OS temp directory instead of project-local storage
+const tempDir = FileSystemUtil.getTempSubDir('processed');
 
 /**
  * Optimize uploaded image while preserving quality
@@ -74,7 +72,7 @@ export const optimizeImage = async (inputPath: string, originalName: string): Pr
       
       // If optimization didn't reduce size, use the original
       if (optimizedStats.size >= originalStats.size) {
-        await fs.promises.unlink(outputPath);
+        FileSystemUtil.deleteFile(outputPath);
         Logger.info(`Optimization didn't reduce size for ${originalName}, using original`);
         return inputPath;
       }
@@ -139,10 +137,8 @@ export const convertToIco = async (inputPath: string): Promise<string> => {
     await fs.promises.writeFile(outputPath, buffer);
     
     // Clean up temporary PNG
-    if (fs.existsSync(pngPath)) {
-      fs.unlinkSync(pngPath);
-    }
-    
+    FileSystemUtil.deleteFile(pngPath);
+
     return outputPath;
   } catch (error) {
     Logger.error(`Error converting to ICO: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -176,22 +172,43 @@ export const processOpenGraphImage = async (inputPath: string): Promise<string> 
 };
 
 /**
+ * Generate thumbnail for project
+ * @param inputPath - Path to input image
+ * @returns Path to processed thumbnail
+ */
+export const generateProjectThumbnail = async (inputPath: string): Promise<string> => {
+  try {
+    const outputPath = path.join(tempDir, `thumbnail-${uuidv4()}.jpeg`);
+
+    await sharp(inputPath)
+      .resize({
+        width: 600,
+        height: 400,
+        fit: 'inside',
+      })
+      .jpeg({ quality: 85 })
+      .toFile(outputPath);
+
+    return outputPath;
+  } catch (error) {
+    Logger.error(`Error generating project thumbnail: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    throw error;
+  }
+};
+
+/**
  * Cleanup temporary processed images
  * @param filePath - Path to file to delete
  */
 export const cleanupTempFile = (filePath: string): void => {
-  try {
-    if (fs.existsSync(filePath) && filePath.includes(tempDir)) {
-      fs.unlinkSync(filePath);
-    }
-  } catch (error) {
-    Logger.error(`Error cleaning up temp file ${filePath}: ${error instanceof Error ? error.message : 'Unknown error'}`);
-  }
+  FileSystemUtil.deleteFile(filePath);
 };
 
 export default {
+  optimizeImage,
   processFavicon,
   convertToIco,
   processOpenGraphImage,
+  generateProjectThumbnail,
   cleanupTempFile
 };

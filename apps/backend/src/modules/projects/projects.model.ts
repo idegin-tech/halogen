@@ -31,7 +31,8 @@ const ProjectSchema: Schema = new Schema<ProjectData>({
     required: true
   },
   thumbnail: {
-    type: String
+    type: String,
+    default: null
   },
   description: {
     type: String,

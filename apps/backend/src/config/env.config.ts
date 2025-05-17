@@ -32,6 +32,8 @@ export function validateEnv() {
       CLOUDINARY_CLOUD_NAME: str({ default: undefined }),
       CLOUDINARY_API_KEY: str({ default: undefined }),
       CLOUDINARY_API_SECRET: str({ default: undefined }),
+
+      PREVIEW_URL: str({ default: 'localhost:3001', example: 'preview.example.com' }),
     });
     
     Logger.info('Environment variables validated successfully');
@@ -43,3 +45,4 @@ export function validateEnv() {
 }
 
 export default validateEnv;
+

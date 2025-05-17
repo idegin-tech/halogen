@@ -1,20 +1,24 @@
 import mongoose, { Schema, Document, Types } from 'mongoose';
-import { ProjectSettings as ProjectSettingsType } from '@halogen/common/types';
+import { ProjectSettings as ProjectSettingsType, ProjectIntegration } from '@halogen/common/types';
 
-// Interface extending Document for mongoose use
 interface IProjectSettings extends Document, Omit<ProjectSettingsType, '_id' | 'project' | 'createdAt' | 'updatedAt'> {
   project: Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
 }
 
-const ProjectSettingsSchema = new Schema(
+const ProjectSettingsSchema = new Schema<ProjectSettingsType>(
   {
     project: {
       type: Schema.Types.ObjectId,
       ref: 'Project',
       required: true,
       index: true
+    },
+    integrations: {
+      type: [String],
+      enum: Object.values(ProjectIntegration),
+      default: []
     },
     headingFont: {
       type: String,
@@ -30,9 +34,9 @@ const ProjectSettingsSchema = new Schema(
   { timestamps: true }
 );
 
-// Create a unique index on project to ensure one settings document per project
 ProjectSettingsSchema.index({ project: 1 }, { unique: true });
 
+//@ts-ignore
 export const ProjectSettings = mongoose.model<IProjectSettings>('ProjectSettings', ProjectSettingsSchema);
 
 export default ProjectSettings;

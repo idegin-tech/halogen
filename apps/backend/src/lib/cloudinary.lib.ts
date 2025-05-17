@@ -31,7 +31,8 @@ export const uploadToCloudinary = async (
             folder: fullFolderPath,
             resource_type: (options.resource_type as "image" | "auto" | "video" | "raw") || 'auto'
         };
-          Object.keys(options).forEach(key => {
+
+        Object.keys(options).forEach(key => {
             if (key !== 'resource_type') {
                 (uploadOptions as any)[key] = options[key];
             }
@@ -75,6 +76,41 @@ export const uploadToCloudinary = async (
 };
 
 /**
+ * Replace a file in Cloudinary with a new file
+ * This will delete the old file and upload a new one with the same public ID
+ * @param filePath - Local path to new file
+ * @param publicId - Public ID of file to replace
+ * @param options - Additional Cloudinary upload options
+ * @returns Cloudinary upload response
+ */
+export const replaceInCloudinary = async (
+    filePath: string,
+    publicId: string,
+    options: Record<string, any> = {}
+): Promise<CloudinaryUploadResponse> => {
+    try {
+        // Delete the existing file first
+        await deleteFromCloudinary(publicId);
+
+        // Extract folder path from publicId
+        const parts = publicId.split('/');
+        const filename = parts.pop(); // Remove the filename
+        const folder = parts.join('/').replace(`${appConfig.cloudinaryPath}/`, ''); // Remove cloudinary path prefix
+
+        // Upload the new file with the same public_id
+        const uploadOptions = {
+            ...options,
+            public_id: filename
+        };
+
+        return await uploadToCloudinary(filePath, folder, uploadOptions);
+    } catch (error) {
+        Logger.error(`Cloudinary replace error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        throw error;
+    }
+};
+
+/**
  * Delete a file from Cloudinary
  * @param publicId - The file's public ID in Cloudinary
  * @returns Success status
@@ -87,6 +123,28 @@ export const deleteFromCloudinary = async (publicId: string): Promise<boolean> =
         console.log(error)
         Logger.error(`Cloudinary delete error: ${error instanceof Error ? error.message : 'Unknown error'}`);
         throw error;
+    }
+};
+
+/**
+ * Extract public ID from a Cloudinary URL
+ * @param url - Cloudinary URL
+ * @returns Public ID or null if not a valid Cloudinary URL
+ */
+export const getPublicIdFromUrl = (url: string): string | null => {
+    if (!url || typeof url !== 'string') return null;
+
+    try {
+        // Cloudinary URLs follow this pattern: https://res.cloudinary.com/{cloud_name}/image/upload/v{version}/{public_id}.{format}
+        const match = url.match(/\/v\d+\/(.+?)(?:\.\w+)?$/);
+
+        if (match && match[1]) {
+            return match[1];
+        }
+        return null;
+    } catch (error) {
+        Logger.error(`Error extracting public ID from URL: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        return null;
     }
 };
 
@@ -103,5 +161,7 @@ export interface CloudinaryUploadResponse {
 
 export default {
     uploadToCloudinary,
-    deleteFromCloudinary
+    replaceInCloudinary,
+    deleteFromCloudinary,
+    getPublicIdFromUrl
 };

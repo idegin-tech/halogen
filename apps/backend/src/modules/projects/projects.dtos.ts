@@ -34,7 +34,7 @@ export const syncProjectSchema = z.object({
   project: z.object({
     name: z.string(),
     description: z.string().optional(),
-    thumbnail: z.string().optional(),
+    thumbnail: z.string().nullable().optional(),
     tier: z.number().int().min(0).optional()
   })
 }).strict();

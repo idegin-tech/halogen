@@ -6,6 +6,8 @@ import { deleteLocalFile } from '../../lib/upload.lib';
 import { processFavicon, processOpenGraphImage, cleanupTempFile } from '../../lib/image-processing.lib';
 import Logger from '../../config/logger.config';
 import { ProjectMetadataService } from '../project-metadata';
+import { FileReplacementUtil } from '../../lib/file-replacement.util';
+import { appConfig } from '@halogen/common';
 
 export class UploadsController {
   /**
@@ -33,13 +35,19 @@ export class UploadsController {
       try {
         const processedPath = await processFavicon(filePath);
         
-        const uploadResult = await uploadToCloudinary(processedPath, `${projectId}/metadata`, {
-          public_id: `favicon-${Date.now()}`,
-          transformation: [{ width: 32, height: 32, crop: 'fill' }]
-        });        
-        deleteLocalFile(filePath);
-        cleanupTempFile(processedPath);
+        // Use static name 'favicon' for consistent replacement
+        const uploadResult = await FileReplacementUtil.replaceFile(
+          processedPath,
+          'metadata',
+          projectId,
+          'favicon',
+          { transformation: [{ width: 32, height: 32, crop: 'fill' }] }
+        );
 
+        // Original file cleanup
+        deleteLocalFile(filePath);
+
+        // Update project metadata with new URL
         await ProjectMetadataService.updateProjectMetadataByProjectId(projectId, {
           favicon: uploadResult.url
         });
@@ -88,14 +96,18 @@ export class UploadsController {
         // Process the OG image (resize to recommended dimensions)
         const processedPath = await processOpenGraphImage(filePath);
         
-        // Upload processed image to Cloudinary in the project's metadata folder
-        const uploadResult = await uploadToCloudinary(processedPath, `${projectId}/metadata`, {
-          public_id: `og-image-${Date.now()}`,
-          transformation: [{ width: 1200, height: 630, crop: 'limit' }]
-        });        // Cleanup temp files
+        // Use static name 'og-image' for consistent replacement
+        const uploadResult = await FileReplacementUtil.replaceFile(
+          processedPath,
+          'metadata',
+          projectId,
+          'og-image',
+          { transformation: [{ width: 1200, height: 630, crop: 'limit' }] }
+        );
+
+        // Original file cleanup
         deleteLocalFile(filePath);
-        cleanupTempFile(processedPath);
-        
+
         // Update the project metadata with the new OG image URL
         await ProjectMetadataService.updateProjectMetadataByProjectId(projectId, {
           ogImage: uploadResult.url
@@ -173,11 +185,8 @@ export class UploadsController {
         return;
       }
 
-      // Extract public ID from the Cloudinary URL
-      const urlParts = metadata.favicon.split('/');
-      const publicIdWithExt = urlParts[urlParts.length - 1];
-      const publicIdParts = publicIdWithExt.split('.');
-      const publicId = `${projectId}/metadata/${publicIdParts[0]}`;
+      // Use fixed public ID pattern for favicon
+      const publicId = `${appConfig.cloudinaryPath}/${projectId}/metadata/favicon`;
 
       // Delete from Cloudinary
       await deleteFromCloudinary(publicId);
@@ -220,11 +229,8 @@ export class UploadsController {
         return;
       }
 
-      // Extract public ID from the Cloudinary URL
-      const urlParts = metadata.ogImage.split('/');
-      const publicIdWithExt = urlParts[urlParts.length - 1];
-      const publicIdParts = publicIdWithExt.split('.');
-      const publicId = `${projectId}/metadata/${publicIdParts[0]}`;
+      // Use fixed public ID pattern for OG image
+      const publicId = `${appConfig.cloudinaryPath}/${projectId}/metadata/og-image`;
 
       // Delete from Cloudinary
       await deleteFromCloudinary(publicId);

@@ -16,6 +16,17 @@ interface FileCreatePayload {
   user: string;
 }
 
+interface FileUpdatePayload {
+  path?: string;
+  name?: string;
+  extension?: string;
+  mimeType?: string;
+  size?: number;
+  downloadUrl?: string;
+  thumbnailUrl?: string;
+  updatedAt?: Date;
+}
+
 export class FilesService {
   static async createFile(fileData: FileCreatePayload): Promise<FileDocument> {
     const file = new FileModel(fileData);
@@ -26,7 +37,81 @@ export class FilesService {
   static async createManyFiles(filesData: FileCreatePayload[]): Promise<FileDocument[]> {
     const result = await FileModel.insertMany(filesData);
     return result;
-  }  static async getProjectFiles(
+  }
+
+  /**
+   * Find a file by its name and project ID
+   * @param fileName - Name of the file to find
+   * @param projectId - Project ID where the file belongs
+   * @returns The file document if found, null otherwise
+   */
+  static async findFileByNameAndProject(fileName: string, projectId: string): Promise<FileDocument | null> {
+    try {
+      // Normalize file name to match storage pattern
+      const normalizedFileName = fileName.toLowerCase().replace(/[^a-z0-9.-]/g, '-');
+
+      // Search for files with matching name (either original or normalized) and project
+      return await FileModel.findOne({
+        $or: [
+          { name: fileName, project: projectId },
+          { name: normalizedFileName, project: projectId },
+          { path: `/files/${normalizedFileName}`, project: projectId }
+        ]
+      });
+    } catch (error) {
+      Logger.error(`Find file by name error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      return null;
+    }
+  }
+
+  /**
+   * Get a file by its ID
+   * @param fileId - ID of the file to retrieve
+   * @returns The file document if found, null otherwise
+   */
+  static async getFileById(fileId: string): Promise<FileDocument | null> {
+    try {
+      return await FileModel.findById(fileId);
+    } catch (error) {
+      Logger.error(`Get file by ID error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      return null;
+    }
+  }
+
+  /**
+   * Get multiple files by their IDs
+   * @param fileIds - Array of file IDs to retrieve
+   * @returns Array of file documents
+   */
+  static async getFilesByIds(fileIds: string[]): Promise<FileDocument[]> {
+    try {
+      return await FileModel.find({ _id: { $in: fileIds } });
+    } catch (error) {
+      Logger.error(`Get files by IDs error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      return [];
+    }
+  }
+
+  /**
+   * Update a file record
+   * @param fileId - ID of the file to update
+   * @param updateData - Data to update the file with
+   * @returns The updated file document if found, null otherwise
+   */
+  static async updateFile(fileId: string, updateData: FileUpdatePayload): Promise<FileDocument | null> {
+    try {
+      return await FileModel.findByIdAndUpdate(
+        fileId,
+        { $set: updateData },
+        { new: true }
+      );
+    } catch (error) {
+      Logger.error(`Update file error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      return null;
+    }
+  }
+
+  static async getProjectFiles(
     projectId: string,
     options: FileQueryOptions
   ): Promise<PaginateResult<FileDocument>> {
@@ -88,24 +173,6 @@ export class FilesService {
       return result.deletedCount || 0;
     } catch (error) {
       Logger.error(`Delete project files error: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      throw error;
-    }
-  }
-
-  static async getFileById(fileId: string): Promise<FileDocument | null> {
-    try {
-      return await FileModel.findById(fileId).lean();
-    } catch (error) {
-      Logger.error(`Get file error: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      throw error;
-    }
-  }
-
-  static async getFilesByIds(fileIds: string[]): Promise<FileDocument[]> {
-    try {
-      return await FileModel.find({ _id: { $in: fileIds } }).lean();
-    } catch (error) {
-      Logger.error(`Get files by IDs error: ${error instanceof Error ? error.message : 'Unknown error'}`);
       throw error;
     }
   }

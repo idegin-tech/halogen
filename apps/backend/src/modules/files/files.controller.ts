@@ -7,6 +7,7 @@ import { optimizeImage } from '../../lib/image-processing.lib';
 import Logger from '../../config/logger.config';
 import { FilesService } from './files.service';
 import { MAX_FILE_SIZE, MAX_FILES_PER_UPLOAD, SUPPORTED_FILE_TYPES, SUPPORTED_IMAGE_TYPES } from '@halogen/common';
+import { FileReplacementUtil } from '../../lib/file-replacement.util';
 
 export class FilesController {
   static async uploadFiles(req: Request, res: Response): Promise<void> {
@@ -34,6 +35,7 @@ export class FilesController {
 
       const uploadedFiles = [];
       const errors = [];
+      const replacedFiles = [];
 
       for (const file of req.files) {
         try {
@@ -44,7 +46,9 @@ export class FilesController {
             });
             await deleteLocalFile(file.path);
             continue;
-          }          if (!SUPPORTED_FILE_TYPES.includes(file.mimetype)) {
+          }
+
+          if (!SUPPORTED_FILE_TYPES.includes(file.mimetype)) {
             errors.push({
               name: file.originalname,
               error: 'File type not supported'
@@ -53,6 +57,17 @@ export class FilesController {
             continue;
           }
           
+          // Normalize file name to use as the static name in storage
+          const normalizedFileName = file.originalname
+            .toLowerCase()
+            .replace(/[^a-z0-9.-]/g, '-');
+
+          // Check if a file with this name already exists for this project
+          const existingFile = await FilesService.findFileByNameAndProject(
+            normalizedFileName,
+            projectId
+          );
+
           // Optimize images before upload
           let filePathToUpload = file.path;
           if (SUPPORTED_IMAGE_TYPES.includes(file.mimetype)) {
@@ -69,7 +84,8 @@ export class FilesController {
               ? 'video' as const
               : 'raw' as const,
           };
-            if (file.mimetype.startsWith('image')) {
+
+          if (file.mimetype.startsWith('image')) {
             // Generate thumbnail
             uploadOptions.eager = [
               { width: 200, height: 200, crop: 'fill', format: 'jpg', quality: 80 }
@@ -85,29 +101,65 @@ export class FilesController {
               uploadOptions.quality = 80;
             }
           }
-            const uploadResult = await uploadToCloudinary(
-            filePathToUpload,
-            `${projectId}/files`,
-            uploadOptions
-          );
 
-          const fileExtension = path.extname(file.originalname).substring(1).toLowerCase();
+          let uploadResult;
+
+          if (existingFile) {
+            // If file already exists, replace it by its normalized name
+            uploadResult = await FileReplacementUtil.replaceFile(
+              filePathToUpload,
+              'files',
+              projectId,
+              normalizedFileName.split('.')[0], // Remove extension for Cloudinary public_id
+              uploadOptions
+            );
+
+            // @ts-ignore
+            await FilesService.updateFile(existingFile._id, {
+              size: file.size,
+              mimeType: file.mimetype,
+              downloadUrl: uploadResult.url,
+              thumbnailUrl: uploadResult.thumbnail_url,
+              updatedAt: new Date()
+            });
+
+            // Add to list of replaced files
+            replacedFiles.push(existingFile._id);
+
+            // @ts-ignore
+            uploadedFiles.push(await FilesService.getFileById(existingFile._id));
+          } else {
+            // For new files, upload with normalized name
+            uploadResult = await FileReplacementUtil.replaceFile(
+              filePathToUpload,
+              'files',
+              projectId,
+              normalizedFileName.split('.')[0], // Remove extension for Cloudinary public_id
+              uploadOptions
+            );
+
+            const fileExtension = path.extname(file.originalname).substring(1).toLowerCase();
+
+            // Create a new file record
             const fileEntry = await FilesService.createFile({
-            project: projectId,
-            path: `/files/${file.originalname}`,
-            name: file.originalname,
-            extension: fileExtension,
-            mimeType: file.mimetype,
-            size: file.size,
-            downloadUrl: uploadResult.secure_url || uploadResult.url,
-            thumbnailUrl: uploadResult.thumbnail_url,
-            user: req.user?.id || ''
-          });          uploadedFiles.push(fileEntry);
+              project: projectId,
+              path: `/files/${normalizedFileName}`,
+              name: file.originalname,
+              extension: fileExtension,
+              mimeType: file.mimetype,
+              size: file.size,
+              downloadUrl: uploadResult.url,
+              thumbnailUrl: uploadResult.thumbnail_url,
+              user: req.user?.id || ''
+            });
 
-          // Clean up both original and optimized files if needed
-          await deleteLocalFile(file.path);
+            uploadedFiles.push(fileEntry);
+          }
+
+          // Clean up temporary files
+          deleteLocalFile(file.path);
           if (filePathToUpload !== file.path) {
-            await deleteLocalFile(filePathToUpload);
+            deleteLocalFile(filePathToUpload);
           }
         } catch (error) {
           Logger.error(`Error processing file ${file.originalname}: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -115,7 +167,7 @@ export class FilesController {
             name: file.originalname,
             error: 'Failed to process file'
           });
-          await deleteLocalFile(file.path);
+          deleteLocalFile(file.path);
         }
       }
 
@@ -124,10 +176,13 @@ export class FilesController {
         { 
           files: uploadedFiles, 
           errors,
+          replacedCount: replacedFiles.length,
           totalUploaded: uploadedFiles.length,
           totalErrors: errors.length
         },
-        'Files uploaded successfully'
+        replacedFiles.length > 0
+          ? `${uploadedFiles.length} files uploaded (${replacedFiles.length} replaced)`
+          : 'Files uploaded successfully'
       );
     } catch (error) {
       Logger.error(`File upload error: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -138,6 +193,7 @@ export class FilesController {
       );
     }
   }
+
   static async getProjectFiles(req: Request, res: Response): Promise<void> {
     try {
       const { projectId } = req.params;

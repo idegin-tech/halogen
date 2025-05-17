@@ -4,11 +4,10 @@ import fs from 'fs';
 import { Request } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import Logger from '../config/logger.config';
+import { FileSystemUtil } from './fs.util';
 
-const uploadDir = path.join(__dirname, '../../../uploads');
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
+// Use OS temp directory instead of project-local storage
+const uploadDir = FileSystemUtil.getTempSubDir('uploads');
 
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => {
@@ -56,13 +55,7 @@ export const upload = multer({
  * @param filePath - Path to the file to delete
  */
 export const deleteLocalFile = (filePath: string): void => {
-  try {
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
-    }
-  } catch (error) {
-    Logger.error(`Error deleting temporary file ${filePath}: ${error instanceof Error ? error.message : 'Unknown error'}`);
-  }
+  FileSystemUtil.deleteFile(filePath);
 };
 
 export default {

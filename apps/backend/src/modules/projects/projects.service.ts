@@ -1,7 +1,7 @@
 import { ProjectData, ProjectUserRole, PaginatedResponse, ProjectQueryOptions } from '@halogen/common';
 import { generateUsername } from 'unique-username-generator';
 import { CreateProjectDTO, UpdateProjectDTO, SyncProjectDTO } from './projects.dtos';
-import ProjectModel from './projects.model';
+import ProjectModel, {ProjectDocument} from './projects.model';
 import ProjectUserModel from '../project-users/project-users.model';
 import Logger from '../../config/logger.config';
 import mongoose, { Types } from 'mongoose';
@@ -10,6 +10,9 @@ import VariableModel from '../artifacts/variables/variables.model';
 import BlockInstanceModel from '../artifacts/block-instance/block-instances.model';
 import { ProjectMetadataService } from '../project-metadata';
 import { ProjectSettingsService } from '../project-settings';
+import { takeScreenshotAndUpload } from '../../lib/screenshot.lib';
+import { validateEnv } from '../../config/env.config';
+import { deleteFromCloudinary } from '../../lib/cloudinary.lib';
 
 export class ProjectsService {
     static async generateUniqueSubdomain(): Promise<string> {
@@ -140,7 +143,6 @@ export class ProjectsService {
                     ? project._id
                     : '';
 
-            // Get all related data needed by the www app
             const projectSettings = await ProjectSettingsService.getByProjectId(projectId);
             const projectMetadata = await ProjectMetadataService.getProjectMetadataByProjectId(projectId);
             const pages = await PageModel.find({ project: projectId }).lean();
@@ -266,10 +268,8 @@ export class ProjectsService {
                 return false;
             }
 
-            // Also delete related data
             await ProjectUserModel.deleteMany({ project: projectId });
 
-            // Delete project metadata if exists
             await ProjectMetadataService.deleteProjectMetadataByProjectId(projectId);
 
             return true;
@@ -279,31 +279,113 @@ export class ProjectsService {
         }
     } static async syncProject(projectId: string, data: SyncProjectDTO): Promise<Record<string, any>> {
         try {
-            // Update project data
             const projectData = data.project;
             if (!projectData) {
                 throw new Error('Project data is required');
             }
 
-            const updatedProject = await ProjectModel.findByIdAndUpdate(
-                projectId,
-                {
-                    ...projectData,
-                    updatedAt: new Date()
-                },
-                { new: true }
-            );
-
-            if (!updatedProject) {
+            const project = await ProjectModel.findById(projectId);
+            if (!project) {
                 throw new Error('Project not found');
             }
 
+            if (projectData.thumbnail !== project.thumbnail) {
+                if (project.thumbnail) {
+                    try {
+                        const publicId = this.extractPublicIdFromUrl(project.thumbnail);
+                        if (publicId) {
+                            await deleteFromCloudinary(publicId);
+                            Logger.info(`Deleted old project thumbnail: ${publicId}`);
+                        }
+                    } catch (thumbnailError) {
+                        Logger.error(`Error deleting old thumbnail: ${thumbnailError instanceof Error ? thumbnailError.message : 'Unknown error'}`);
+                    }
+                }
+            }
+
+            Object.assign(project, {
+                ...projectData,
+                updatedAt: new Date()
+            });
+
+            await project.save();
+
+            this.captureProjectScreenshot(project).catch(error => {
+                Logger.error(`Screenshot error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            });
+
             return {
-                project: updatedProject.toObject(),
+                project: project.toObject(),
             };
         } catch (error) {
             Logger.error(`Project sync error: ${error instanceof Error ? error.message : 'Unknown error'}`);
             throw error;
         }
     }
+
+    /**
+     * Extract public ID from a Cloudinary URL
+     * @param url - Cloudinary URL
+     * @returns Public ID or null if not a valid Cloudinary URL
+     */
+    private static extractPublicIdFromUrl(url: string): string | null {
+        if (!url || typeof url !== 'string') return null;
+
+        try {
+            const regex = /\/v\d+\/(.+?)(?:\.\w+)?$/;
+            const match = url.match(regex);
+
+            if (match && match[1]) {
+                return match[1];
+            }
+            return null;
+        } catch (error) {
+            Logger.error(`Error extracting public ID from URL: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            return null;
+        }
+    }
+
+    /**
+     * Capture a screenshot of the project's website in the background
+     * This method is intentionally separated to support asynchronous processing
+     */
+    private static async captureProjectScreenshot(project: ProjectDocument): Promise<void> {
+        try {
+            const env = validateEnv();
+            const previewUrl = env.PREVIEW_URL;
+            const isProduction = env.NODE_ENV === 'production';
+
+            if (previewUrl && project.subdomain) {
+                const protocol = isProduction ? 'https' : 'http';
+                const url = `${protocol}://${project.subdomain}.${previewUrl}`;
+                Logger.info(`Taking screenshot of project site: ${url}`);
+
+                if (project.thumbnail) {
+                    try {
+                        const publicId = this.extractPublicIdFromUrl(project.thumbnail);
+                        if (publicId) {
+                            await deleteFromCloudinary(publicId);
+                            Logger.info(`Deleted existing project thumbnail before regeneration: ${publicId}`);
+                        }
+                    } catch (thumbnailError) {
+                        Logger.warn(`Error deleting existing thumbnail before regeneration: ${thumbnailError instanceof Error ? thumbnailError.message : 'Unknown error'}`);
+                    }
+                }
+
+                //@ts-ignore
+                const screenshotUrl = await takeScreenshotAndUpload(url, project._id.toString());
+
+                if (screenshotUrl) {
+                    project.thumbnail = screenshotUrl;
+                    await project.save();
+                    Logger.info(`Updated project thumbnail: ${screenshotUrl}`);
+                }
+            } else {
+                Logger.warn(`Cannot take screenshot: Missing preview URL or subdomain`);
+            }
+        } catch (error) {
+            Logger.error(`Background screenshot error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+    }
 }
+
