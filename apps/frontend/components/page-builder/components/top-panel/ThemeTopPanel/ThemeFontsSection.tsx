@@ -20,6 +20,7 @@ import {
   CommandList,
 } from "@/components/ui/command"
 import { debounce } from '@/lib/debounce'
+import { ProjectSettings } from '@halogen/common/types'
 
 interface GoogleFontItem {
   family: string;
@@ -204,12 +205,13 @@ export default function ThemeFontsSection() {
         }
         return variable;
       });
-      // Update both variables and project settings to ensure the preview updates
-      const projectSettings = {
+
+      const projectSettings:ProjectSettings = {
         ...(state.projectSettings || {}),
         headingFont: fontName,
         bodyFont: fontName,
-        project: state.project?._id || ''  // Ensure project is always a string
+        project: state.project?._id || '',
+        integrations: state.projectSettings?.integrations || []
       };
 
       const projectWithUpdatedSettings = state.project ? {
@@ -238,11 +240,9 @@ export default function ThemeFontsSection() {
     }
   };
   const getSelectedFontValue = (fontName: string): string => {
-    // First check in display fonts which is more likely to have loaded previews
     const fontInDisplay = displayFonts.find(f => f.name === fontName);
     if (fontInDisplay) return fontInDisplay.value;
 
-    // Otherwise check all fonts
     const fontInAll = fonts.find(f => f.name === fontName);
     return fontInAll ? fontInAll.value : `"${fontName}", sans-serif`;
   };

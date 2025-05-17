@@ -77,7 +77,7 @@ export class FileReplacementUtil {
 
       const parts = publicId.split('/');
       const filename = parts.pop() || ''; // Remove the filename
-      const folder = parts.join('/').replace(`${appConfig.cloudinaryPath}/`, ''); // Remove cloudinary path prefix
+      const folder = parts.join('/').replace(`${appConfig.cloudinaryPath}/`, '');
 
       try {
         await deleteFromCloudinary(publicId);

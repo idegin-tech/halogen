@@ -39,7 +39,8 @@ export class ProjectsService {
 
             if (!projectFields.project_id) {
                 projectFields.project_id = `proj_${Date.now()}`;
-            }            const newProject = new ProjectModel({
+            }
+            const newProject = new ProjectModel({
                 ...projectFields,
                 subdomain,
                 user: userId,
@@ -287,20 +288,6 @@ export class ProjectsService {
             const project = await ProjectModel.findById(projectId);
             if (!project) {
                 throw new Error('Project not found');
-            }
-
-            if (projectData.thumbnail !== project.thumbnail) {
-                if (project.thumbnail) {
-                    try {
-                        const publicId = this.extractPublicIdFromUrl(project.thumbnail);
-                        if (publicId) {
-                            await deleteFromCloudinary(publicId);
-                            Logger.info(`Deleted old project thumbnail: ${publicId}`);
-                        }
-                    } catch (thumbnailError) {
-                        Logger.error(`Error deleting old thumbnail: ${thumbnailError instanceof Error ? thumbnailError.message : 'Unknown error'}`);
-                    }
-                }
             }
 
             Object.assign(project, {

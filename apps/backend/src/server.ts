@@ -20,7 +20,7 @@ import {previewRoutes} from './modules/www';
 import authRoutes from './modules/auth/auth.routes';
 import {projectsRoutes} from './modules/projects';
 import {projectSettingsRoutes} from './modules/project-settings';
-import {uploadsRoutes} from './modules/uploads';
+import {uploadsRoutes} from './modules/uploads/uploads.route';
 import {collectionsRoutes, schemaRoutes} from './modules/cms';
 
 declare module 'express' {

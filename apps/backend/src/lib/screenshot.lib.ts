@@ -1,9 +1,8 @@
 import puppeteer from 'puppeteer';
-import { v4 as uuidv4 } from 'uuid';
 import path from 'path';
-import { uploadToCloudinary } from './cloudinary.lib';
 import Logger from '../config/logger.config';
 import { FileSystemUtil } from './fs.util';
+import { FileReplacementUtil } from './file-replacement.util';
 
 /**
  * Takes a screenshot of a website and uploads it to Cloudinary
@@ -14,7 +13,7 @@ import { FileSystemUtil } from './fs.util';
 export async function takeScreenshotAndUpload(url: string, projectId: string): Promise<string> {
   let browser;
   const tempDir = FileSystemUtil.getTempSubDir('screenshots');
-  const screenshotPath = path.join(tempDir, `${uuidv4()}.png`);
+  const screenshotPath = path.join(tempDir, `project_thumbnail.png`);
   
   try {
     Logger.info(`Taking screenshot of ${url}`);
@@ -45,7 +44,7 @@ export async function takeScreenshotAndUpload(url: string, projectId: string): P
         timeout: 45000
       });
 
-      await new Promise(resolve => setTimeout(resolve, 5000));
+      await new Promise(resolve => setTimeout(resolve, 9000));
 
     } catch (navigationError) {
       Logger.warn(`Initial navigation to ${url} failed, trying with fallback: ${navigationError instanceof Error ? navigationError.message : 'Unknown error'}`);
@@ -70,9 +69,12 @@ export async function takeScreenshotAndUpload(url: string, projectId: string): P
     
     Logger.info(`Screenshot saved to ${screenshotPath}`);
     
-    const uploadResult = await uploadToCloudinary(
+    // Use FileReplacementUtil to ensure consistent file naming in Cloudinary
+    const uploadResult = await FileReplacementUtil.replaceFile(
       screenshotPath,
-      `${projectId}/thumbnails`,
+      'thumbnails',
+      projectId,
+      'project_thumbnail',
       {
         transformation: [
           { width: 1200, height: 800, crop: 'limit' },
