@@ -20,9 +20,9 @@ import {previewRoutes} from './modules/www';
 import authRoutes from './modules/auth/auth.routes';
 import {projectsRoutes} from './modules/projects';
 import {projectSettingsRoutes} from './modules/project-settings';
+import {uploadsRoutes} from './modules/uploads/uploads.route';
 import {filesRoutes} from './modules/files';
 import {collectionsRoutes, schemaRoutes} from './modules/cms';
-import { uploadsRoutes } from './modules/uploads/uploads.route';
 
 declare module 'express' {
     interface Request {
@@ -135,8 +135,7 @@ class App {
         this.app.use(`${apiPrefix}/pages`, pagesRoutes);
         this.app.use(`${apiPrefix}/variables`, variablesRoutes);
         this.app.use(`${apiPrefix}/block-instances`, blockInstancesRoutes);
-        this.app.use(`${apiPrefix}/preview`, previewRoutes);        
-        this.app.use(`${apiPrefix}/uploads`, uploadsRoutes);
+        this.app.use(`${apiPrefix}/preview`, previewRoutes);        this.app.use(`${apiPrefix}/uploads`, uploadsRoutes);
         this.app.use(`${apiPrefix}/files`, filesRoutes);
         this.app.use(`${apiPrefix}/collections`, collectionsRoutes);
         this.app.use(`${apiPrefix}/schemas`, schemaRoutes);
