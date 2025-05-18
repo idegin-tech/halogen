@@ -35,7 +35,6 @@ export class UploadsController {
       try {
         const processedPath = await processFavicon(filePath);
         
-        // Use static name 'favicon' for consistent replacement
         const uploadResult = await FileReplacementUtil.replaceFile(
           processedPath,
           'metadata',
@@ -44,10 +43,8 @@ export class UploadsController {
           { transformation: [{ width: 32, height: 32, crop: 'fill' }] }
         );
 
-        // Original file cleanup
         deleteLocalFile(filePath);
 
-        // Update project metadata with new URL
         await ProjectMetadataService.updateProjectMetadataByProjectId(projectId, {
           favicon: uploadResult.url
         });

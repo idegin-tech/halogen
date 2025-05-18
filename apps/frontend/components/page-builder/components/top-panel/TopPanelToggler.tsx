@@ -68,7 +68,8 @@ export default function TopPanelToggler() {
             <BlocksTopPanel
                 onHide={() => setActiveTopPanel(null)}
                 show={activeTopPanel === 'blocks'}
-            />            <FilesTopPanel
+            />            
+            <FilesTopPanel
                 onHide={() => setActiveTopPanel(null)}
                 show={activeTopPanel === 'files'}
             />

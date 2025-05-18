@@ -17,7 +17,6 @@ interface ProjectCardProps {
 export function ProjectCard({project}: ProjectCardProps) {
     const router = useRouter();
 
-    // Format the updated date to relative time (e.g., "2 days ago")
     const formattedDate = formatDistanceToNow(new Date(project.updatedAt), {addSuffix: true});
 
     return (
@@ -26,9 +25,7 @@ export function ProjectCard({project}: ProjectCardProps) {
             <div className="aspect-video relative overflow-hidden bg-muted">
                 <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent z-10"/>
 
-                {/* Status badge for "online" - customize this based on project status if needed */}
                 <Badge
-                    // variant="success"
                     className="absolute top-3 right-3 z-20 bg-emerald-500/90 text-white shadow-md"
                 >
                     Online
@@ -44,14 +41,14 @@ export function ProjectCard({project}: ProjectCardProps) {
                 />
             </div>
 
-            <CardContent className="p-5 flex-grow flex flex-col justify-between gap-2">
-                <div className="space-y-2.5">
+            <CardContent className="px-5 pb-5 flex-grow flex flex-col justify-between gap-2">
+                <div className="space-y-2.5 grid grid-cols-1">
                     <h3 className="text-xl font-semibold text-foreground line-clamp-1 group-hover:text-primary transition-colors">
                         {project.name}
                     </h3>
 
                     <p className={cn(
-                        "text-sm text-muted-foreground line-clamp-2 min-h-[2.5rem]",
+                        "text-sm text-muted-foreground line-clamp-2 truncate",
                         !project.description && "italic opacity-70"
                     )}>
                         {project.description || "No description provided"}

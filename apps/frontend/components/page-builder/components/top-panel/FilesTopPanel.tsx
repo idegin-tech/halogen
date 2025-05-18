@@ -31,7 +31,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useBuilderContext } from '@/context/builder.context';
 import { getProjectFiles, uploadProjectFiles, deleteProjectFiles } from '@/lib/files-api';
-import { FileData, FileListResponse } from '@halogen/common';
+import { FileData } from '@halogen/common';
 import { useInView } from 'react-intersection-observer';
 import { toast } from 'sonner';
 import { 
@@ -119,21 +119,18 @@ export default function FilesTopPanel({ show, onHide }: { show: boolean; onHide:
     }
   }, [projectId, searchTerm, sortBy, sortOrder]);
 
-  // Initial load
   useEffect(() => {
     if (projectId && show) {
       loadFiles(1, true);
     }
   }, [projectId, show, loadFiles]);
 
-  // Load more when scrolling to bottom
   useEffect(() => {
     if (inView && hasNextPage && !isLoadingMore && !isLoading) {
       loadFiles(page + 1, false);
     }
   }, [inView, hasNextPage, isLoadingMore, isLoading, page, loadFiles]);
   
-  // Handle search and sort changes
   useEffect(() => {
     if (projectId && show) {
       const debounceTimer = setTimeout(() => {
@@ -144,17 +141,14 @@ export default function FilesTopPanel({ show, onHide }: { show: boolean; onHide:
     }
   }, [searchTerm, sortBy, sortOrder, projectId, show, loadFiles]);
 
-  // Filter and sort files
   const sortedAndFilteredFiles = useMemo(() => {
     return files;
   }, [files]);
 
-  // Toggle sort order
   const toggleSortOrder = () => {
     setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
   };
 
-  // Function to get the appropriate icon for a file type
   const getFileIcon = useCallback((fileType: string) => {
     if (fileType.startsWith('image/')) {
       return <ImageIcon className="h-6 w-6" />;
@@ -217,7 +211,6 @@ export default function FilesTopPanel({ show, onHide }: { show: boolean; onHide:
         
         if (response.files.length > 0) {
           toast.success(`Successfully uploaded ${response.files.length} files`);
-          // Refresh the file list after upload
           loadFiles(1, true);
         }
         
@@ -432,7 +425,6 @@ export default function FilesTopPanel({ show, onHide }: { show: boolean; onHide:
     </div>
   );
 
-  // Breadcrumb items
   const breadcrumbs = useMemo(() => {
     return [
       { label: "Files", href: "#" },
@@ -440,7 +432,6 @@ export default function FilesTopPanel({ show, onHide }: { show: boolean; onHide:
     ];
   }, []);
 
-  // File skeleton loader for grid view
   const FileGridSkeleton = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
       {Array(12).fill(0).map((_, index) => (
