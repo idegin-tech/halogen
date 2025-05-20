@@ -38,7 +38,7 @@ export const pricingData: {
     {
         tier: 1,
         name: 'Pro',
-        ngnAmount: 4000,
+        ngnAmount: 6000,
         cmsCollectionLimit: 10,
         storageLimitInGB: 5,
         maxPages: 10,
@@ -51,7 +51,7 @@ export const pricingData: {
     {
         tier: 2,
         name: 'Growth',
-        ngnAmount: 25000,
+        ngnAmount: 11000,
         cmsCollectionLimit: 20,
         storageLimitInGB: 10,
         maxPages: 20,
@@ -64,7 +64,7 @@ export const pricingData: {
     {
         tier: 3,
         name: 'Enterprise',
-        ngnAmount: 50000,
+        ngnAmount: 20000,
         cmsCollectionLimit: 100,
         storageLimitInGB: 50,
         maxPages: 100,
