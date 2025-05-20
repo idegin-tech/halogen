@@ -17,7 +17,7 @@ export function PricingModal() {
   }
 
   return (    <Dialog open={state.showPricing} onOpenChange={(open) => updateProjectState({ showPricing: open })}>
-      <DialogContent className="max-w-7xl min-w-[1500px] p-0 overflow-auto max-h-[95vh]">
+      <DialogContent className="max-w-7xl min-w-[1500px] p-0 overflow-auto max-h-[95vh] select-none">
         <DialogHeader className="p-8 md:p-10 bg-gradient-to-r from-primary/10 to-primary/5 border-b">
           <DialogTitle className="text-4xl font-bold text-center">Choose Your Plan</DialogTitle>
           <DialogDescription className="text-center text-xl mt-3 max-w-2xl mx-auto">
