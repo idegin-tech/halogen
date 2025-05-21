@@ -1,14 +1,17 @@
+'use client';
+
 import { ProjectProvider } from '@/context/project.context'
 import { PricingModal } from '@/components/pricing/PricingModal'
 import { fetchFromApi } from "@/lib/server-api";
 import React from 'react'
 import { ProjectData, ProjectSettings } from '@halogen/common';
+import ProjectDataLoader from '@/components/ProjectDataLoader';
 
 type Props = {
-    children: React.ReactNode
+    children: React.ReactNode;
     params: {
-        project_id: string
-    }
+        project_id: string;
+    };
 }
 
 interface ProjectResponse {
@@ -18,15 +21,23 @@ interface ProjectResponse {
     wallet: any | null;
 }
 
-export default async function ProjectLayout({ children, params }: Props) {
-    const projectData = await fetchFromApi<ProjectResponse>(`/projects/${params.project_id}`);
+export default function ProjectLayout({ children, params }: Props) {
+    const fetchProjectData = async () => {
+        return await fetchFromApi<ProjectResponse>(`/projects/${params.project_id}`);
+    };
 
     return (
-        <>
-            <ProjectProvider initialData={projectData}>
-                {children}
-                <PricingModal />
-            </ProjectProvider>
-        </>
-    )
+        <div className="relative">
+            <React.Suspense fallback={null}>
+                <ProjectDataLoader<ProjectResponse> fetchData={fetchProjectData}>
+                    {(projectData) => (
+                        <ProjectProvider initialData={projectData}>
+                            {children}
+                            <PricingModal />
+                        </ProjectProvider>
+                    )}
+                </ProjectDataLoader>
+            </React.Suspense>
+        </div>
+    );
 }
