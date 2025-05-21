@@ -157,4 +157,20 @@ export class ProjectsController {
       );
     }
   }
+
+  static async getProjectWebsiteData(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      
+      const websiteData = await ProjectsService.getProjectWebsiteData(id);
+      
+      ResponseHelper.success(res, websiteData, 'Project website data retrieved successfully');
+    } catch (error) {
+      ResponseHelper.error(
+        res, 
+        error instanceof Error ? error.message : 'Failed to retrieve project website data',
+        500
+      );
+    }
+  }
 }

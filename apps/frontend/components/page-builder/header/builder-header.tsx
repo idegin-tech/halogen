@@ -9,6 +9,7 @@ import { useSyncContext } from "@/context/sync.context";
 import Link from "next/link";
 import React, { useState } from "react";
 import { toast } from "sonner";
+import { useProjectContext } from "@/context/project.context";
 
 
 
@@ -17,6 +18,7 @@ export default function BuilderHeader() {
   const { state: builderState } = useBuilderContext();
   const { syncToCloud, isSyncing, lastSynced } = useSyncContext();
   const [isPublishing, setIsPublishing] = useState(false);
+  const {state:{project}} = useProjectContext();
 
   const handlePublish = async () => {
     if (isPublishing) return;
@@ -36,8 +38,8 @@ export default function BuilderHeader() {
   };
 
   const handlePreview = () => {
-    if (builderState.project) {
-      const previewUrl = `http://${builderState.project.subdomain}.${process.env.NEXT_PUBLIC_PREVIEW_URL}`;
+    if (project) {
+      const previewUrl = `http://${project.subdomain}.${process.env.NEXT_PUBLIC_PREVIEW_URL}`;
       window.open(previewUrl, "_blank", "noopener,noreferrer");
     } else {
       toast.error("Project not found");
@@ -57,7 +59,7 @@ export default function BuilderHeader() {
           </Link>
           <div className="flex items-center gap-">
             <h1 className="text-muted-foreground truncate max-w-[160px]">
-              {builderState.project?.name || "Untitled Project"}
+              {project?.name || "Untitled Project"}
             </h1>
             <>
               <ChevronRight className="h-4 w-4 text-muted-foreground mx-1" />

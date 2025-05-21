@@ -25,12 +25,9 @@ export default function RightPanel() {
     hasError?: boolean;
   } | null>(null);
   
-  // Setup keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Allow Escape key to close the panel
       if (e.key === 'Escape' && state.showRightPanel) {
-        // Check for unsaved changes
         if (hasUnsavedChanges) {
           const confirmClose = window.confirm("You have unsaved changes. Are you sure you want to close?");
           if (!confirmClose) return;
@@ -39,7 +36,6 @@ export default function RightPanel() {
         updateLayoutState({ showRightPanel: false });
       }
       
-      // Alt+1 for Properties view, Alt+2 for Outline view
       if (e.altKey && state.showRightPanel) {
         if (e.key === '1') {
           setView('properties');
@@ -48,11 +44,9 @@ export default function RightPanel() {
         }
       }
       
-      // Ctrl+S to save changes (prevent browser save dialog)
       if ((e.ctrlKey || e.metaKey) && e.key === 's' && state.showRightPanel) {
         e.preventDefault();
         if (view === 'properties' && selectedBlockInfo) {
-          // Dispatch a custom event to trigger save in BlockConfigForm
           window.dispatchEvent(new CustomEvent('save-block-form'));
           setHasUnsavedChanges(false);
         }

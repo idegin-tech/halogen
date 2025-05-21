@@ -4,12 +4,14 @@ import Frame, { FrameContextConsumer } from 'react-frame-component';
 import { DynamicBlockRenderer } from './block-renderer';
 import { useBuilderContext } from '@/context/builder.context';
 import { useSyncContext } from '@/context/sync.context';
+import { useProjectContext } from '@/context/project.context';
 
 type Props = {};
 
 export default function PageBuilderPreview({ }: Props) {
   const [show, setShow] = useState(false);
   const { state } = useBuilderContext();
+  const { state: { project, settings } } = useProjectContext();
   const { isLoading } = useSyncContext();
 
   const activeColorSet = state.variableSets.find(set => set.key === 'colors' || set.set_id === 'set_colors');
@@ -23,8 +25,8 @@ export default function PageBuilderPreview({ }: Props) {
     return `${varName}: ${v.primaryValue};`;
   }).join('\n                              ');
 
-  const headingFont = state.project?.settings?.headingFont || state.projectSettings?.headingFont;
-  const bodyFont = state.project?.settings?.bodyFont || state.projectSettings?.bodyFont;
+  const headingFont = project?.settings?.headingFont || settings?.headingFont;
+  const bodyFont = project?.settings?.bodyFont || settings?.bodyFont;
 
   let googleFontsUrl = null;
   if (headingFont || bodyFont) {
@@ -47,7 +49,7 @@ export default function PageBuilderPreview({ }: Props) {
     const requirementsMet = !isLoading &&
       state.selectedPageId &&
       state.pages.length > 0 &&
-      state.project &&
+      project &&
       colorVariablesFromState.length > 0;
 
     if (requirementsMet) {
@@ -57,7 +59,7 @@ export default function PageBuilderPreview({ }: Props) {
     } else {
       setShow(false);
     }
-  }, [isLoading, state.selectedPageId, state.pages, state.project, state.projectSettings, headingFont, bodyFont, colorVariablesFromState]);
+  }, [isLoading, state.selectedPageId, state.pages, project, settings, headingFont, bodyFont, colorVariablesFromState]);
 
   const frameKey = JSON.stringify({ ...colorVariablesFromState, headingFont, bodyFont, show });
 

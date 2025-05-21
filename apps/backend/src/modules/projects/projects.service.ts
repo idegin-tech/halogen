@@ -1,18 +1,21 @@
-import { ProjectData, ProjectUserRole, PaginatedResponse, ProjectQueryOptions } from '@halogen/common';
+import ProjectModel, { ProjectDocument } from './projects.model';
+import ProjectSettingsModel from '../project-settings/project-settings.model';
+import WalletModel from '../billing/wallet/wallet.model';
+import ProjectMetadataModel from '../project-metadata/project-metadata.model';
 import { generateUsername } from 'unique-username-generator';
-import { CreateProjectDTO, UpdateProjectDTO, SyncProjectDTO } from './projects.dtos';
-import ProjectModel, {ProjectDocument} from './projects.model';
-import ProjectUserModel from '../project-users/project-users.model';
-import Logger from '../../config/logger.config';
 import mongoose, { Types } from 'mongoose';
-import PageModel from '../artifacts/pages/pages.model';
-import VariableModel from '../artifacts/variables/variables.model';
-import BlockInstanceModel from '../artifacts/block-instance/block-instances.model';
-import { ProjectMetadataService } from '../project-metadata';
-import { ProjectSettingsService } from '../project-settings';
 import { takeScreenshotAndUpload } from '../../lib/screenshot.lib';
 import { validateEnv } from '../../config/env.config';
 import { deleteFromCloudinary } from '../../lib/cloudinary.lib';
+import { ProjectSettingsService } from '../project-settings';
+import { CreateProjectDTO, SyncProjectDTO, UpdateProjectDTO } from './projects.dtos';
+import { PaginatedResponse, ProjectData, ProjectQueryOptions, ProjectUserRole } from '@halogen/common';
+import { ProjectUserModel } from '../project-users';
+import PagesModel from '../artifacts/pages/pages.model';
+import { ProjectMetadataService } from '../project-metadata';
+import Logger from '../../config/logger.config';
+import variablesModel from '../artifacts/variables/variables.model';
+import blockInstancesModel from '../artifacts/block-instance/block-instances.model';
 
 export class ProjectsService {
     static async generateUniqueSubdomain(): Promise<string> {
@@ -57,7 +60,7 @@ export class ProjectsService {
 
             const homePageId = `page_home_${savedProject?._id?.toString().substring(0, 6)}`;
 
-            const homePage = new PageModel({
+            const homePage = new PagesModel({
                 name: 'Home',
                 path: '/',
                 isStatic: true,
@@ -71,7 +74,7 @@ export class ProjectsService {
                 for (const pageData of pagesData) {
                     if (pageData.path === '/') continue;
 
-                    const page = new PageModel({
+                    const page = new PagesModel({
                         ...pageData,
                         project: savedProject._id
                     });
@@ -100,36 +103,40 @@ export class ProjectsService {
             const project = await ProjectModel.findById(projectId);
             if (!project) return null;
 
-            const projectObj = project.toObject();
-
-            const projectUsers = await ProjectUserModel.find({ project: projectId })
+            const users = await ProjectUserModel.find({ project: projectId })
                 .populate('user', 'displayName email')
-                .limit(10)
                 .lean();
 
-            const pages = await PageModel.find({ project: projectId }).lean();
-
-            const variables = await VariableModel.find({ project: projectId }).lean();
-            const blockInstances = await BlockInstanceModel.find({ project: projectId }).lean();
-            const projectSettings = await ProjectSettingsService.getByProjectId(projectId);
-
-            const projectMetadata = await ProjectMetadataService.getProjectMetadataByProjectId(projectId);
+            const settings = await ProjectSettingsModel.findOne({ project: projectId }).lean();
+            const wallet = await WalletModel.findOne({ project: projectId }).lean();
 
             return {
-                ...projectObj,
-                _id: projectObj._id as string,
-                users: projectUsers as any[],
-                pages: pages,
-                variables: variables,
-                blockInstances: blockInstances,
-                settings: projectSettings ? {
-                    headingFont: projectSettings.headingFont,
-                    bodyFont: projectSettings.bodyFont
-                } : null,
-                metadata: projectMetadata || null
+                project: project.toObject(),
+                users,
+                settings: settings || null,
+                wallet: wallet || null
             };
         } catch (error) {
             Logger.error(`Get project error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            throw error;
+        }
+    }
+
+    static async getProjectWebsiteData(projectId: string) {
+        try {
+            const pages = await PagesModel.find({ project: projectId }).lean();
+            const variables = await variablesModel.find({ project: projectId }).lean();
+            const blockInstances = await blockInstancesModel.find({ project: projectId }).lean();
+            const metadata = await ProjectMetadataModel.findOne({ project: projectId }).lean();
+
+            return {
+                pages,
+                variables,
+                blocks:blockInstances,
+                metadata: metadata || null,
+            };
+        } catch (error) {
+            Logger.error(`Get project website data error: ${error instanceof Error ? error.message : 'Unknown error'}`);
             throw error;
         }
     }
@@ -146,9 +153,9 @@ export class ProjectsService {
 
             const projectSettings = await ProjectSettingsService.getByProjectId(projectId);
             const projectMetadata = await ProjectMetadataService.getProjectMetadataByProjectId(projectId);
-            const pages = await PageModel.find({ project: projectId }).lean();
-            const variables = await VariableModel.find({ project: projectId }).lean();
-            const blockInstances = await BlockInstanceModel.find({ project: projectId }).lean();
+            const pages = await PagesModel.find({ project: projectId }).lean();
+            const variables = await variablesModel.find({ project: projectId }).lean();
+            const blockInstances = await blockInstancesModel.find({ project: projectId }).lean();
 
             const projectObj = project.toObject();
             return {

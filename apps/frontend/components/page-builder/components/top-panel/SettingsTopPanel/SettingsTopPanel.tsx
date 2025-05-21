@@ -7,6 +7,7 @@ import SettingsTopPanelIntegrations from './SettingsTopPanelIntegrations'
 import SettingsTopPanelUsers from './SettingsTopPanelUsers'
 import SettingsTopPanelBilling from './SettingsTopPanelBilling'
 import SettingsTopPanelAdvanced from './SettingsTopPanelAdvanced'
+import SettingsTopPanelDomain from './SettingsTopPanelDomain'
 
 type Props = {
     show: boolean;
@@ -76,6 +77,7 @@ export default function SettingsTopPanel({ show, onHide }: Props) {
             <div className='flex-1 overflow-x-hidden overflow-y-auto'>                {activeSection === 'project' && <SettingsTopPanelProject />}
                 {activeSection === 'metadata' && <SettingsTopPanelMetadata />}
                 {activeSection === 'integrations' && <SettingsTopPanelIntegrations />}
+                {activeSection === 'domain' && <SettingsTopPanelDomain />}
                 {activeSection === 'users' && <SettingsTopPanelUsers />}
                 {activeSection === 'billing' && <SettingsTopPanelBilling />}
                 {activeSection === 'advanced' && <SettingsTopPanelAdvanced />}

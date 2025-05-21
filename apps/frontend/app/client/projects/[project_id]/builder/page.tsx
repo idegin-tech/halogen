@@ -4,6 +4,16 @@ import { BuilderProvider } from "@/context/builder.context";
 import { SyncProvider } from "@/context/sync.context";
 import { notFound } from "next/navigation";
 import { PreviewProvider } from "@/context/preview.context";
+import { useProjectContext } from "@/context/project.context";
+import { PageData, BlockInstance, VariableSet, Variable } from "@halogen/common";
+
+interface WebsiteData {
+  pages: PageData[];
+  blocks: BlockInstance[];
+  metadata: any;
+  variableSets: VariableSet[];
+  variables: Variable[];
+}
 
 export default async function BuilderPage({
   params
@@ -13,24 +23,24 @@ export default async function BuilderPage({
 }) {
   const projectId = (await params)?.project_id;
 
-  let projectData = null;
+  let websiteData: WebsiteData | null = null;
 
   try {
-    projectData = await fetchFromApi(`/projects/${projectId}`);
+    websiteData = await fetchFromApi<WebsiteData>(`/projects/${projectId}/website`);
 
-    if (!projectData) {
+    if (!websiteData) {
       notFound();
     }
   } catch (error) {
-    console.error('Failed to fetch project:', error);
+    console.error('Failed to fetch website data:', error);
     notFound();
   }
 
   return (
-    <BuilderProvider>
+    <BuilderProvider initialData={websiteData}>
       <SyncProvider projectId={projectId}>
         <PreviewProvider>
-          <PageBuilder projectData={projectData} />
+          <PageBuilder />
         </PreviewProvider>
       </SyncProvider>
     </BuilderProvider>

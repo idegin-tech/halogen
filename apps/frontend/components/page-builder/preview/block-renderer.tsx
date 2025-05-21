@@ -20,7 +20,6 @@ export default function BlockRenderer({ pageId }: BlockRendererProps) {
     const targetPageId = pageId || state.selectedPageId;
 
     if (targetPageId) {
-      // Filter blocks by page_id (frontend ID) instead of MongoDB page reference
       const filteredBlocks = state.blocks
         .filter(block => block.page_id === targetPageId)
         .sort((a, b) => a.index - b.index);
