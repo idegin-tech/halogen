@@ -4,22 +4,20 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
-import { useBuilderContext } from '@/context/builder.context'
 import { useMutation } from '@/hooks/useApi'
 import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
+import { useProjectContext } from '@/context/project.context'
 
 export default function SettingsTopPanelProject() {
-    const { state: { project }, updateBuilderState } = useBuilderContext();
+    const { state: { project }, updateProjectState } = useProjectContext();
     const [name, setName] = useState(project?.name || '');
     const [description, setDescription] = useState(project?.description || ``);
     const [initialValues, setInitialValues] = useState({ name: '', description: '' });
     const [hasChanges, setHasChanges] = useState(false);
-    
-    // Set up mutation hook for updating the project
+
     const projectMutation = useMutation('/projects');
-    
-    // Initialize initial values when project data is available
+
     useEffect(() => {
         if (project) {
             setName(project.name || '');
@@ -30,44 +28,39 @@ export default function SettingsTopPanelProject() {
             });
         }
     }, [project]);
-    
-    // Calculate if there are changes to save
+
     useEffect(() => {
         const nameChanged = name !== initialValues.name;
         const descriptionChanged = description !== initialValues.description;
         setHasChanges(nameChanged || descriptionChanged);
     }, [name, description, initialValues]);
-    
-    // Save project changes
+
     const handleSaveProject = async () => {
         if (!project || !project._id) {
             toast.error("Project data is not available");
             return;
         }
-        
+
         try {
-            // Update project via API
             const updatedProject = await projectMutation.update(project._id, {
                 name,
                 description
             });
-            
+
             if (updatedProject) {
-                // Update local state
-                updateBuilderState({ 
+                updateProjectState({
                     project: {
                         ...project,
                         name,
                         description
                     }
                 });
-                
-                // Update initial values
+
                 setInitialValues({
                     name,
                     description
                 });
-                
+
                 toast.success("Project settings updated successfully");
             }
         } catch (error) {
@@ -103,9 +96,9 @@ export default function SettingsTopPanelProject() {
                             onChange={e => setDescription(e.target.value)}
                         />
                     </div>
-                    <Button 
+                    <Button
                         onClick={handleSaveProject}
-                        disabled={!name?.trim() || !hasChanges || projectMutation.isLoading} 
+                        disabled={!name?.trim() || !hasChanges || projectMutation.isLoading}
                         className="mt-4"
                     >
                         {projectMutation.isLoading ? (

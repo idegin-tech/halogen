@@ -31,6 +31,7 @@ import { useQuery, useMutation } from '@/hooks/useApi'
 import { useBuilderContext } from '@/context/builder.context'
 import { toast } from 'sonner'
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination'
+import { useProjectContext } from '@/context/project.context'
 
 // Typing for the project users response
 interface ProjectUserItem {
@@ -51,7 +52,7 @@ interface ProjectUserItem {
 interface ProjectUsersResponse extends PaginatedResponse<ProjectUserItem> { }
 
 export default function SettingsTopPanelUsers() {
-  const { state: { project } } = useBuilderContext();
+  const { state: { project } } = useProjectContext();
   const [searchTerm, setSearchTerm] = useState('');
   const [page, setPage] = useState(1);
   const [limit] = useState(20);

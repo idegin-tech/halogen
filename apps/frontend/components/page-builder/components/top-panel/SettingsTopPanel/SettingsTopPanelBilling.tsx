@@ -5,11 +5,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { useBuilderContext } from '@/context/builder.context'
-import { useMutation, useQuery } from '@/hooks/useApi'
 import { toast } from 'sonner'
 import { Loader2, CreditCard, ArrowUpCircle, Download, ChevronRight, CornerUpRight } from 'lucide-react'
 import { format } from 'date-fns'
+
 
 interface Transaction {
     id: string;
@@ -30,7 +29,6 @@ interface Plan {
 }
 
 export default function SettingsTopPanelBilling() {
-    const { state: { project } } = useBuilderContext();
     const [isLoading, setIsLoading] = useState(true);
     const [walletBalance, setWalletBalance] = useState(0);
     const [currentPlan, setCurrentPlan] = useState<Plan | null>(null);

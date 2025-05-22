@@ -10,6 +10,7 @@ import { useQuery, useMutation } from '@/hooks/useApi'
 import { ProjectMetadata } from '@halogen/common/types'
 import { toast } from 'sonner'
 import axios from 'axios';
+import { useProjectContext } from '@/context/project.context'
 
 // File upload interfaces
 interface FileUploadResponse {
@@ -24,7 +25,7 @@ interface ApiResponse<T> {
 }
 
 export default function SettingsTopPanelMetadata() {
-    const { state: { project } } = useBuilderContext();
+    const { state: { project } } = useProjectContext();
     const [formData, setFormData] = useState<Partial<ProjectMetadata>>({
         title: '',
         description: '',

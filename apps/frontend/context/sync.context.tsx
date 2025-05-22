@@ -5,6 +5,7 @@ import {useBuilderContext} from "./builder.context";
 import {BlockInstance, generateId, PageData} from "@halogen/common";
 import {colorVariables, radiusVariables, variableSets} from "@/config/variables";
 import {toast} from "sonner";
+import { useProjectContext } from "./project.context";
 
 interface SyncContextInterface {
     isLoading: boolean;
@@ -23,6 +24,7 @@ export function SyncProvider({
     children: React.ReactNode;
 }) {
     const {state, updateBuilderState} = useBuilderContext();
+    const { state: {project}} = useProjectContext();
     const [isLoading, setIsLoading] = React.useState(true);
     const [isSyncing, setIsSyncing] = React.useState(false);
     const [lastSynced, setLastSynced] = React.useState<Date | null>(null);
@@ -198,7 +200,7 @@ export function SyncProvider({
 
 
     const syncToCloud = useCallback(async (): Promise<boolean> => {
-        if (!projectId || !state.project) {
+        if (!projectId || !project) {
             toast.error("Project data is not available");
             return false;
         }
@@ -231,9 +233,9 @@ export function SyncProvider({
             toast.loading("Synchronizing project data...", {id: toastId});
             const projectData = {
                 project: {
-                    name: state.project.name,
-                    description: state.project.description || "",
-                    thumbnail: state.project.thumbnail
+                    name: project.name,
+                    description: project.description || "",
+                    thumbnail: project.thumbnail
                 }
             };
 
@@ -342,7 +344,7 @@ export function SyncProvider({
         } finally {
             setIsSyncing(false);
         }
-    }, [projectId, state.project, state.pages, state.variables, state.blocks]);
+    }, [projectId, project, state.pages, state.variables, state.blocks]);
 
     const contextValue: SyncContextInterface = {
         isLoading,

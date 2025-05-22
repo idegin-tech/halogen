@@ -8,6 +8,7 @@ type ProjectState = {
   users: any[];
   settings: ProjectSettings | null;
   wallet: any | null;
+  showPricing?: boolean;
 };
 
 interface ProjectContextInterface {
@@ -22,6 +23,7 @@ interface ProjectProviderProps {
     users: any[];
     settings: ProjectSettings | null;
     wallet: any | null;
+    showPricing?: boolean;
   };
 }
 
@@ -32,7 +34,8 @@ export function ProjectProvider({ children, initialData }: ProjectProviderProps)
     project: initialData?.project || null,
     users: initialData?.users || [],
     settings: initialData?.settings || null,
-    wallet: initialData?.wallet || null
+    wallet: initialData?.wallet || null,
+    showPricing: initialData?.showPricing || false
   });
 
   const updateProjectState = (updates: Partial<ProjectState>) => {

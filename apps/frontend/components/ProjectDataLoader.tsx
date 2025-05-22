@@ -16,7 +16,7 @@ export default function ProjectDataLoader<T>({ fetchData, children }: ProjectDat
     }, [fetchData]);
 
     if (!data) {
-        return null; // Or a loading state if you prefer
+        return null;
     }
 
     return <>{children(data)}</>;

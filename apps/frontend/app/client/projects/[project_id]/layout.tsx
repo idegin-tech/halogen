@@ -9,9 +9,9 @@ import ProjectDataLoader from '@/components/ProjectDataLoader';
 
 type Props = {
     children: React.ReactNode;
-    params: {
+    params: Promise<{
         project_id: string;
-    };
+    }>;
 }
 
 interface ProjectResponse {
@@ -21,9 +21,10 @@ interface ProjectResponse {
     wallet: any | null;
 }
 
-export default function ProjectLayout({ children, params }: Props) {
+export default async function Layout({ children, params }: Props) {
+    const resolvedParams = await params;
     const fetchProjectData = async () => {
-        return await fetchFromApi<ProjectResponse>(`/projects/${params.project_id}`);
+        return await fetchFromApi<ProjectResponse>(`/projects/${resolvedParams.project_id}`);
     };
 
     return (

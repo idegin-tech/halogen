@@ -6,22 +6,22 @@ import { Input } from '@/components/ui/input';
 import { useBuilderContext } from '@/context/builder.context';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { ImageIcon, LinkIcon, LoaderCircleIcon, X, Trash2, UploadIcon, Loader2 } from 'lucide-react';
 import Image from 'next/image';
 import { getProjectFiles, uploadProjectFiles } from '@/lib/files-api';
 import { FileData, FileListResponse } from '@halogen/common';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import { useProjectContext } from '@/context/project.context';
 
 interface ImageInputProps {
-    value: string;
-    onChange: (value: string) => void;
-    onBlur: () => void;
-    placeholder?: string;
-    label?: string;
-    description?: string;
-    fieldName?: string; // Added to allow direct update
+  value: string;
+  onChange: (value: string) => void;
+  onBlur: () => void;
+  placeholder?: string;
+  label?: string;
+  description?: string;
+  fieldName?: string; // Added to allow direct update
 }
 
 export function ImageInput({
@@ -40,21 +40,21 @@ export function ImageInput({
   const [previewHover, setPreviewHover] = useState<boolean>(false);
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const router = useRouter();
-  
-  // Get builder context for direct image updates
+
+
   const { state, updateBuilderState } = useBuilderContext();
+  const { state: { project } } = useProjectContext()
   const selectedBlock = state.blocks.find(block => block.instance_id === state.selectedBlockId);
 
   useEffect(() => {
     setUrlInput(value || "");
     setSelectedImage(value || "");
   }, [value]);
-  
+
   // Direct method to update the block image value
   const updateImageDirectly = useCallback((newImageUrl: string) => {
     if (!fieldName || !selectedBlock) return;
-    
+
     // Get the source block (same logic as in BlockConfigForm)
     const findRootBlock = (block: any): any => {
       if (block.value !== null || block.instance === null) {
@@ -92,36 +92,34 @@ export function ImageInput({
       return block;
     });
 
-    // Update builder state with new blocks
     updateBuilderState({ blocks: updatedBlocks });
-    
+
     console.log(`Image updated directly: ${fieldName} = ${newImageUrl}`);
   }, [fieldName, selectedBlock, state.blocks, updateBuilderState]);
-  
-  // Function to handle file upload
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const projectId = state.project?._id;
+    const projectId = project?._id;
     if (!projectId) {
       toast.error('Project ID not found.');
       return;
     }
-    
+
     if (e.target.files && e.target.files.length > 0) {
       setIsUploading(true);
-      
+
       try {
         const filesArray = Array.from(e.target.files);
         const response = await uploadProjectFiles(projectId, filesArray);
-        
+
         if (response.files.length > 0) {
           toast.success(`Successfully uploaded ${response.files.length} ${response.files.length === 1 ? 'image' : 'images'}`);
-          
+
           // If there's at least one image uploaded, select the first one
           if (response.files[0]) {
             const imageUrl = response.files[0].downloadUrl;
             setSelectedImage(imageUrl);
             onChange(imageUrl);
-            
+
             // Update the block directly with the new image URL
             if (fieldName) {
               updateImageDirectly(imageUrl);
@@ -131,13 +129,13 @@ export function ImageInput({
               }, 0);
             }
           }
-          
+
           // Refresh the image list after upload
           if (activeTab === 'project') {
             fetchProjectImages(1, true);
           }
         }
-        
+
         if (response.errors.length > 0) {
           response.errors.forEach(error => {
             toast.error(`Failed to upload ${error.name}: ${error.error}`);
@@ -148,27 +146,23 @@ export function ImageInput({
         toast.error('Failed to upload image');
       } finally {
         setIsUploading(false);
-        
-        // Reset file input
+
         if (fileInputRef.current) {
           fileInputRef.current.value = '';
         }
       }
     }
   };
-  
-  // State for handling project images with pagination
+
   const [projectImages, setProjectImages] = useState<FileData[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true); 
+  const [hasMore, setHasMore] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const observer = useRef<IntersectionObserver | null>(null);
-  
-  // Get project ID from state for API calls
-  const projectId = state.project?._id;
-  
-  // Reset pagination when tab changes or popover opens
+
+  const projectId = project?._id;
+
   useEffect(() => {
     if (open && activeTab === 'project') {
       setPage(1);
@@ -183,7 +177,7 @@ export function ImageInput({
     try {
       setIsLoading(true);
       setError(null);
-      
+
       // Call the API with image type filter
       const response = await getProjectFiles(String(projectId), {
         page: pageNum,
@@ -191,13 +185,13 @@ export function ImageInput({
         type: 'image',
         sort: '-createdAt'
       });
-      
+
       if (reset) {
         setProjectImages(response.docs);
       } else {
         setProjectImages(prev => [...prev, ...response.docs]);
       }
-      
+
       setHasMore(response.hasNextPage);
       setPage(response.page);
     } catch (err) {
@@ -207,56 +201,56 @@ export function ImageInput({
       setIsLoading(false);
     }
   };
-  
+
   // Setup intersection observer for infinite scroll
   const lastImageElementRef = useCallback((node: HTMLDivElement) => {
     if (isLoading) return;
-    
+
     if (observer.current) observer.current.disconnect();
-    
+
     observer.current = new IntersectionObserver(entries => {
       if (entries[0].isIntersecting && hasMore) {
         fetchProjectImages(page + 1);
       }
     });
-    
+
     if (node) observer.current.observe(node);
   }, [isLoading, hasMore, page]);
-  
+
   const handleUrlInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setUrlInput(e.target.value);
   };
-  
+
   const handleUrlInputBlur = () => {
     onChange(urlInput); // Update the value in parent
-    
+
     // Use direct update instead of relying on state updates
     if (fieldName) {
-        updateImageDirectly(urlInput);
+      updateImageDirectly(urlInput);
     } else {
-        // Fallback to using onBlur
-        setTimeout(() => {
-            onBlur(); // This triggers the parent's commitFieldChange
-        }, 0);
+      // Fallback to using onBlur
+      setTimeout(() => {
+        onBlur(); // This triggers the parent's commitFieldChange
+      }, 0);
     }
   };
-  
+
   const handleImageSelect = (imageUrl: string) => {
     setSelectedImage(imageUrl);
     onChange(imageUrl); // Update the value in parent
-    
+
     // Use direct update instead of relying on state updates
     if (fieldName) {
-        updateImageDirectly(imageUrl);
+      updateImageDirectly(imageUrl);
     } else {
-        // Fallback to using onBlur
-        setTimeout(() => {
-            onBlur(); // This triggers the parent's commitFieldChange
-        }, 0);
+      // Fallback to using onBlur
+      setTimeout(() => {
+        onBlur(); // This triggers the parent's commitFieldChange
+      }, 0);
     }
     setOpen(false);
   };
-  
+
   // Preview component for the selected image
   const ImagePreview = () => {
     if (!value) return null;
@@ -275,9 +269,8 @@ export function ImageInput({
           />
 
           <div
-            className={`absolute inset-0 bg-black/60 flex items-center justify-center gap-2 transition-opacity duration-200 ${
-              previewHover ? 'opacity-100' : 'opacity-0'
-            }`}
+            className={`absolute inset-0 bg-black/60 flex items-center justify-center gap-2 transition-opacity duration-200 ${previewHover ? 'opacity-100' : 'opacity-0'
+              }`}
           >
             <Button
               size="sm"
@@ -292,10 +285,10 @@ export function ImageInput({
               variant="outline"
               className="h-8 w-8 rounded-full bg-background/80 p-0 text-foreground backdrop-blur-sm hover:bg-background/90"
               onClick={() => {
-                setSelectedImage(""); 
+                setSelectedImage("");
                 setUrlInput("");
                 onChange("");  // Update parent value
-                
+
                 // Use direct update instead of relying on state updates
                 if (fieldName) {
                   updateImageDirectly("");
@@ -320,7 +313,7 @@ export function ImageInput({
       </div>
     );
   };
-  
+
   return (
     <div className="grid gap-2">
       {label && <label className="text-sm font-medium text-foreground">{label}</label>}
@@ -377,7 +370,7 @@ export function ImageInput({
                     className="w-full bg-primary hover:bg-primary/90"
                     onClick={() => {
                       onChange(urlInput);  // Set the value
-                      
+
                       // Use direct update instead of relying on state updates
                       if (fieldName) {
                         updateImageDirectly(urlInput);
@@ -394,12 +387,12 @@ export function ImageInput({
                   </Button>
                 </div>
               </TabsContent>
-              
+
               <TabsContent value="project" className="p-0 border-none">
                 <div className="flex justify-center p-3 border-b border-border/60">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
+                  <Button
+                    variant="outline"
+                    size="sm"
                     className="border-primary/30 text-primary hover:bg-primary/10"
                     onClick={() => {
                       if (fileInputRef.current) {
@@ -443,8 +436,8 @@ export function ImageInput({
                       {projectImages.map((image, index) => {
                         const isLastElement = index === projectImages.length - 1;
                         return (
-                          <div 
-                            key={image._id} 
+                          <div
+                            key={image._id}
                             ref={isLastElement ? lastImageElementRef : undefined}
                             className="group relative"
                           >
@@ -461,7 +454,7 @@ export function ImageInput({
                                 alt={image.name || 'Project image'}
                                 className="w-full h-full object-cover"
                               />
-                              
+
                               {selectedImage === image.downloadUrl && (
                                 <div className="absolute inset-0 bg-primary/10 flex items-center justify-center">
                                   <div className="h-6 w-6 rounded-full bg-primary flex items-center justify-center text-primary-foreground">
@@ -477,29 +470,29 @@ export function ImageInput({
                         );
                       })}
                     </div>
-                    
+
                     {/* Loading indicator at bottom during pagination */}
                     {isLoading && projectImages.length > 0 && (
                       <div className="p-4 flex justify-center">
                         <LoaderCircleIcon className="h-6 w-6 animate-spin text-primary" />
                       </div>
                     )}
-                    
+
                     {/* Error message */}
                     {error && (
                       <div className="p-4 text-center">
                         <p className="text-xs text-red-500">{error}</p>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className="mt-2" 
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="mt-2"
                           onClick={() => fetchProjectImages(page, false)}
                         >
                           Try Again
                         </Button>
                       </div>
                     )}
-                    
+
                     {/* End of results message */}
                     {!hasMore && !isLoading && projectImages.length > 0 && (
                       <div className="p-4 text-center">
@@ -527,7 +520,7 @@ export function ImageInput({
               setUrlInput("");
               setSelectedImage("");
               onChange("");
-              
+
               // Use direct update instead of relying on state updates
               if (fieldName) {
                 updateImageDirectly("");
@@ -567,10 +560,10 @@ export function ImageInput({
               <p className="text-xs opacity-70 mt-0.5">Select from your files</p>
             </div>
           </button>
-          
-          <Button 
-            variant="outline" 
-            size="sm" 
+
+          <Button
+            variant="outline"
+            size="sm"
             className="border-primary/30 text-primary hover:bg-primary/10"
             onClick={() => {
               if (fileInputRef.current) {

@@ -19,8 +19,8 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command"
-import { debounce } from '@/lib/debounce'
 import { ProjectSettings } from '@halogen/common/types'
+import { useProjectContext } from '@/context/project.context'
 
 interface GoogleFontItem {
   family: string;
@@ -64,8 +64,9 @@ export default function ThemeFontsSection() {
   const [selectedHeadingFont, setSelectedHeadingFont] = useState<string>('Inter');
   const [selectedBodyFont, setSelectedBodyFont] = useState<string>('Inter');
   const { state, updateBuilderState } = useBuilderContext();
+  const { state: { project, settings }, updateProjectState } = useProjectContext()
   const updateProjectFonts = useMutation<any, { headingFont: string; bodyFont: string }>(
-    `/project-settings/${state.project?._id}/fonts`,
+    `/project-settings/${project?._id}/fonts`,
     {
       method: 'PUT'
     }
@@ -206,30 +207,32 @@ export default function ThemeFontsSection() {
         return variable;
       });
 
-      const projectSettings:ProjectSettings = {
-        ...(state.projectSettings || {}),
+      const projectSettings: ProjectSettings = {
+        ...(settings || {}),
         headingFont: fontName,
         bodyFont: fontName,
-        project: state.project?._id || '',
-        integrations: state.projectSettings?.integrations || []
+        project: project?._id || '',
+        integrations: settings?.integrations || []
       };
 
-      const projectWithUpdatedSettings = state.project ? {
-        ...state.project,
+      const projectWithUpdatedSettings = project ? {
+        ...project,
         settings: {
-          ...(state.project.settings || {}),
+          ...(settings || {}),
           headingFont: fontName,
           bodyFont: fontName
         }
-      } : state.project;
+      } : project;
 
       updateBuilderState({
         variables: updatedVariables,
-        projectSettings,
+      });
+      updateProjectState({
+        settings:projectSettings,
         project: projectWithUpdatedSettings
       });
 
-      if (state.project?._id) {
+      if (project?._id) {
         updateProjectFonts.mutate(
           {
             headingFont: fontName,
@@ -248,19 +251,19 @@ export default function ThemeFontsSection() {
   };
 
   useEffect(() => {
-    if (state.project?.settings?.headingFont) {
-      setSelectedHeadingFont(state.project.settings.headingFont);
-      setSelectedFont(state.project.settings.headingFont);
+    if (project?.settings?.headingFont) {
+      setSelectedHeadingFont(project.settings.headingFont);
+      setSelectedFont(project.settings.headingFont);
     }
 
-    if (state.project?.settings?.bodyFont) {
-      setSelectedBodyFont(state.project.settings.bodyFont);
+    if (project?.settings?.bodyFont) {
+      setSelectedBodyFont(project.settings.bodyFont);
 
-      if (!state.project?.settings?.headingFont) {
-        setSelectedFont(state.project.settings.bodyFont);
+      if (!project?.settings?.headingFont) {
+        setSelectedFont(project.settings.bodyFont);
       }
     }
-  }, [state.project?.settings]);
+  }, [project?.settings]);
 
   return (
     <div className="space-y-8 grid grid-cols-1 select-none">

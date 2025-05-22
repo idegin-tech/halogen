@@ -1,8 +1,10 @@
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import TopPanelContainer from './TopPanelContainer';
-import { FolderIcon, FileIcon, ImageIcon, FileTextIcon, FilmIcon, Upload, MoreHorizontal, 
-  Search, Grid3X3, List, Download, Trash2, Edit, Share2, Star, Copy, 
-  ArrowUpDown, SlidersHorizontal, CheckCircle2, Filter, Loader2 } from 'lucide-react';
+import {
+  FolderIcon, FileIcon, ImageIcon, FileTextIcon, FilmIcon, Upload, MoreHorizontal,
+  Search, Grid3X3, List, Download, Trash2, Edit, Share2, Star, Copy,
+  ArrowUpDown, SlidersHorizontal, CheckCircle2, Filter, Loader2
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -34,7 +36,7 @@ import { getProjectFiles, uploadProjectFiles, deleteProjectFiles } from '@/lib/f
 import { FileData } from '@halogen/common';
 import { useInView } from 'react-intersection-observer';
 import { toast } from 'sonner';
-import { 
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -52,11 +54,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useProjectContext } from '@/context/project.context';
 
 type SortOption = 'name' | 'size' | 'date' | 'type';
 
 export default function FilesTopPanel({ show, onHide }: { show: boolean; onHide: () => void }) {
-  const { state: { project } } = useBuilderContext();
+  const { state: { project } } = useProjectContext()
   const projectId = project?._id;
 
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -67,7 +70,7 @@ export default function FilesTopPanel({ show, onHide }: { show: boolean; onHide:
   const [isUploading, setIsUploading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   const [files, setFiles] = useState<FileData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -85,27 +88,27 @@ export default function FilesTopPanel({ show, onHide }: { show: boolean; onHide:
 
   const loadFiles = useCallback(async (page = 1, replace = true, search?: string) => {
     if (!projectId) return;
-    
+
     try {
       if (replace) {
         setIsLoading(true);
       } else {
         setIsLoadingMore(true);
       }
-      
+
       const response = await getProjectFiles(projectId, {
         page,
         limit: 20,
         search: search || searchTerm,
         sort: `${sortOrder === 'desc' ? '-' : ''}${sortBy}`
       });
-      
+
       if (replace) {
         setFiles(response.docs);
       } else {
         setFiles(prev => [...prev, ...response.docs]);
       }
-      
+
       setHasNextPage(response.hasNextPage);
       setPage(response.page);
       setError(null);
@@ -130,13 +133,13 @@ export default function FilesTopPanel({ show, onHide }: { show: boolean; onHide:
       loadFiles(page + 1, false);
     }
   }, [inView, hasNextPage, isLoadingMore, isLoading, page, loadFiles]);
-  
+
   useEffect(() => {
     if (projectId && show) {
       const debounceTimer = setTimeout(() => {
         loadFiles(1, true, searchTerm);
       }, 500);
-      
+
       return () => clearTimeout(debounceTimer);
     }
   }, [searchTerm, sortBy, sortOrder, projectId, show, loadFiles]);
@@ -180,7 +183,7 @@ export default function FilesTopPanel({ show, onHide }: { show: boolean; onHide:
   }, []);
 
   const toggleFileSelection = useCallback((fileId: string) => {
-    setSelectedFiles(prev => 
+    setSelectedFiles(prev =>
       prev.includes(fileId)
         ? prev.filter(id => id !== fileId)
         : [...prev, fileId]
@@ -201,19 +204,19 @@ export default function FilesTopPanel({ show, onHide }: { show: boolean; onHide:
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!projectId) return;
-    
+
     if (e.target.files && e.target.files.length > 0) {
       setIsUploading(true);
-      
+
       try {
         const filesArray = Array.from(e.target.files);
         const response = await uploadProjectFiles(projectId, filesArray);
-        
+
         if (response.files.length > 0) {
           toast.success(`Successfully uploaded ${response.files.length} files`);
           loadFiles(1, true);
         }
-        
+
         if (response.errors.length > 0) {
           response.errors.forEach(error => {
             toast.error(`Failed to upload ${error.name}: ${error.error}`);
@@ -224,7 +227,7 @@ export default function FilesTopPanel({ show, onHide }: { show: boolean; onHide:
         toast.error('Failed to upload files');
       } finally {
         setIsUploading(false);
-        
+
         if (fileInputRef.current) {
           fileInputRef.current.value = '';
         }
@@ -245,21 +248,21 @@ export default function FilesTopPanel({ show, onHide }: { show: boolean; onHide:
   const handleDrop = useCallback(async (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setIsDragging(false);
-    
+
     if (!projectId) return;
-    
+
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       setIsUploading(true);
-      
+
       try {
         const filesArray = Array.from(e.dataTransfer.files);
         const response = await uploadProjectFiles(projectId, filesArray);
-        
+
         if (response.files.length > 0) {
           toast.success(`Successfully uploaded ${response.files.length} files`);
           loadFiles(1, true);
         }
-        
+
         if (response.errors.length > 0) {
           response.errors.forEach(error => {
             toast.error(`Failed to upload ${error.name}: ${error.error}`);
@@ -276,7 +279,7 @@ export default function FilesTopPanel({ show, onHide }: { show: boolean; onHide:
 
   const handleFileAction = useCallback((action: string, fileId: string) => {
     console.log(`${action} file with ID: ${fileId}`);
-    
+
     if (action === 'download') {
       const file = files.find(f => f._id === fileId);
       if (file && file.downloadUrl) {
@@ -294,16 +297,16 @@ export default function FilesTopPanel({ show, onHide }: { show: boolean; onHide:
 
   const handleDeleteFiles = async () => {
     if (!projectId || filesToDelete.length === 0) return;
-    
+
     setIsDeleting(true);
     try {
       await deleteProjectFiles(projectId, filesToDelete);
       toast.success(`Successfully deleted ${filesToDelete.length} files`);
-      
+
       setFiles(prev => prev.filter(file => !filesToDelete.includes(file._id)));
-      
+
       setSelectedFiles(prev => prev.filter(id => !filesToDelete.includes(id)));
-      
+
     } catch (error) {
       console.error('Delete error:', error);
       toast.error('Failed to delete files');
@@ -318,7 +321,7 @@ export default function FilesTopPanel({ show, onHide }: { show: boolean; onHide:
     if (action === 'clear') {
       clearSelections();
     } else if (action === 'download') {
-      
+
       selectedFiles.forEach(fileId => {
         handleFileAction('download', fileId);
       });
@@ -339,7 +342,7 @@ export default function FilesTopPanel({ show, onHide }: { show: boolean; onHide:
           onChange={(e) => setSearchTerm(e.target.value)}
         />
       </div>
-      
+
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="outline" size="icon" className="h-9 w-9">
@@ -362,7 +365,7 @@ export default function FilesTopPanel({ show, onHide }: { show: boolean; onHide:
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-      
+
       <div className="flex items-center border rounded-md overflow-hidden">
         <Tooltip>
           <TooltipTrigger asChild>
@@ -377,7 +380,7 @@ export default function FilesTopPanel({ show, onHide }: { show: boolean; onHide:
           </TooltipTrigger>
           <TooltipContent>Grid view</TooltipContent>
         </Tooltip>
-        
+
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
@@ -392,11 +395,11 @@ export default function FilesTopPanel({ show, onHide }: { show: boolean; onHide:
           <TooltipContent>List view</TooltipContent>
         </Tooltip>
       </div>
-      
+
       <Tooltip>
         <TooltipTrigger asChild>
-          <Button 
-            variant="default" 
+          <Button
+            variant="default"
             className="flex items-center gap-2"
             onClick={handleUploadClick}
             disabled={isUploading}
@@ -414,13 +417,13 @@ export default function FilesTopPanel({ show, onHide }: { show: boolean; onHide:
         </TooltipTrigger>
         <TooltipContent>Upload files</TooltipContent>
       </Tooltip>
-      
-      <input 
-        type="file" 
-        ref={fileInputRef} 
-        className="hidden" 
-        onChange={handleFileUpload} 
-        multiple 
+
+      <input
+        type="file"
+        ref={fileInputRef}
+        className="hidden"
+        onChange={handleFileUpload}
+        multiple
       />
     </div>
   );
@@ -511,9 +514,9 @@ export default function FilesTopPanel({ show, onHide }: { show: boolean; onHide:
 
   const SelectionControls = () => {
     if (selectedFiles.length === 0) return null;
-    
+
     return (
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 20 }}
@@ -549,10 +552,10 @@ export default function FilesTopPanel({ show, onHide }: { show: boolean; onHide:
         secondColumnHeaderContent={headerContent}
         setList={[]}
         activeSetId={null}
-        onSetActiveSet={() => {}}
+        onSetActiveSet={() => { }}
         breadcrumbs={breadcrumbs}
       >
-        <div 
+        <div
           className={cn(
             "relative p-4 h-full select-none",
             isDragging && "bg-primary/5 border-2 border-dashed border-primary/30"
@@ -571,15 +574,15 @@ export default function FilesTopPanel({ show, onHide }: { show: boolean; onHide:
               </div>
             </div>
           )}
-          
+
           {/* Error state */}
           {error && !isLoading && (
             <div className="flex flex-col items-center justify-center h-72 text-center">
               <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6">
                 <h3 className="text-xl font-medium text-red-700 dark:text-red-400">Error loading files</h3>
                 <p className="text-red-600 dark:text-red-300 mt-2">{error}</p>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="mt-4"
                   onClick={() => loadFiles(1, true)}
                 >
@@ -588,14 +591,14 @@ export default function FilesTopPanel({ show, onHide }: { show: boolean; onHide:
               </div>
             </div>
           )}
-          
+
           {/* Loading state */}
           {isLoading && (viewMode === 'grid' ? <FileGridSkeleton /> : <FileListSkeleton />)}
-          
+
           {/* Empty state */}
           {!isLoading && !error && sortedAndFilteredFiles.length === 0 && (
             <div className="flex flex-col items-center justify-center h-72 text-center gap-4">
-              <motion.div 
+              <motion.div
                 initial={{ scale: 0.8, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 transition={{ type: "spring", duration: 0.5 }}
@@ -607,20 +610,20 @@ export default function FilesTopPanel({ show, onHide }: { show: boolean; onHide:
                 <h3 className="text-xl font-medium">No files found</h3>
                 <p className="text-muted-foreground mt-2">Try a different search term or upload new files</p>
               </div>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 className="mt-2 group"
                 onClick={handleUploadClick}
               >
-                <Upload className="mr-2 h-4 w-4 group-hover:translate-y-[-2px] transition-transform" /> 
+                <Upload className="mr-2 h-4 w-4 group-hover:translate-y-[-2px] transition-transform" />
                 Upload files
               </Button>
             </div>
           )}
-          
+
           {/* Grid view */}
           {!isLoading && !error && sortedAndFilteredFiles.length > 0 && viewMode === 'grid' && (
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
@@ -637,15 +640,15 @@ export default function FilesTopPanel({ show, onHide }: { show: boolean; onHide:
                   >
                     <ContextMenu>
                       <ContextMenuTrigger>
-                        <Card 
+                        <Card
                           className={cn(
                             "group overflow-hidden border cursor-pointer p-0 transition-all duration-200",
-                            isFileSelected(file._id) 
-                              ? "border-primary ring-2 ring-primary/20" 
+                            isFileSelected(file._id)
+                              ? "border-primary ring-2 ring-primary/20"
                               : "hover:border-primary/30 hover:shadow-md"
                           )}
                         >
-                          <div 
+                          <div
                             className="h-36 bg-muted/30 flex items-center justify-center overflow-hidden relative"
                             onClick={(e) => {
                               if (e.ctrlKey || e.metaKey) {
@@ -669,7 +672,7 @@ export default function FilesTopPanel({ show, onHide }: { show: boolean; onHide:
                                 </div>
                               </div>
                             )}
-                            
+
                             {/* Selection indicator */}
                             {isFileSelected(file._id) && (
                               <div className="absolute top-2 left-2">
@@ -678,14 +681,14 @@ export default function FilesTopPanel({ show, onHide }: { show: boolean; onHide:
                                 </div>
                               </div>
                             )}
-                            
-                            <div 
+
+                            <div
                               className="absolute inset-0 z-10"
                               onClick={() => toggleFileSelection(file._id)}
                               onDoubleClick={() => handleFileAction('download', file._id)}
                             ></div>
                           </div>
-                          
+
                           <div className="p-3">
                             <div className="flex justify-between items-start">
                               <div className="truncate max-w-[80%]">
@@ -696,8 +699,8 @@ export default function FilesTopPanel({ show, onHide }: { show: boolean; onHide:
                                   <span>{new Date(file.createdAt).toLocaleDateString()}</span>
                                 </p>
                               </div>
-                              <Badge 
-                                variant="secondary" 
+                              <Badge
+                                variant="secondary"
                                 className="text-xs font-normal"
                               >
                                 {getFileTypeLabel(file.mimeType)}
@@ -706,13 +709,13 @@ export default function FilesTopPanel({ show, onHide }: { show: boolean; onHide:
                           </div>
                         </Card>
                       </ContextMenuTrigger>
-                      
+
                       <ContextMenuContent className="w-48">
                         <ContextMenuItem onClick={() => toggleFileSelection(file._id)}>
                           <CheckCircle2 className={cn(
-                            "mr-2 h-4 w-4", 
+                            "mr-2 h-4 w-4",
                             isFileSelected(file._id) && "text-primary"
-                          )} /> 
+                          )} />
                           {isFileSelected(file._id) ? 'Deselect' : 'Select'}
                         </ContextMenuItem>
                         <ContextMenuSeparator />
@@ -720,7 +723,7 @@ export default function FilesTopPanel({ show, onHide }: { show: boolean; onHide:
                           <Download className="mr-2 h-4 w-4" /> Download
                         </ContextMenuItem>
                         <ContextMenuSeparator />
-                        <ContextMenuItem 
+                        <ContextMenuItem
                           onClick={() => handleFileAction('delete', file._id)}
                           className="text-destructive"
                         >
@@ -733,9 +736,9 @@ export default function FilesTopPanel({ show, onHide }: { show: boolean; onHide:
               </AnimatePresence>
             </motion.div>
           )}
-            {/* List view */}
+          {/* List view */}
           {!isLoading && !error && sortedAndFilteredFiles.length > 0 && viewMode === 'list' && (
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               className="overflow-hidden rounded-lg border"
@@ -750,10 +753,10 @@ export default function FilesTopPanel({ show, onHide }: { show: boolean; onHide:
                       <div className="flex items-center gap-2">
                         <span className="font-medium text-foreground">Name</span>
                         {sortBy === 'name' && (
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-6 w-6 ml-1 rounded-full" 
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 ml-1 rounded-full"
                             onClick={toggleSortOrder}
                           >
                             <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
@@ -765,10 +768,10 @@ export default function FilesTopPanel({ show, onHide }: { show: boolean; onHide:
                       <div className="flex items-center gap-2">
                         <span className="font-medium text-foreground">Type</span>
                         {sortBy === 'type' && (
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-6 w-6 ml-1 rounded-full" 
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 ml-1 rounded-full"
                             onClick={toggleSortOrder}
                           >
                             <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
@@ -780,10 +783,10 @@ export default function FilesTopPanel({ show, onHide }: { show: boolean; onHide:
                       <div className="flex items-center gap-2">
                         <span className="font-medium text-foreground">Size</span>
                         {sortBy === 'size' && (
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-6 w-6 ml-1 rounded-full" 
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 ml-1 rounded-full"
                             onClick={toggleSortOrder}
                           >
                             <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
@@ -795,10 +798,10 @@ export default function FilesTopPanel({ show, onHide }: { show: boolean; onHide:
                       <div className="flex items-center gap-2">
                         <span className="font-medium text-foreground">Modified</span>
                         {sortBy === 'date' && (
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-6 w-6 ml-1 rounded-full" 
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 ml-1 rounded-full"
                             onClick={toggleSortOrder}
                           >
                             <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
@@ -817,8 +820,8 @@ export default function FilesTopPanel({ show, onHide }: { show: boolean; onHide:
                       key={file._id}
                       className={cn(
                         "cursor-pointer transition-colors",
-                        isFileSelected(file._id) 
-                          ? "bg-primary/5 hover:bg-primary/10 data-[state=selected]:bg-primary/5" 
+                        isFileSelected(file._id)
+                          ? "bg-primary/5 hover:bg-primary/10 data-[state=selected]:bg-primary/5"
                           : "hover:bg-muted/40"
                       )}
                       onClick={() => toggleFileSelection(file._id)}
@@ -828,8 +831,8 @@ export default function FilesTopPanel({ show, onHide }: { show: boolean; onHide:
                         <div className="flex items-center justify-center h-5">
                           <div className={cn(
                             "w-5 h-5 rounded border flex items-center justify-center transition-colors",
-                            isFileSelected(file._id) 
-                              ? "border-primary bg-primary text-primary-foreground" 
+                            isFileSelected(file._id)
+                              ? "border-primary bg-primary text-primary-foreground"
                               : "border-muted-foreground/30"
                           )}>
                             {isFileSelected(file._id) && <CheckCircle2 className="h-3.5 w-3.5" />}
@@ -861,9 +864,9 @@ export default function FilesTopPanel({ show, onHide }: { show: boolean; onHide:
                         <div className="flex items-center justify-end gap-1">
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
+                              <Button
+                                variant="ghost"
+                                size="icon"
                                 className="h-8 w-8 rounded-full"
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -875,12 +878,12 @@ export default function FilesTopPanel({ show, onHide }: { show: boolean; onHide:
                             </TooltipTrigger>
                             <TooltipContent>Download</TooltipContent>
                           </Tooltip>
-                          
+
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
+                              <Button
+                                variant="ghost"
+                                size="icon"
                                 className="h-8 w-8 rounded-full"
                                 onClick={(e) => e.stopPropagation()}
                               >
@@ -892,7 +895,7 @@ export default function FilesTopPanel({ show, onHide }: { show: boolean; onHide:
                                 <Download className="mr-2 h-4 w-4" /> Download
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem 
+                              <DropdownMenuItem
                                 onClick={() => handleFileAction('delete', file._id)}
                                 className="text-destructive"
                               >
@@ -908,11 +911,11 @@ export default function FilesTopPanel({ show, onHide }: { show: boolean; onHide:
               </Table>
             </motion.div>
           )}
-          
+
           {/* Load more indicator/spinner */}
           {!isLoading && hasNextPage && (
-            <div 
-              ref={loadMoreRef} 
+            <div
+              ref={loadMoreRef}
               className="flex justify-center py-4 mt-2"
             >
               {isLoadingMore && (
@@ -923,7 +926,7 @@ export default function FilesTopPanel({ show, onHide }: { show: boolean; onHide:
               )}
             </div>
           )}
-          
+
           {/* Selection controls floating bar */}
           <AnimatePresence>
             {selectedFiles.length > 0 && <SelectionControls />}
@@ -937,15 +940,15 @@ export default function FilesTopPanel({ show, onHide }: { show: boolean; onHide:
           <AlertDialogHeader>
             <AlertDialogTitle>Delete {filesToDelete.length > 1 ? `${filesToDelete.length} files` : 'file'}?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. {filesToDelete.length > 1 
-                ? `These ${filesToDelete.length} files will be permanently deleted from the server.` 
+              This action cannot be undone. {filesToDelete.length > 1
+                ? `These ${filesToDelete.length} files will be permanently deleted from the server.`
                 : 'This file will be permanently deleted from the server.'
               }
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
+            <AlertDialogAction
               onClick={handleDeleteFiles}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               disabled={isDeleting}
