@@ -141,6 +141,8 @@ export class DomainsService {    static async addDomain(projectId: string, domai
             if (!domain) {
                 throw new Error('Domain not found');
             }
+
+            console.log('triggerDomainVerification :::', domain)
             
             const verificationToken = await DomainLib.generateVerificationToken(domain.name, domain.project);
             
