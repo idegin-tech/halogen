@@ -4,14 +4,7 @@ import os from 'os';
 import { appConfig } from '@halogen/common';
 import Logger from '../config/logger.config';
 
-/**
- * Utility class for file system operations with improved temporary directory handling
- */
 export class FileSystemUtil {
-  /**
-   * Returns the base temporary directory for the application
-   * Uses OS temp directory + application name from config
-   */
   static getTempBaseDir(): string {
     const tempBaseDir = path.join(os.tmpdir(), appConfig.cloudinaryPath);
 
@@ -22,11 +15,6 @@ export class FileSystemUtil {
     return tempBaseDir;
   }
 
-  /**
-   * Gets a subdirectory in the application temp directory
-   * @param subDir - Name of subdirectory
-   * @returns Path to the subdirectory
-   */
   static getTempSubDir(subDir: string): string {
     const tempSubDir = path.join(FileSystemUtil.getTempBaseDir(), subDir);
 
@@ -37,10 +25,6 @@ export class FileSystemUtil {
     return tempSubDir;
   }
 
-  /**
-   * Delete a file if it exists
-   * @param filePath - Path to file to delete
-   */
   static deleteFile(filePath: string): void {
     try {
       if (fs.existsSync(filePath)) {
@@ -51,10 +35,6 @@ export class FileSystemUtil {
     }
   }
 
-  /**
-   * Clean up orphaned temporary files older than the specified age
-   * @param maxAgeMs - Maximum age of files in milliseconds (default: 24 hours)
-   */
   static cleanupOrphanedTempFiles(maxAgeMs = 24 * 60 * 60 * 1000): void {
     try {
       const tempBaseDir = FileSystemUtil.getTempBaseDir();
