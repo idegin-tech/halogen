@@ -74,7 +74,7 @@ export default function SettingsTopPanelDomain() {
     );
 
     const domainMutation = useMutation('/domains');
-    const verifyMutation = useMutation('/domains/verify');
+    const verifyMutation = useMutation('/domains/check');
     const sslMutation = useMutation('/domains/ssl');
 
     const domainData = domainQuery.data as DomainData | null;
@@ -137,7 +137,6 @@ export default function SettingsTopPanelDomain() {
         if (!domainData?._id) return;
 
         try {
-            // Removed the empty string parameter to avoid trailing slash
             await verifyMutation.mutate({ domainId: domainData._id });
             domainQuery.refetch();
             toast.success('Verification check initiated');
@@ -150,7 +149,6 @@ export default function SettingsTopPanelDomain() {
         if (!domainData?._id) return;
 
         try {
-            // Removed the empty string parameter to avoid trailing slash
             await sslMutation.mutate({ domainId: domainData._id });
             domainQuery.refetch();
             toast.success('SSL certificate generation initiated');

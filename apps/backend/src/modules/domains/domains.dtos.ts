@@ -15,7 +15,6 @@ export const sslCertificateSchema = z.object({
   domainId: z.string().min(1, 'Domain ID is required')
 });
 
-// Query validation schemas
 export const domainsQuerySchema = z.object({
   search: z.string().optional(),
   page: z.string().regex(/^\d+$/, 'Page must be a number').optional(),

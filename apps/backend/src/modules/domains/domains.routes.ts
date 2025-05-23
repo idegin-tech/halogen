@@ -37,7 +37,7 @@ router.get(
 );
 
 router.post(
-    '/verify',
+    '/check',
     RequestValidation.validateBody(domainVerificationSchema),
     DomainsController.triggerDomainVerification
 );
