@@ -130,16 +130,14 @@ export class DomainsController {
         }
     }
 
-    /**
-     * Trigger domain verification
-     */
     static async triggerDomainVerification(req: Request, res: Response): Promise<void> {
         try {
             const { domainId } = req.body as DomainVerificationDTO;
-
+            Logger.info(`Triggering domain verification for domain ID: ${domainId}`);
             const result = await DomainsService.triggerDomainVerification(domainId);
             ResponseHelper.success(res, result, 'Domain verification initiated successfully');
         } catch (error) {
+            console.log(`triggerDomainVerification ERROR::`, error)
             Logger.error(`Trigger domain verification error: ${error instanceof Error ? error.message : 'Unknown error'}`);
             ResponseHelper.error(
                 res,
