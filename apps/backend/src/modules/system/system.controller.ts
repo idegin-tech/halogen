@@ -77,45 +77,5 @@ export class SystemController {
     }
   }
 
-  static async getServerInfo(req: Request, res: Response): Promise<void> {
-    try {
-      const env = validateEnv();
-      
-      // Get network interfaces to determine server IP
-      const networkInterfaces = os.networkInterfaces();
-      let serverIPs: {[key: string]: string[]} = {};
-      
-      // Collect all non-internal IPv4 and IPv6 addresses
-      Object.keys(networkInterfaces).forEach(interfaceName => {
-        const addresses = networkInterfaces[interfaceName]?.filter(addr => !addr.internal) || [];
-        
-        if (addresses.length > 0) {
-          serverIPs[interfaceName] = addresses.map(addr => addr.address);
-        }
-      });
-      
-      // Server information
-      const serverInfo = {
-        hostname: os.hostname(),
-        platform: os.platform(),
-        arch: os.arch(),
-        cpus: os.cpus().length,
-        totalMemory: Math.round(os.totalmem() / (1024 * 1024 * 1024)) + ' GB',
-        freeMemory: Math.round(os.freemem() / (1024 * 1024 * 1024)) + ' GB',
-        uptime: Math.floor(os.uptime() / 3600) + ' hours',
-        networkInterfaces: serverIPs,
-        serverIP: env.SERVER_IP || '165.227.89.156', // From environment or default
-        serverTime: new Date().toISOString()
-      };
-      
-      ResponseHelper.success(res, serverInfo, 'Server information retrieved successfully');
-    } catch (error) {
-      Logger.error(`Get server info error: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      ResponseHelper.error(
-        res, 
-        error instanceof Error ? error.message : 'Failed to retrieve server information', 
-        500
-      );
-    }
-  }
+  
 }

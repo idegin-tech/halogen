@@ -7,6 +7,7 @@ export const appConfig = {
     description: 'A powerful site builder and CMS platform',
     version: '1.0.0',
     cloudinaryPath: 'mortar-studio-lite',
+    ServerIPAddress: "165.227.89.156"
 };
 
 export const pricingData: {

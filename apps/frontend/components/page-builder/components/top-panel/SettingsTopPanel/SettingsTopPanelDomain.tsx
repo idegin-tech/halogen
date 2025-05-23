@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 import { useProjectContext } from '@/context/project.context';
 import { useMutation, useQuery } from '@/hooks/useApi';
 import { Badge } from '@/components/ui/badge';
-import { DomainData, DomainStatus } from '@halogen/common';
+import { DomainData, DomainStatus, appConfig } from '@halogen/common';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 // Map backend domain status to UI states
@@ -51,8 +51,7 @@ export default function SettingsTopPanelDomain() {
     const [domain, setDomain] = useState('');
     const [selectedDomain, setSelectedDomain] = useState<DomainData | null>(null);
     const [verificationToken, setVerificationToken] = useState<string | null>(null); const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-    const [serverIP, setServerIP] = useState<string>('');
-
+    const [serverIP, setServerIP] = useState<string>(appConfig.ServerIPAddress);
 
     const fetchDomainVerificationToken = async (domainId: string) => {
         if (!domainId) return null;
@@ -77,17 +76,6 @@ export default function SettingsTopPanelDomain() {
     const domainMutation = useMutation('/domains');
     const verifyMutation = useMutation('/domains/verify');
     const sslMutation = useMutation('/domains/ssl');
-    const systemInfoQuery = useQuery<{
-        hostname: string;
-        serverIP: string;
-        networkInterfaces: { [key: string]: string[] };
-    }>('/system/server-info', {}, [], { enabled: true });
-
-    useEffect(() => {
-        if (systemInfoQuery.data?.serverIP) {
-            setServerIP(systemInfoQuery.data.serverIP);
-        }
-    }, [systemInfoQuery.data]);
 
     const domainData = selectedDomain || (domainsQuery.data?.domains && domainsQuery.data.domains[0]);
     const status = getDomainUiStatus(domainData);
