@@ -14,10 +14,10 @@ export async function takeScreenshotAndUpload(url: string, projectId: string): P
   let browser;
   const tempDir = FileSystemUtil.getTempSubDir('screenshots');
   const screenshotPath = path.join(tempDir, `project_thumbnail.png`);
-  
+
   try {
     Logger.info(`Taking screenshot of ${url}`);
-    
+
     browser = await puppeteer.launch({
       headless: true,
       args: [
@@ -28,9 +28,9 @@ export async function takeScreenshotAndUpload(url: string, projectId: string): P
         '--disable-gpu',
       ]
     });
-    
+
     const page = await browser.newPage();
-    
+
     page.setDefaultNavigationTimeout(60000); // 60 seconds
 
     await page.setViewport({
@@ -66,10 +66,9 @@ export async function takeScreenshotAndUpload(url: string, projectId: string): P
       fullPage: false,
       type: 'png'
     });
-    
+
     Logger.info(`Screenshot saved to ${screenshotPath}`);
-    
-    // Use FileReplacementUtil to ensure consistent file naming in Cloudinary
+
     const uploadResult = await FileReplacementUtil.replaceFile(
       screenshotPath,
       'thumbnails',
@@ -82,7 +81,7 @@ export async function takeScreenshotAndUpload(url: string, projectId: string): P
         ]
       }
     );
-    
+
     Logger.info(`Screenshot uploaded to Cloudinary: ${uploadResult.url || 'No URL returned'}`);
 
     FileSystemUtil.deleteFile(screenshotPath);
@@ -90,7 +89,7 @@ export async function takeScreenshotAndUpload(url: string, projectId: string): P
     return uploadResult.url;
   } catch (error) {
     Logger.error(`Error taking screenshot: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    
+
     FileSystemUtil.deleteFile(screenshotPath);
 
     throw error;

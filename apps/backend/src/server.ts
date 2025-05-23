@@ -24,6 +24,8 @@ import {filesRoutes} from './modules/files';
 import {collectionsRoutes, schemaRoutes} from './modules/cms';
 import { uploadsRoutes } from './modules/uploads/uploadds.routes';
 import { systemRoutes } from './modules/system';
+import {domainsRoutes} from './modules/domains';
+import { DomainsService } from './modules/domains/domains.service';
 
 declare module 'express' {
     interface Request {
@@ -106,9 +108,7 @@ class App {
             }
             next();
         });
-    }
-
-    private configureRoutes(): void {
+    }    private configureRoutes(): void {
         this.app.get('/health', (req: Request, res: Response) => {
             const dbStatus = Database.getInstance().getStatus();
 
@@ -120,6 +120,9 @@ class App {
         });
 
         const apiPrefix = '/api/v1';
+
+        this.app.locals.domainService = DomainsService;
+        this.app.locals.projectService = require('./modules/projects/projects.service').ProjectsService;
 
         this.app.get(apiPrefix, (req: Request, res: Response) => {
             res.json({
@@ -137,9 +140,9 @@ class App {
         this.app.use(`${apiPrefix}/variables`, variablesRoutes);
         this.app.use(`${apiPrefix}/block-instances`, blockInstancesRoutes);
         this.app.use(`${apiPrefix}/preview`, previewRoutes);          this.app.use(`${apiPrefix}/uploads`, uploadsRoutes);
-        this.app.use(`${apiPrefix}/files`, filesRoutes);
-        this.app.use(`${apiPrefix}/collections`, collectionsRoutes);
+        this.app.use(`${apiPrefix}/files`, filesRoutes);        this.app.use(`${apiPrefix}/collections`, collectionsRoutes);
         this.app.use(`${apiPrefix}/schemas`, schemaRoutes);
+        this.app.use(`${apiPrefix}/domains`, domainsRoutes);
         this.app.use(`${apiPrefix}/system`, systemRoutes);
     }
 

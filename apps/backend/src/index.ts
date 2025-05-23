@@ -5,6 +5,11 @@ import { validateEnv } from './config/env.config';
 import fs from 'fs';
 import path from 'path';
 import { FileSystemUtil } from './lib/fs.util';
+import { DomainLib } from './lib/domain.lib';
+import { SSLManager } from './lib/ssl.lib';
+import { DomainQueue } from './lib/domain-queue.lib';
+import { DomainCronJobs } from './lib/domain-cron.lib';
+import { DomainsService } from './modules/domains/domains.service';
 
 const logDir = path.join(process.cwd(), 'logs');
 if (!fs.existsSync(logDir)) {
@@ -17,6 +22,12 @@ const port = env.PORT;
 async function startServer() {
   try {
     await Database.getInstance().connect();
+    
+    // Initialize domain services    await DomainLib.createDefaultTemplates();
+    await SSLManager.initializeClient();
+    DomainQueue.initialize(DomainsService);
+    DomainCronJobs.initialize();
+    Logger.info('Domain services initialized');
     
     const cleanupTimer: any = FileSystemUtil.schedulePeriodicCleanup();
 
