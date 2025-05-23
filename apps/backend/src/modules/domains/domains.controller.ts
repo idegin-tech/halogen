@@ -68,6 +68,39 @@ export class DomainsController {
     }
 
     /**
+     * Get the primary domain for a project (or null if none exists)
+     */
+    static async getPrimaryDomain(req: Request, res: Response): Promise<void> {
+        try {
+            const { projectId } = req.params;
+
+            if (!projectId) {
+                ResponseHelper.error(res, 'Project ID is required', 400);
+                return;
+            }
+
+            // Query with limit 1 to get the first domain
+            const result = await DomainsService.getDomainsByProject(projectId, { limit: 1 });
+            
+            // Return the first domain or null
+            const primaryDomain = result.docs.length > 0 ? result.docs[0] : null;
+            
+            ResponseHelper.success(
+                res, 
+                primaryDomain, 
+                primaryDomain ? 'Primary domain retrieved successfully' : 'No domains found for this project'
+            );
+        } catch (error) {
+            Logger.error(`Get primary domain error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            ResponseHelper.error(
+                res,
+                error instanceof Error ? error.message : 'Failed to retrieve primary domain',
+                500
+            );
+        }
+    }
+
+    /**
      * Get domain by ID
      */
     static async getDomainById(req: Request, res: Response): Promise<void> {

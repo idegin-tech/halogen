@@ -16,7 +16,7 @@ import { DomainData, DomainStatus, appConfig } from '@halogen/common';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 // Map backend domain status to UI states
-const getDomainUiStatus = (domainData?: DomainData): 'initial' | 'pending-dns' | 'propagating' | 'connected' | 'failed' => {
+const getDomainUiStatus = (domainData?: DomainData | null): 'initial' | 'pending-dns' | 'propagating' | 'connected' | 'failed' => {
     if (!domainData) return 'initial';
 
     switch (domainData.status) {
@@ -49,8 +49,8 @@ export default function SettingsTopPanelDomain() {
     const projectId = project?._id;
 
     const [domain, setDomain] = useState('');
-    const [selectedDomain, setSelectedDomain] = useState<DomainData | null>(null);
-    const [verificationToken, setVerificationToken] = useState<string | null>(null); const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+    const [verificationToken, setVerificationToken] = useState<string | null>(null);
     const [serverIP, setServerIP] = useState<string>(appConfig.ServerIPAddress);
 
     const fetchDomainVerificationToken = async (domainId: string) => {
@@ -66,8 +66,9 @@ export default function SettingsTopPanelDomain() {
         }
     };
 
-    const domainsQuery = useQuery<{ domains: DomainData[], totalDocs: number }>(
-        projectId ? `/domains/${projectId}` : '',
+    // Query for the primary domain instead of all domains
+    const domainQuery = useQuery<DomainData | null>(
+        projectId ? `/domains/primary/${projectId}` : '',
         {},
         [projectId],
         { enabled: !!projectId }
@@ -77,9 +78,11 @@ export default function SettingsTopPanelDomain() {
     const verifyMutation = useMutation('/domains/verify');
     const sslMutation = useMutation('/domains/ssl');
 
-    const domainData = selectedDomain || (domainsQuery.data?.domains && domainsQuery.data.domains[0]);
+    // Type cast domainData to ensure TypeScript understands it
+    const domainData = domainQuery.data as DomainData | null;
     const status = getDomainUiStatus(domainData);
     const needsSSL = status === 'connected' && !domainData?.sslIssuedAt;
+    const hasDomain = !!domainData;
 
     useEffect(() => {
         let interval: NodeJS.Timeout;
@@ -107,7 +110,8 @@ export default function SettingsTopPanelDomain() {
                 if (typeof result === 'object' && result !== null && 'verificationToken' in result) {
                     setVerificationToken(result.verificationToken as string);
                 }
-                domainsQuery.refetch();
+                domainQuery.refetch();
+                setDomain('');
                 toast.success('Domain added successfully');
             }
         } catch (error) {
@@ -125,9 +129,8 @@ export default function SettingsTopPanelDomain() {
                 }
             }
 
-            // Then check verification status
             await verifyMutation.mutate(`${domainId}`, {});
-            domainsQuery.refetch();
+            domainQuery.refetch();
         } catch (error) {
             console.error('Failed to verify domain:', error);
         }
@@ -139,7 +142,7 @@ export default function SettingsTopPanelDomain() {
 
         try {
             await verifyMutation.mutate('', { domainId: domainData._id });
-            domainsQuery.refetch();
+            domainQuery.refetch();
             toast.success('Verification check initiated');
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Failed to verify DNS settings';
@@ -153,7 +156,7 @@ export default function SettingsTopPanelDomain() {
 
         try {
             await sslMutation.mutate('', { domainId: domainData._id });
-            domainsQuery.refetch();
+            domainQuery.refetch();
             toast.success('SSL certificate generation initiated');
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Failed to generate SSL certificate';
@@ -168,7 +171,7 @@ export default function SettingsTopPanelDomain() {
         try {
             await domainMutation.remove(`domain/${domainData._id}`);
             setDeleteDialogOpen(false);
-            domainsQuery.refetch();
+            domainQuery.refetch();
             toast.success('Domain deleted successfully');
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Failed to delete domain';
@@ -182,7 +185,7 @@ export default function SettingsTopPanelDomain() {
 
         if (domainData) {
             // Default to a fallback IP if the server IP is not available
-            const ip = serverIP
+            const ip = serverIP;
 
             // A record
             records.push({
@@ -201,7 +204,7 @@ export default function SettingsTopPanelDomain() {
             });
 
             // TXT record for domain verification
-            if (verificationToken || (domainData.verificationFailReason && domainData.status === DomainStatus.PENDING_DNS)) {
+            if (verificationToken || (domainData && domainData.verificationFailReason && domainData.status === DomainStatus.PENDING_DNS)) {
                 records.push({
                     type: 'TXT',
                     host: '@',
@@ -212,13 +215,15 @@ export default function SettingsTopPanelDomain() {
         }
 
         return records;
-    }, [domainData, verificationToken, serverIP]); const copyToClipboard = (text: string) => {
+    }, [domainData, verificationToken, serverIP]);
+    
+    const copyToClipboard = (text: string) => {
         navigator.clipboard.writeText(text);
         toast.success('Copied to clipboard');
     };
 
-    // Show loading state while fetching domains
-    if (domainsQuery.isLoading) {
+    // Show loading state while fetching domain
+    if (domainQuery.isLoading) {
         return (
             <div className="flex items-center justify-center p-10">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -231,7 +236,7 @@ export default function SettingsTopPanelDomain() {
     return (
         <div className="space-y-6 p-6 select-none">
             <div className="flex flex-col gap-6">
-                {status === 'initial' && (
+                {status === 'initial' && !hasDomain && (
                     <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
@@ -261,17 +266,44 @@ export default function SettingsTopPanelDomain() {
                                     )}
                                     Add Domain
                                 </Button>
-                            </div>
-
-                            {domainData?.status === DomainStatus.FAILED && (
+                            </div>                        
+                            {/* @ts-ignore     */}
+                            {domainData && domainData.status === DomainStatus.FAILED && (
                                 <Alert variant="destructive" className="mt-4">
                                     <AlertCircle className="h-4 w-4" />
                                     <AlertTitle>Domain Verification Failed</AlertTitle>
                                     <AlertDescription>
+                                        {/* @ts-ignore     */}
                                         {domainData.verificationFailReason || "We couldn't verify your domain. Please check your DNS settings and try again."}
                                     </AlertDescription>
                                 </Alert>
                             )}
+                        </CardContent>
+                    </Card>
+                )}
+
+                {status === 'initial' && hasDomain && (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <Globe className="h-5 w-5" />
+                                Domain Setup Required
+                            </CardTitle>
+                            <CardDescription>
+                                Your domain {domainData?.name} needs to be configured
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <Alert className="mb-4">
+                                <AlertCircle className="h-4 w-4" />
+                                <AlertTitle>Setup Required</AlertTitle>
+                                <AlertDescription>
+                                    To make your domain work, you need to configure DNS settings at your domain provider.
+                                </AlertDescription>
+                            </Alert>
+                            <Button onClick={handleDnsVerification}>
+                                Continue Domain Setup
+                            </Button>
                         </CardContent>
                     </Card>
                 )}
@@ -369,7 +401,7 @@ export default function SettingsTopPanelDomain() {
                         <CardFooter className="flex flex-col items-stretch gap-2 sm:flex-row sm:justify-between">
                             <Button
                                 variant="secondary"
-                                onClick={() => domainsQuery.refetch()}
+                                onClick={() => domainQuery.refetch()}
                                 disabled={verifyMutation.isLoading}
                             >
                                 <RefreshCw className="h-4 w-4 mr-2" />
@@ -408,15 +440,16 @@ export default function SettingsTopPanelDomain() {
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <div className="space-y-4">                                <div className="h-2 bg-muted rounded-full overflow-hidden">
-                                <div
-                                    className="h-full bg-primary"
-                                    style={{
-                                        animation: 'progress 2s ease-in-out infinite alternate',
-                                        width: '0%'
-                                    }}
-                                />
-                            </div>
+                            <div className="space-y-4">
+                                <div className="h-2 bg-muted rounded-full overflow-hidden">
+                                    <div
+                                        className="h-full bg-primary"
+                                        style={{
+                                            animation: 'progress 2s ease-in-out infinite alternate',
+                                            width: '0%'
+                                        }}
+                                    />
+                                </div>
                                 <style jsx>{`
                                     @keyframes progress {
                                         0% { width: 0%; }
@@ -453,8 +486,8 @@ export default function SettingsTopPanelDomain() {
                             <Button
                                 variant="secondary"
                                 className="w-full"
-                                onClick={() => domainsQuery.refetch()}
-                                disabled={domainsQuery.isLoading}
+                                onClick={() => domainQuery.refetch()}
+                                disabled={domainQuery.isLoading}
                             >
                                 <RefreshCw className="h-4 w-4 mr-2" />
                                 Check Status
@@ -622,6 +655,22 @@ export default function SettingsTopPanelDomain() {
                                 Try Again
                             </Button>
                         </CardFooter>
+                    </Card>
+                )}
+                
+                {status === 'initial' && !hasDomain && (
+                    <Card className="bg-muted/20">
+                        <CardContent className="pt-6">
+                            <div className="flex flex-col items-center text-center space-y-3">
+                                <Globe className="h-12 w-12 text-muted-foreground/60" />
+                                <div className="space-y-1">
+                                    <h3 className="text-lg font-semibold">Custom Domain Benefits</h3>
+                                    <p className="text-sm text-muted-foreground max-w-md">
+                                        A custom domain creates a professional appearance for your website and helps with branding and marketing efforts.
+                                    </p>
+                                </div>
+                            </div>
+                        </CardContent>
                     </Card>
                 )}
             </div>

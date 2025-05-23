@@ -33,6 +33,12 @@ router.get(
 );
 
 router.get(
+    '/primary/:projectId',
+    AuthMiddleware.requireProjectAccess,
+    DomainsController.getPrimaryDomain
+);
+
+router.get(
     '/domain/:domainId',
     DomainsController.getDomainById
 );
