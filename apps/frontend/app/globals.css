@@ -1,6 +1,30 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+/* Custom animation for the domain propagation progress bar */
+@keyframes progress {
+    0% {
+        width: 0%;
+    }
+    25% {
+        width: 35%;
+    }
+    50% {
+        width: 60%;
+    }
+    75% {
+        width: 85%;
+    }
+    100% {
+        width: 100%;
+    }
+}
+
+.animate-progress {
+    animation: progress 2s ease-in-out infinite;
+    animation-direction: alternate;
+}
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {

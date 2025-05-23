@@ -5,5 +5,6 @@ const router = Router();
 
 router.get('/modules', SystemController.getModules);
 router.get('/block-thumbnail', SystemController.getBlockThumbnail);
+router.get('/server-info', SystemController.getServerInfo);
 
 export default router;

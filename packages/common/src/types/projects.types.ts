@@ -83,3 +83,37 @@ export interface ProjectUserQueryOptions {
     sortOrder?: 'asc' | 'desc';
     status?: ProjectUserStatus | ProjectUserStatus[];
 }
+
+export enum DomainStatus {
+    PENDING = 'pending',
+    PENDING_DNS = 'pending_dns',
+    PROPAGATING = 'propagating',
+    ACTIVE = 'active',
+    FAILED = 'failed',
+    SUSPENDED = 'suspended'
+}
+
+export interface DomainData {
+    _id?: string;
+    name: string;
+    project: string;
+    status: DomainStatus;
+    isActive: boolean;
+    verifiedAt?: string;
+    sslIssuedAt?: string;
+    sslExpiresAt?: string;
+    lastVerificationAttempt?: string;
+    verificationFailReason?: string;
+    createdAt?: string;
+    updatedAt?: string;
+}
+
+export interface DomainQueryOptions {
+    search?: string;
+    page?: number;
+    limit?: number;
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
+    status?: DomainStatus | DomainStatus[];
+    isActive?: boolean;
+}

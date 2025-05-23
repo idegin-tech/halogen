@@ -154,8 +154,8 @@ export class DomainsController {
             ResponseHelper.error(
                 res,
                 error instanceof Error ? error.message : 'Failed to trigger SSL generation',
-                error instanceof Error && error.message.includes('not found') ? 404 : 
-                error instanceof Error && error.message.includes('verified') ? 400 : 500
+                error instanceof Error && error.message.includes('not found') ? 404 :
+                    error instanceof Error && error.message.includes('verified') ? 400 : 500
             );
         }
     }
@@ -219,23 +219,19 @@ export class DomainsController {
      */
     static async getDomainSystemStatus(req: Request, res: Response): Promise<void> {
         try {
-            // Get queue health
             const verificationQueueCount = await DomainQueue.verificationQueue.getJobCounts();
             const sslQueueCount = await DomainQueue.sslQueue.getJobCounts();
-            
-            // Get system directory status
+
             const fs = require('fs-extra');
-            const path = require('path');
-            
-            const CERTS_DIR = process.platform === 'win32' 
-                ? 'C:\\ssl\\certificates' 
+
+            const CERTS_DIR = process.platform === 'win32'
+                ? 'C:\\ssl\\certificates'
                 : '/etc/halogen/certificates';
             const NGINX_DIR = `${process.cwd()}/nginx-configs`;
-            
+
             const certDirExists = await fs.pathExists(CERTS_DIR);
             const nginxDirExists = await fs.pathExists(NGINX_DIR);
-            
-            // Get domain stats
+
             const stats = {
                 totalDomains: await DomainsService.getDomainCount(),
                 activeDomainsCount: await DomainsService.getDomainCountByStatus(DomainStatus.ACTIVE),
@@ -243,8 +239,7 @@ export class DomainsController {
                 pendingDNSCount: await DomainsService.getDomainCountByStatus(DomainStatus.PENDING_DNS),
                 failedDomainsCount: await DomainsService.getDomainCountByStatus(DomainStatus.FAILED)
             };
-            
-            // Check certificate directory permissions
+
             let certDirPermissions = 'unknown';
             if (certDirExists) {
                 try {
@@ -258,7 +253,9 @@ export class DomainsController {
                     certDirPermissions = 'Failed to check permissions';
                 }
             }
-            
+
+            const serverIP = process.env.SERVER_IP;
+
             ResponseHelper.success(res, {
                 systemHealth: {
                     certificateDirectory: {
@@ -275,7 +272,8 @@ export class DomainsController {
                     verificationQueue: verificationQueueCount,
                     sslQueue: sslQueueCount
                 },
-                domainStats: stats
+                domainStats: stats,
+                serverIP
             }, 'Domain system status retrieved successfully');
         } catch (error) {
             Logger.error(`Get domain system status error: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -294,8 +292,7 @@ export class DomainsController {
         try {
             const verificationJobs = await DomainQueue.verificationQueue.getJobs(['active', 'waiting', 'delayed', 'failed']);
             const sslJobs = await DomainQueue.sslQueue.getJobs(['active', 'waiting', 'delayed', 'failed']);
-            
-            // Get domain names for the jobs
+
             const verificationJobDetails = await Promise.all(verificationJobs.map(async job => {
                 const state = await job.getState();
                 return {
@@ -308,7 +305,7 @@ export class DomainsController {
                     timestamp: job.timestamp
                 };
             }));
-            
+
             const sslJobDetails = await Promise.all(sslJobs.map(async job => {
                 const state = await job.getState();
                 return {
@@ -321,7 +318,7 @@ export class DomainsController {
                     timestamp: job.timestamp
                 };
             }));
-            
+
             ResponseHelper.success(res, {
                 verificationJobs: verificationJobDetails,
                 sslJobs: sslJobDetails
@@ -343,7 +340,7 @@ export class DomainsController {
         try {
             // Get domains that are active
             const domains = await DomainsService.getAllActiveDomains();
-            
+
             type CertResult = {
                 domainId: string;
                 domainName: string;
@@ -353,7 +350,7 @@ export class DomainsController {
                 certIssued?: Date;
                 certPath?: string;
             };
-            
+
             // Check certificates for each domain
             const certResults: CertResult[] = await Promise.all(
                 domains.map(async (domain) => {
@@ -369,28 +366,28 @@ export class DomainsController {
                     };
                 })
             );
-            
+
             // Group by expiry timeframes
             const now = new Date();
             const oneWeekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
             const oneMonthFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
-            
+
             const expiringDomains = {
                 expiredCerts: certResults.filter((cert: CertResult) => cert.hasValidCert && cert.certExpiry && cert.certExpiry < now),
-                expiringWithinWeek: certResults.filter((cert: CertResult) => 
-                    cert.hasValidCert && cert.certExpiry && 
+                expiringWithinWeek: certResults.filter((cert: CertResult) =>
+                    cert.hasValidCert && cert.certExpiry &&
                     cert.certExpiry > now && cert.certExpiry < oneWeekFromNow
                 ),
-                expiringWithinMonth: certResults.filter((cert: CertResult) => 
-                    cert.hasValidCert && cert.certExpiry && 
+                expiringWithinMonth: certResults.filter((cert: CertResult) =>
+                    cert.hasValidCert && cert.certExpiry &&
                     cert.certExpiry > oneWeekFromNow && cert.certExpiry < oneMonthFromNow
                 ),
-                healthy: certResults.filter((cert: CertResult) => 
+                healthy: certResults.filter((cert: CertResult) =>
                     cert.hasValidCert && cert.certExpiry && cert.certExpiry > oneMonthFromNow
                 ),
                 invalid: certResults.filter((cert: CertResult) => !cert.hasValidCert)
             };
-            
+
             ResponseHelper.success(res, {
                 totalDomains: domains.length,
                 totalCertificates: certResults.filter((cert: CertResult) => cert.hasValidCert).length,

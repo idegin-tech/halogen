@@ -5,13 +5,13 @@ import Logger from './logger.config';
 
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
-export function validateEnv() {
-  try {
+export function validateEnv() {    try {
     const env = cleanEnv(process.env, {
       NODE_ENV: str({ choices: ['development', 'production', 'test'], default: 'development' }),
       PORT: port({ default: 8081 }),
       API_ENDPOINT: str(),
       REDIS_URL: str(),
+      SERVER_IP: str({ default: '165.227.89.156' }),
 
       ADMIN_EMAIL: str(),
 
