@@ -99,20 +99,6 @@ export class FileSystemUtil {
     }
   }
 
-  /**
-   * Schedule periodic cleanup of temporary files
-   * @param intervalMs - Cleanup interval in milliseconds (default: 12 hours)
-   */
-  static schedulePeriodicCleanup(intervalMs = 12 * 60 * 60 * 1000): NodeJS.Timer {
-    Logger.info(`Scheduling periodic temp file cleanup every ${intervalMs / (60 * 60 * 1000)} hours`);
-
-    // Run initial cleanup
-    FileSystemUtil.cleanupOrphanedTempFiles();
-
-    return setInterval(() => {
-      FileSystemUtil.cleanupOrphanedTempFiles();
-    }, intervalMs);
-  }
 }
 
 export default FileSystemUtil;

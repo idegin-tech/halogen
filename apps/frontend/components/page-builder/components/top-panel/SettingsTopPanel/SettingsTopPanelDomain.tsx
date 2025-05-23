@@ -51,9 +51,7 @@ export default function SettingsTopPanelDomain() {
     const [domain, setDomain] = useState('');
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [verificationToken, setVerificationToken] = useState<string | null>(null);
-    const [serverIP, setServerIP] = useState<string>(appConfig.ServerIPAddress);
-
-    const fetchDomainVerificationToken = async (domainId: string) => {
+    const [serverIP, setServerIP] = useState<string>(appConfig.ServerIPAddress);    const fetchDomainVerificationToken = async (domainId: string) => {
         if (!domainId) return null;
 
         try {
@@ -62,6 +60,8 @@ export default function SettingsTopPanelDomain() {
             return response?.verificationToken || null;
         } catch (error) {
             console.error('Error fetching verification token:', error);
+            const errorMessage = error instanceof Error ? error.message : 'Failed to fetch verification token';
+            toast.error(errorMessage);
             return null;
         }
     };
@@ -119,8 +119,7 @@ export default function SettingsTopPanelDomain() {
             toast.error(errorMessage);
         }
     };
-    
-    const checkVerificationStatus = async (domainId: string) => {
+      const checkVerificationStatus = async (domainId: string) => {
         try {
             if (!verificationToken) {
                 const token = await fetchDomainVerificationToken(domainId);
@@ -132,11 +131,11 @@ export default function SettingsTopPanelDomain() {
             await verifyMutation.mutate(`${domainId}`, {});
             domainQuery.refetch();
         } catch (error) {
-            console.error('Failed to verify domain:', error);
+            console.error('Failed to check verification status:', error);
+            const errorMessage = error instanceof Error ? error.message : 'Failed to check verification status';
+            // Don't show toast here as this might be triggered by automated checks
         }
-    };
-
-    // Trigger domain verification
+    };// Trigger domain verification
     const handleDnsVerification = async () => {
         if (!domainData?._id) return;
 
@@ -146,11 +145,10 @@ export default function SettingsTopPanelDomain() {
             toast.success('Verification check initiated');
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Failed to verify DNS settings';
+            console.error('Domain verification error:', error);
             toast.error(errorMessage);
         }
-    };
-
-    // Request SSL certificate
+    };    // Request SSL certificate
     const handleRequestSSL = async () => {
         if (!domainData?._id) return;
 
@@ -160,11 +158,10 @@ export default function SettingsTopPanelDomain() {
             toast.success('SSL certificate generation initiated');
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Failed to generate SSL certificate';
+            console.error('SSL generation error:', error);
             toast.error(errorMessage);
         }
-    };
-
-    // Delete a domain
+    };    // Delete a domain
     const handleDelete = async () => {
         if (!domainData?._id) return;
 
@@ -175,6 +172,7 @@ export default function SettingsTopPanelDomain() {
             toast.success('Domain deleted successfully');
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Failed to delete domain';
+            console.error('Domain deletion error:', error);
             toast.error(errorMessage);
         }
     };

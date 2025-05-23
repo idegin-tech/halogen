@@ -22,24 +22,19 @@ const port = env.PORT;
 async function startServer() {
   try {
     await Database.getInstance().connect();
-    
+
     // Initialize domain services    await DomainLib.createDefaultTemplates();
     await SSLManager.initializeClient();
     DomainQueue.initialize(DomainsService);
     DomainCronJobs.initialize();
-    Logger.info('Domain services initialized');
-    
-    const cleanupTimer: any = FileSystemUtil.schedulePeriodicCleanup();
 
     const server = app.listen(port, () => {
       Logger.info(`🚀 Server running in ${env.NODE_ENV} mode on port ${port}`);
       Logger.info(`Access API at http://localhost:${port}/api/v1`);
     });
-    
+
     const gracefulShutdown = async (signal: string) => {
       Logger.info(`${signal} signal received: closing HTTP server`);
-      
-      clearInterval(cleanupTimer);
 
       server.close(async () => {
         Logger.info('HTTP server closed');
@@ -55,7 +50,7 @@ async function startServer() {
 
     process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
     process.on('SIGINT', () => gracefulShutdown('SIGINT'));
-    
+
     return server;
   } catch (error) {
     Logger.error(`Error starting server: ${error instanceof Error ? error.message : 'Unknown error'}`);

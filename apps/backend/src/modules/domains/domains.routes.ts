@@ -9,6 +9,7 @@ import {
     domainsQuerySchema 
 } from './domains.dtos';
 import { domainRateLimiter, projectDomainLimitMiddleware } from './domains.middleware';
+import { requireDomainProjectAccess } from './domains.projectAccess.middleware';
 
 const router = Router();
 
@@ -40,18 +41,21 @@ router.get(
 
 router.get(
     '/domain/:domainId',
+    requireDomainProjectAccess,
     DomainsController.getDomainById
 );
 
 router.post(
     '/verify',
     RequestValidation.validateBody(domainVerificationSchema),
+    requireDomainProjectAccess,
     DomainsController.triggerDomainVerification
 );
 
 
 router.get(
     '/verify/:domainId',
+    requireDomainProjectAccess,
     DomainsController.checkVerificationStatus
 );
 
@@ -59,17 +63,20 @@ router.get(
 router.post(
     '/ssl',
     RequestValidation.validateBody(sslCertificateSchema),
+    requireDomainProjectAccess,
     DomainsController.triggerSSLGeneration
 );
 
 
 router.get(
     '/ssl/:domainId',
+    requireDomainProjectAccess,
     DomainsController.checkSSLStatus
 );
 
 router.delete(
     '/domain/:domainId',
+    requireDomainProjectAccess,
     DomainsController.deleteDomain
 );
 
