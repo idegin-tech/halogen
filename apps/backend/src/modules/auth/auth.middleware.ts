@@ -62,6 +62,10 @@ export class AuthMiddleware {
       });
 
       if (!projectUser) {
+        console.log('INVALID PROJECT USER:::', {
+          projectId,
+          userId: req.session.userId
+        })
         res.status(403).json(createErrorResponse('You do not have access to this project'));
         return;
       }
