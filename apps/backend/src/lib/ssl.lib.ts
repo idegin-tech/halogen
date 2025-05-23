@@ -12,7 +12,7 @@ const env = validateEnv();
 // Store certificates outside project directory
 const CERTS_DIR = process.platform === 'win32' 
   ? 'C:\\ssl\\certificates' 
-  : '/etc/halogen/certificates';
+  : '~/etc/halogen/certificates';
 const ACCOUNT_KEY_PATH = path.join(CERTS_DIR, 'account.key');
 const CHALLENGES_DIR = '/var/www/certbot';
 

@@ -7,8 +7,7 @@ import { SSLManager } from '../../lib/ssl.lib';
 import { DomainQueue } from '../../lib/domain-queue.lib';
 import { isDomainBlacklisted } from './domain-blacklist';
 
-export class DomainsService {
-    static async addDomain(projectId: string, domainData: AddDomainDTO): Promise<DomainData> {
+export class DomainsService {    static async addDomain(projectId: string, domainData: AddDomainDTO): Promise<DomainData & { verificationToken?: string }> {
         try {
             const domainName = domainData.name.toLowerCase();
             
@@ -27,7 +26,9 @@ export class DomainsService {
             });
             if (existingProjectDomain) {
                 throw new Error('Domain already exists for this project');
-            }            const newDomain = new DomainModel({
+            }            
+            
+            const newDomain = new DomainModel({
                 name: domainName,
                 project: projectId,
                 status: DomainStatus.PENDING,
@@ -36,16 +37,27 @@ export class DomainsService {
             
             const savedDomain = await newDomain.save();
             
+            // Generate verification token immediately
+            const verificationToken = await DomainLib.generateVerificationToken(domainName, projectId);
+            
+            // Update domain status to PENDING_DNS
+            savedDomain.status = DomainStatus.PENDING_DNS;
+            await savedDomain.save();
+            
+            // Queue verification job
+            await DomainQueue.addVerificationJob(savedDomain.toObject() as DomainData, verificationToken);
+            
             const domainObj = savedDomain.toObject();
             return {
                 ...domainObj,
-                _id: (domainObj._id as any).toString()
-            } as DomainData;
+                _id: (domainObj._id as any).toString(),
+                verificationToken
+            } as DomainData & { verificationToken: string };
         } catch (error) {
             Logger.error(`Add domain error: ${error instanceof Error ? error.message : 'Unknown error'}`);
             throw error;
         }
-    }    static async getDomainsByProject(
+    }static async getDomainsByProject(
         projectId: string,
         options: DomainQueryOptions = {}
     ): Promise<PaginatedResponse<DomainData>> {
