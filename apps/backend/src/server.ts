@@ -23,6 +23,7 @@ import {projectSettingsRoutes} from './modules/project-settings';
 import {filesRoutes} from './modules/files';
 import {collectionsRoutes, schemaRoutes} from './modules/cms';
 import { uploadsRoutes } from './modules/uploads/uploadds.routes';
+import { systemRoutes } from './modules/system';
 
 declare module 'express' {
     interface Request {
@@ -135,11 +136,11 @@ class App {
         this.app.use(`${apiPrefix}/pages`, pagesRoutes);
         this.app.use(`${apiPrefix}/variables`, variablesRoutes);
         this.app.use(`${apiPrefix}/block-instances`, blockInstancesRoutes);
-        this.app.use(`${apiPrefix}/preview`, previewRoutes);        
-        this.app.use(`${apiPrefix}/uploads`, uploadsRoutes);
+        this.app.use(`${apiPrefix}/preview`, previewRoutes);          this.app.use(`${apiPrefix}/uploads`, uploadsRoutes);
         this.app.use(`${apiPrefix}/files`, filesRoutes);
         this.app.use(`${apiPrefix}/collections`, collectionsRoutes);
         this.app.use(`${apiPrefix}/schemas`, schemaRoutes);
+        this.app.use(`${apiPrefix}/system`, systemRoutes);
     }
 
     private configureErrorHandlers(): void {

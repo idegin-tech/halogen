@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { BlockInstance, BlockProperties } from '@halogen/common/types'
+import { BlockThumbnailUtil } from '@halogen/common'
 import { usePage } from '@/hooks/usePage'
 import { generateId } from '@halogen/common/lib'
 import { getBlockProperties } from '@repo/ui/blocks'
@@ -47,7 +48,7 @@ function UsedBlockItem({ block, instanceCount }: { block: BlockInstance, instanc
         loadBlockInfo();
     }, [block.folderName, block.subFolder]);
 
-    let ThumbnailImage = '/placeholder.jpg';    const handleAddToPage = () => {
+    const handleAddToPage = () => {
         if (!selectedPageId) {
             console.error("Cannot add block: No page selected");
             return;
@@ -195,7 +196,7 @@ export default function BlocksTopPanel({ show, onHide }: { show: boolean, onHide
                                     name: blockInfo.name,
                                     properties,
                                     thumbnailPath: blockInfo.hasThumbnail ? 
-                                        `/_next/static/media/blocks/${folderName}/${blockInfo.name}/_thumbnail.png` : 
+                                        BlockThumbnailUtil.buildThumbnailUrl(folderName, blockInfo.name) : 
                                         undefined
                                 });
                             }
@@ -219,7 +220,10 @@ export default function BlocksTopPanel({ show, onHide }: { show: boolean, onHide
                 console.error('Error loading block folders:', err);
                 setLoadError(err?.message || 'Failed to load blocks from UI package');
             } finally {
-                setIsLoadingThumbnails(false);
+                // Delay setting isLoadingThumbnails to false for a better UI experience
+                setTimeout(() => {
+                    setIsLoadingThumbnails(false);
+                }, 300);
             }
         };
 
@@ -237,10 +241,6 @@ export default function BlocksTopPanel({ show, onHide }: { show: boolean, onHide
         if (selectedFolder === id) {
             setSelectedFolder(null);
         }
-    };
-
-    const handleSetChange = (data: any) => {
-        console.log('Block folder change:', data);
     };
 
     const currentFolderSubfolders = useMemo(() => {
@@ -357,7 +357,7 @@ export default function BlocksTopPanel({ show, onHide }: { show: boolean, onHide
                 activeSetId={selectedFolder}
                 onAddSet={handleAddBlockFolder}
                 onSetActiveSet={setSelectedFolder}
-                breadcrumbs={breadcrumbs} // Pass the breadcrumbs to the TopPanelContainer
+                breadcrumbs={breadcrumbs} 
             >
                 <div className='flex-1 overflow-x-hidden overflow-y-auto'>
                     {selectedFolder === 'used-blocks' ? (
@@ -379,13 +379,23 @@ export default function BlocksTopPanel({ show, onHide }: { show: boolean, onHide
                                             <div key={subFolder.name} className='rounded-xl overflow-hidden'>
                                                 <Card
                                                     className="group relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:shadow-primary/10 select-none"
-                                                >
-                                                    <div className="relative w-full min-h-40 flex items-center overflow-hidden justify-center">
-                                                        {/* Block preview - Default styled placeholder */}
+                                                >                                                    <div className="relative w-full min-h-40 flex items-center overflow-hidden justify-center">
                                                         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-primary/10 flex items-center justify-center">
-                                                            <div className="text-6xl text-primary/20 font-bold">
-                                                                {subFolder.name.charAt(0).toUpperCase()}
-                                                            </div>
+                                                            {subFolder.thumbnailPath ? (
+                                                                <img 
+                                                                    src={subFolder.thumbnailPath}
+                                                                    alt={`${subFolder.name} thumbnail`}
+                                                                    className="object-cover w-full h-full"
+                                                                    onError={(e) => {
+                                                                        e.currentTarget.style.display = 'none';
+                                                                        e.currentTarget.parentElement?.classList.add('thumbnail-error');
+                                                                    }}
+                                                                />
+                                                            ) : (
+                                                                <div className="text-6xl text-primary/20 font-bold">
+                                                                    {subFolder.name.charAt(0).toUpperCase()}
+                                                                </div>
+                                                            )}
                                                         </div>
                                                         
                                                         {usedBlocks.some(ub =>
