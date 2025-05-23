@@ -1,3 +1,4 @@
+'use client'
 import BlockConfigForm from "./block-config-form/BlockConfigForm";
 import { useLayoutContext } from "@/context/layout.context";
 import { useBuilderContext } from "@/context/builder.context";
@@ -6,17 +7,18 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import PropertyFormContainer from "./block-config-form/PropertyFormContainer";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Layers, RefreshCw} from "lucide-react";
+import { Layers, RefreshCw } from "lucide-react";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import ThemeRightPanel from "./theme-panel/ThemeRightPanel";
 
 export default function RightPanel() {
   const { state, updateLayoutState } = useLayoutContext();
   const { state: builderState, updateBuilderState } = useBuilderContext();
-  const [view, setView] = useState<'properties' | 'outline'>('properties');
+  const [view, setView] = useState<'properties' | 'outline' | 'theme'>('properties');
   const [isLoading, setIsLoading] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [selectedBlockInfo, setSelectedBlockInfo] = useState<{
@@ -24,7 +26,7 @@ export default function RightPanel() {
     type: string;
     hasError?: boolean;
   } | null>(null);
-  
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && state.showRightPanel) {
@@ -32,18 +34,20 @@ export default function RightPanel() {
           const confirmClose = window.confirm("You have unsaved changes. Are you sure you want to close?");
           if (!confirmClose) return;
         }
-        
+
         updateLayoutState({ showRightPanel: false });
       }
-      
+
       if (e.altKey && state.showRightPanel) {
         if (e.key === '1') {
           setView('properties');
         } else if (e.key === '2') {
           setView('outline');
+        } else if (e.key === '3') {
+          setView('theme');
         }
       }
-      
+
       if ((e.ctrlKey || e.metaKey) && e.key === 's' && state.showRightPanel) {
         e.preventDefault();
         if (view === 'properties' && selectedBlockInfo) {
@@ -58,20 +62,20 @@ export default function RightPanel() {
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [state.showRightPanel, updateLayoutState, hasUnsavedChanges, view, selectedBlockInfo]);
-  
+
   useEffect(() => {
     const loadBlockInfo = async () => {
       if (!builderState.selectedBlockId) {
         setSelectedBlockInfo(null);
         return;
       }
-      
+
       setIsLoading(true);
-      
+
       const selectedBlock = builderState.blocks.find(
         (block) => block.instance_id === builderState.selectedBlockId
       );
-      
+
       if (!selectedBlock) {
         setSelectedBlockInfo(null);
         setIsLoading(false);
@@ -79,10 +83,9 @@ export default function RightPanel() {
       }
 
       try {
-        // Get block properties from the registry
         const properties = await import('@repo/ui/blocks')
           .then(module => module.getBlockProperties(selectedBlock.folderName, selectedBlock.subFolder));
-          
+
         if (properties) {
           setSelectedBlockInfo({
             name: properties.name || `${selectedBlock.folderName}/${selectedBlock.subFolder}`,
@@ -105,21 +108,11 @@ export default function RightPanel() {
         setIsLoading(false);
       }
     };
-    
+
     loadBlockInfo();
   }, [builderState.selectedBlockId, builderState.blocks]);
 
-  const handleClosePanel = () => {
-    // Check if we have unsaved changes and should prompt the user
-    if (hasUnsavedChanges && view === 'properties' && selectedBlockInfo) {
-      const confirm = window.confirm('You have unsaved changes. Are you sure you want to close this panel?');
-      if (!confirm) return;
-    }
-    
-    // If user confirms or no unsaved changes, close panel
-    updateLayoutState({ showRightPanel: false });
-  };
-  
+
   const handleRefreshBlocks = () => {
     const currentId = builderState.selectedBlockId;
     updateBuilderState({ selectedBlockId: null });
@@ -127,27 +120,26 @@ export default function RightPanel() {
       updateBuilderState({ selectedBlockId: currentId });
     }, 100);
   };
-  
-  // Toggle between views
-  const handleViewChange = (newView: 'properties' | 'outline') => {
+
+  const handleViewChange = (newView: 'properties' | 'outline' | 'theme') => {
     setView(newView);
   };
 
   const optimizedRefreshBlocks = () => {
     let requestId: number | null = null;
-    
+
     return () => {
       if (requestId !== null) {
         cancelAnimationFrame(requestId);
       }
-      
+
       requestId = requestAnimationFrame(() => {
         handleRefreshBlocks();
         requestId = null;
       });
     };
   };
-  
+
   const debouncedRefreshBlocks = optimizedRefreshBlocks();
 
   useEffect(() => {
@@ -159,7 +151,6 @@ export default function RightPanel() {
       }
     };
 
-    // Listen for the custom event that the BlockConfigForm will dispatch
     const handleFormChanged = (e: CustomEvent) => {
       setHasUnsavedChanges(e.detail.hasChanges);
     };
@@ -174,7 +165,6 @@ export default function RightPanel() {
   }, [hasUnsavedChanges]);
 
   useEffect(() => {
-    // Reset unsaved changes when block selection changes
     setHasUnsavedChanges(false);
   }, [builderState.selectedBlockId]);
 
@@ -191,9 +181,11 @@ export default function RightPanel() {
           leftComponent={
             <div className='truncate'>
               <h3 className="text-md font-semibold truncate">
-                {view === 'properties' ? 'Block Properties' : 'Page Outline'}
+                {view === 'properties' ? 'Block Properties' :
+                  view === 'outline' ? 'Page Outline' :
+                    'Theme Settings'}
               </h3>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1 truncate">
                 {view === 'properties' && selectedBlockInfo && (
                   <div className="flex items-center gap-2">
                     <div className="flex items-center gap-1">
@@ -201,8 +193,8 @@ export default function RightPanel() {
                         {selectedBlockInfo.name} · {selectedBlockInfo.type}
                       </p>
                       {hasUnsavedChanges && (
-                        <span className="block w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" 
-                              title="Unsaved changes" />
+                        <span className="block w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"
+                          title="Unsaved changes" />
                       )}
                     </div>
                     {selectedBlockInfo.hasError && (
@@ -215,6 +207,11 @@ export default function RightPanel() {
                     Drag to reorder blocks
                   </p>
                 )}
+                {view === 'theme' && (
+                  <p className="text-xs text-muted-foreground select-none truncate">
+                    Customize colors, border radius, and fonts
+                  </p>
+                )}
                 {view === 'properties' && !selectedBlockInfo && (
                   <p className="text-xs text-muted-foreground select-none truncate">
                     No block selected
@@ -225,8 +222,8 @@ export default function RightPanel() {
           }
           rightComponent={
             <div className="flex items-center gap-2">
-              <Select value={view} onValueChange={(value: 'properties' | 'outline') => handleViewChange(value)}>
-                <SelectTrigger className="w-[130px]" size="sm">
+              <Select value={view} onValueChange={(value: 'properties' | 'outline' | 'theme') => handleViewChange(value)}>
+                <SelectTrigger className="w-[150px]" size="sm">
                   <SelectValue placeholder="Select View" />
                 </SelectTrigger>
                 <SelectContent>
@@ -242,9 +239,15 @@ export default function RightPanel() {
                       <Badge variant="outline" className="text-[10px] py-0 px-1.5">Alt+2</Badge>
                     </div>
                   </SelectItem>
+                  <SelectItem value="theme">
+                    <div className="flex items-center gap-2">
+                      Theme
+                      <Badge variant="outline" className="text-[10px] py-0 px-1.5">Alt+3</Badge>
+                    </div>
+                  </SelectItem>
                 </SelectContent>
               </Select>
-              
+
               {view === 'properties' && selectedBlockInfo && hasUnsavedChanges && (
                 <TooltipProvider>
                   <Tooltip>
@@ -268,13 +271,13 @@ export default function RightPanel() {
                   </Tooltip>
                 </TooltipProvider>
               )}
-              
+
               {view === 'outline' && (
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button 
-                        variant="ghost" 
+                      <Button
+                        variant="ghost"
                         size="icon"
                         onClick={debouncedRefreshBlocks}
                         className="text-muted-foreground hover:text-foreground"
@@ -288,7 +291,7 @@ export default function RightPanel() {
                   </Tooltip>
                 </TooltipProvider>
               )}
-              
+
             </div>
           }
         >
@@ -339,7 +342,7 @@ export default function RightPanel() {
                       </div>
                     )}
                   </motion.div>
-                ) : (
+                ) : view === 'outline' ? (
                   <motion.div
                     key="outline"
                     initial={{ opacity: 0, x: 20 }}
@@ -349,6 +352,17 @@ export default function RightPanel() {
                     className="relative"
                   >
                     <PageOutline />
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="theme"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ duration: 0.2 }}
+                    className="relative"
+                  >
+                    <ThemeRightPanel />
                   </motion.div>
                 )}
               </AnimatePresence>

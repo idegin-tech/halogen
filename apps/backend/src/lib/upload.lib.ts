@@ -6,7 +6,6 @@ import { v4 as uuidv4 } from 'uuid';
 import Logger from '../config/logger.config';
 import { FileSystemUtil } from './fs.util';
 
-// Use OS temp directory instead of project-local storage
 const uploadDir = FileSystemUtil.getTempSubDir('uploads');
 
 const storage = multer.diskStorage({
@@ -19,11 +18,9 @@ const storage = multer.diskStorage({
   },
 });
 
-// File size limit - 5MB
-const fileSize = 5 * 1024 * 1024;
+const fileSize = 20 * 1024 * 1024; // 20 MB
 
 const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
-  // Check file type based on file.mimetype
   const allowedMimetypes = [
     'image/jpeg', 
     'image/png', 
@@ -41,7 +38,6 @@ const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilt
   }
 };
 
-// Create multer upload instance
 export const upload = multer({
   storage,
   limits: {

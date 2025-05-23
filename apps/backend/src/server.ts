@@ -91,8 +91,8 @@ class App {
     }
 
     private configureStandardMiddleware(): void {
-        this.app.use(express.json({limit: '10kb'}));
-        this.app.use(express.urlencoded({extended: true, limit: '10kb'}));
+        this.app.use(express.json({limit: '20mb'}));
+        this.app.use(express.urlencoded({extended: true, limit: '20mb'}));
         this.app.use(cookieParser());
         this.app.use(compression());
         SessionConfig.configure(this.app);
@@ -100,7 +100,7 @@ class App {
         this.app.use((req: Request, res: Response, next: NextFunction) => {
             req.requestTime = new Date().toISOString();
 
-            if (!req.url.includes('/health')) {
+            if (!req.url.includes('/health')) { 
                 Logger.http(`${req.method} ${req.url}`);
             }
             next();

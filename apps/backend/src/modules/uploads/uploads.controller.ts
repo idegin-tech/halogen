@@ -1,9 +1,9 @@
 import { Request, Response } from 'express';
 import path from 'path';
 import { ResponseHelper } from '../../lib/response.helper';
-import { uploadToCloudinary, deleteFromCloudinary } from '../../lib/cloudinary.lib';
+import { deleteFromCloudinary } from '../../lib/cloudinary.lib';
 import { deleteLocalFile } from '../../lib/upload.lib';
-import { processFavicon, processOpenGraphImage, cleanupTempFile } from '../../lib/image-processing.lib';
+import { processFavicon, processOpenGraphImage } from '../../lib/image-processing.lib';
 import Logger from '../../config/logger.config';
 import { ProjectMetadataService } from '../project-metadata';
 import { FileReplacementUtil } from '../../lib/file-replacement.util';
@@ -90,10 +90,8 @@ export class UploadsController {
       const filePath = uploadedFile.path;
 
       try {
-        // Process the OG image (resize to recommended dimensions)
         const processedPath = await processOpenGraphImage(filePath);
         
-        // Use static name 'og-image' for consistent replacement
         const uploadResult = await FileReplacementUtil.replaceFile(
           processedPath,
           'metadata',
@@ -102,10 +100,8 @@ export class UploadsController {
           { transformation: [{ width: 1200, height: 630, crop: 'limit' }] }
         );
 
-        // Original file cleanup
         deleteLocalFile(filePath);
 
-        // Update the project metadata with the new OG image URL
         await ProjectMetadataService.updateProjectMetadataByProjectId(projectId, {
           ogImage: uploadResult.url
         });
