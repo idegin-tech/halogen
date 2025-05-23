@@ -51,7 +51,7 @@ export default function SettingsTopPanelDomain() {
     const [domain, setDomain] = useState('');
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [verificationToken, setVerificationToken] = useState<string | null>(null);
-    const [serverIP, setServerIP] = useState<string>(appConfig.ServerIPAddress);    const fetchDomainVerificationToken = async (domainId: string) => {
+    const [serverIP, setServerIP] = useState<string>(appConfig.ServerIPAddress); const fetchDomainVerificationToken = async (domainId: string) => {
         if (!domainId) return null;
 
         try {
@@ -66,7 +66,6 @@ export default function SettingsTopPanelDomain() {
         }
     };
 
-    // Query for the primary domain instead of all domains
     const domainQuery = useQuery<DomainData | null>(
         projectId ? `/domains/primary/${projectId}` : '',
         {},
@@ -78,7 +77,6 @@ export default function SettingsTopPanelDomain() {
     const verifyMutation = useMutation('/domains/verify');
     const sslMutation = useMutation('/domains/ssl');
 
-    // Type cast domainData to ensure TypeScript understands it
     const domainData = domainQuery.data as DomainData | null;
     const status = getDomainUiStatus(domainData);
     const needsSSL = status === 'connected' && !domainData?.sslIssuedAt;
@@ -119,7 +117,8 @@ export default function SettingsTopPanelDomain() {
             toast.error(errorMessage);
         }
     };
-      const checkVerificationStatus = async (domainId: string) => {
+
+    const checkVerificationStatus = async (domainId: string) => {
         try {
             if (!verificationToken) {
                 const token = await fetchDomainVerificationToken(domainId);
@@ -133,14 +132,13 @@ export default function SettingsTopPanelDomain() {
         } catch (error) {
             console.error('Failed to check verification status:', error);
             const errorMessage = error instanceof Error ? error.message : 'Failed to check verification status';
-            // Don't show toast here as this might be triggered by automated checks
         }
-    };// Trigger domain verification
-    const handleDnsVerification = async () => {
+    };    const handleDnsVerification = async () => {
         if (!domainData?._id) return;
 
         try {
-            await verifyMutation.mutate('', { domainId: domainData._id });
+            // Removed the empty string parameter to avoid trailing slash
+            await verifyMutation.mutate({ domainId: domainData._id });
             domainQuery.refetch();
             toast.success('Verification check initiated');
         } catch (error) {
@@ -148,12 +146,12 @@ export default function SettingsTopPanelDomain() {
             console.error('Domain verification error:', error);
             toast.error(errorMessage);
         }
-    };    // Request SSL certificate
-    const handleRequestSSL = async () => {
+    };    const handleRequestSSL = async () => {
         if (!domainData?._id) return;
 
         try {
-            await sslMutation.mutate('', { domainId: domainData._id });
+            // Removed the empty string parameter to avoid trailing slash
+            await sslMutation.mutate({ domainId: domainData._id });
             domainQuery.refetch();
             toast.success('SSL certificate generation initiated');
         } catch (error) {
@@ -161,7 +159,7 @@ export default function SettingsTopPanelDomain() {
             console.error('SSL generation error:', error);
             toast.error(errorMessage);
         }
-    };    // Delete a domain
+    };// Delete a domain
     const handleDelete = async () => {
         if (!domainData?._id) return;
 
@@ -182,7 +180,6 @@ export default function SettingsTopPanelDomain() {
         const records: DnsRecord[] = [];
 
         if (domainData) {
-            // Default to a fallback IP if the server IP is not available
             const ip = serverIP;
 
             // A record
@@ -214,7 +211,7 @@ export default function SettingsTopPanelDomain() {
 
         return records;
     }, [domainData, verificationToken, serverIP]);
-    
+
     const copyToClipboard = (text: string) => {
         navigator.clipboard.writeText(text);
         toast.success('Copied to clipboard');
@@ -264,7 +261,7 @@ export default function SettingsTopPanelDomain() {
                                     )}
                                     Add Domain
                                 </Button>
-                            </div>                        
+                            </div>
                             {/* @ts-ignore     */}
                             {domainData && domainData.status === DomainStatus.FAILED && (
                                 <Alert variant="destructive" className="mt-4">
@@ -655,7 +652,7 @@ export default function SettingsTopPanelDomain() {
                         </CardFooter>
                     </Card>
                 )}
-                
+
                 {status === 'initial' && !hasDomain && (
                     <Card className="bg-muted/20">
                         <CardContent className="pt-6">
