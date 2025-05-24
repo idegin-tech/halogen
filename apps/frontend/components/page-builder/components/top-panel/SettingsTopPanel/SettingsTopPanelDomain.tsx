@@ -50,14 +50,17 @@ export default function SettingsTopPanelDomain() {
 
     const [domain, setDomain] = useState('');
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-    const [verificationToken, setVerificationToken] = useState<string | null>(null);
-    const [serverIP, setServerIP] = useState<string>(appConfig.ServerIPAddress); const fetchDomainVerificationToken = async (domainId: string) => {
+    const [verificationToken, setVerificationToken] = useState<string | null>(null);    const [serverIP, setServerIP] = useState<string>(appConfig.ServerIPAddress); 
+    
+    const fetchDomainVerificationToken = async (domainId: string) => {
         if (!domainId) return null;
 
         try {
-            const response = await verifyMutation.mutate(`${domainId}/check`, {});
-            //@ts-ignore
-            return response?.verificationToken || null;
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/domains/verify/${domainId}`, {
+                credentials: 'include'
+            });
+            const data = await response.json();
+            return data.payload?.verificationToken || null;
         } catch (error) {
             console.error('Error fetching verification token:', error);
             const errorMessage = error instanceof Error ? error.message : 'Failed to fetch verification token';
@@ -127,13 +130,15 @@ export default function SettingsTopPanelDomain() {
                 }
             }
 
-            await verifyMutation.mutate(`${domainId}`, {});
+            // Using the correct method to send domainId in the request body
+            await verifyMutation.mutate({ domainId });
             domainQuery.refetch();
         } catch (error) {
             console.error('Failed to check verification status:', error);
             const errorMessage = error instanceof Error ? error.message : 'Failed to check verification status';
+            toast.error(errorMessage);
         }
-    };    const handleDnsVerification = async () => {
+    };const handleDnsVerification = async () => {
         if (!domainData?._id) return;
 
         try {
@@ -157,7 +162,8 @@ export default function SettingsTopPanelDomain() {
             console.error('SSL generation error:', error);
             toast.error(errorMessage);
         }
-    };// Delete a domain
+    };
+
     const handleDelete = async () => {
         if (!domainData?._id) return;
 
@@ -173,14 +179,12 @@ export default function SettingsTopPanelDomain() {
         }
     };
 
-    // Get DNS records
     const getDnsRecords = useCallback((): DnsRecord[] => {
         const records: DnsRecord[] = [];
 
         if (domainData) {
             const ip = serverIP;
 
-            // A record
             records.push({
                 type: 'A',
                 host: '@',
@@ -188,7 +192,6 @@ export default function SettingsTopPanelDomain() {
                 ttl: '3600'
             });
 
-            // www subdomain
             records.push({
                 type: 'A',
                 host: 'www',
@@ -196,7 +199,6 @@ export default function SettingsTopPanelDomain() {
                 ttl: '3600'
             });
 
-            // TXT record for domain verification
             if (verificationToken || (domainData && domainData.verificationFailReason && domainData.status === DomainStatus.PENDING_DNS)) {
                 records.push({
                     type: 'TXT',
@@ -215,7 +217,6 @@ export default function SettingsTopPanelDomain() {
         toast.success('Copied to clipboard');
     };
 
-    // Show loading state while fetching domain
     if (domainQuery.isLoading) {
         return (
             <div className="flex items-center justify-center p-10">
