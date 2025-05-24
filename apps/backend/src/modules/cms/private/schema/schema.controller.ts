@@ -23,15 +23,14 @@ export class SchemaController {
 
       const schema = await SchemaService.createSchema(projectId, collectionId, req.body);
       ResponseHelper.success(res, schema, 'Schema created successfully');
-    } catch (error) {
-      Logger.error(`Schema creation error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } catch (error) {      Logger.error(`Schema creation error: ${error instanceof Error ? error.message : 'Unknown error'}`);
       ResponseHelper.error(
         res,
         error instanceof Error ? error.message : 'Failed to create schema',
-        error instanceof Error && (
+        error instanceof Error ? (
           error.message.includes('not found') ? 404 :
           error.message.includes('already exists') ? 400 : 500
-        )
+        ) : 500
       );
     }
   }

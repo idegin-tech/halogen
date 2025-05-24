@@ -96,9 +96,10 @@ export class ProjectsService {
             };
         } catch (error) {
             Logger.error(`Create project error: ${error instanceof Error ? error.message : 'Unknown error'}`);
-            throw error;
-        }
-    } static async getProjectById(projectId: string) {
+            throw error;        }
+    } 
+    
+    static async getProjectById(projectId: string): Promise<any> {
         try {
             const project = await ProjectModel.findById(projectId);
             if (!project) return null;

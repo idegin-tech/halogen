@@ -10,6 +10,7 @@ import { SSLManager } from './lib/ssl.lib';
 import { DomainQueue } from './lib/domain-queue.lib';
 import { DomainCronJobs } from './lib/domain-cron.lib';
 import { DomainsService } from './modules/domains/domains.service';
+import PrivilegedCommandUtil from './lib/privileged-command.util';
 
 const logDir = path.join(process.cwd(), 'logs');
 if (!fs.existsSync(logDir)) {
@@ -19,11 +20,11 @@ if (!fs.existsSync(logDir)) {
 const env = validateEnv();
 const port = env.PORT;
 
-async function startServer() {
-  try {
-    await Database.getInstance().connect();
+async function startServer() {  try {    await Database.getInstance().connect();    // Initialize privileged command utilities
+    await PrivilegedCommandUtil.initialize();
 
-    // Initialize domain services    await DomainLib.createDefaultTemplates();
+    // Initialize domain services    
+    await DomainLib.initialize();
     await SSLManager.initializeClient();
     DomainQueue.initialize(DomainsService);
     DomainCronJobs.initialize();

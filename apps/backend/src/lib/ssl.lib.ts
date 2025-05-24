@@ -10,11 +10,16 @@ import PrivilegedCommandUtil from './privileged-command.util';
 const execAsync = promisify(exec);
 const env = validateEnv();
 
-// Store certificates outside project directory
+// Store certificates in user-accessible directories
 const CERTS_DIR = process.platform === 'win32' 
   ? 'C:\\ssl\\certificates' 
   : '/etc/letsencrypt/live';
-const ACCOUNT_KEY_PATH = path.join(CERTS_DIR, 'account.key');
+  
+// Store ACME account key in a user-accessible location to avoid permission issues
+const ACME_DIR = process.platform === 'win32'
+  ? 'C:\\ssl\\acme'
+  : '/home/ubuntu/.letsencrypt';
+const ACCOUNT_KEY_PATH = path.join(ACME_DIR, 'account.key');
 const CHALLENGES_DIR = '/var/www/certbot';
 
 // Certbot configuration
@@ -33,21 +38,32 @@ export interface CertificateInfo {
 export class SSLManager {
   private static acme: AcmeClient.Client;
   private static initialized = false;
-
   static async initializeClient(): Promise<void> {
     if (this.initialized) return;
 
     try {
+      // Ensure both directories exist with proper permissions
       await fs.ensureDir(CERTS_DIR);
+      await fs.ensureDir(ACME_DIR);
       
       let accountKey: Buffer;
       
       try {
         accountKey = await fs.readFile(ACCOUNT_KEY_PATH);
       } catch (error) {
+        // Generate a new account key if it doesn't exist
+        Logger.info('Creating new ACME account key');
         // Fix for TS error - AcmeClient.forge.createPrivateKey() returns the key directly
         const privateKey = await AcmeClient.forge.createPrivateKey();
         await fs.writeFile(ACCOUNT_KEY_PATH, privateKey);
+        // Set proper permissions for the account key
+        if (process.platform !== 'win32') {
+          try {
+            await execAsync(`chmod 600 "${ACCOUNT_KEY_PATH}"`);
+          } catch (chmodError) {
+            Logger.warn(`Failed to set permissions on account key: ${chmodError instanceof Error ? chmodError.message : 'Unknown error'}`);
+          }
+        }
         accountKey = privateKey;
       }
       
@@ -268,25 +284,58 @@ fi
       };
     }
   }
-
   static async checkCertificate(domain: string): Promise<CertificateInfo> {
     try {
       const certPath = path.join('/etc/letsencrypt/live', domain, 'fullchain.pem');
       const keyPath = path.join('/etc/letsencrypt/live', domain, 'privkey.pem');
       
-      const certExists = await fs.pathExists(certPath);
-      const keyExists = await fs.pathExists(keyPath);
+      let notAfterMatch: RegExpMatchArray | null = null;
+      let notBeforeMatch: RegExpMatchArray | null = null;
       
-      if (!certExists || !keyExists) {
-        return {
-          domain,
-          isValid: false
-        };
+      // In production, we need to use sudo to check certificate files
+      if (env.NODE_ENV === 'production') {
+        // Use privileged command to check if certificate exists
+        const checkCertScript = `#!/bin/bash
+if [ -f "${certPath}" ] && [ -f "${keyPath}" ]; then
+  # Extract certificate dates using openssl
+  openssl x509 -in "${certPath}" -noout -dates
+  exit $?
+else
+  echo "Certificate files not found"
+  exit 1
+fi`;
+
+        const result = await PrivilegedCommandUtil.createAndExecuteScript(
+          `check-cert-${domain}.sh`,
+          checkCertScript
+        );
+        
+        if (!result.success) {
+          return {
+            domain,
+            isValid: false
+          };
+        }
+        
+        // Parse dates from output
+        notAfterMatch = result.stdout.match(/notAfter=(.+)/);
+        notBeforeMatch = result.stdout.match(/notBefore=(.+)/);
+      } else {
+        // In development, try direct file access
+        const certExists = await fs.pathExists(certPath);
+        const keyExists = await fs.pathExists(keyPath);
+        
+        if (!certExists || !keyExists) {
+          return {
+            domain,
+            isValid: false
+          };
+        }
+        
+        const { stdout } = await execAsync(`openssl x509 -in "${certPath}" -noout -dates`);
+        notAfterMatch = stdout.match(/notAfter=(.+)/);
+        notBeforeMatch = stdout.match(/notBefore=(.+)/);
       }
-      
-      const { stdout } = await execAsync(`openssl x509 -in "${certPath}" -noout -dates`);
-      const notAfterMatch = stdout.match(/notAfter=(.+)/);
-      const notBeforeMatch = stdout.match(/notBefore=(.+)/);
       
       if (!notAfterMatch || !notBeforeMatch) {
         return {
@@ -315,12 +364,39 @@ fi
       };
     }
   }
-
   static async revokeCertificate(domain: string): Promise<boolean> {
     try {
-      await this.initializeClient();
-      
       const certPath = path.join('/etc/letsencrypt/live', domain, 'fullchain.pem');
+      
+      // In production, use Certbot for certificate revocation
+      if (env.NODE_ENV === 'production') {
+        const revokeScript = `#!/bin/bash
+# Check if certificate exists
+if [ -d "/etc/letsencrypt/live/${domain}" ]; then
+  # Revoke the certificate using Certbot
+  certbot revoke --cert-path "${certPath}" --non-interactive --reason keycompromise
+  
+  # Delete the certificate
+  certbot delete --cert-name "${domain}" --non-interactive
+  
+  echo "Certificate for ${domain} revoked successfully"
+  exit 0
+else
+  echo "No certificate found for ${domain}"
+  exit 0
+fi
+`;
+
+        const result = await PrivilegedCommandUtil.createAndExecuteScript(
+          `revoke-cert-${domain}.sh`,
+          revokeScript
+        );
+        
+        return result.success;
+      }
+      
+      // For development or if Certbot isn't being used
+      await this.initializeClient();
       
       if (!await fs.pathExists(certPath)) {
         return true;

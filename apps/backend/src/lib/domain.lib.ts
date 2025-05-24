@@ -1,5 +1,3 @@
-
-
 import { validateEnv } from '../config/env.config';
 import dns from 'dns';
 import { promisify } from 'util';
@@ -17,9 +15,13 @@ const lookup = promisify(dns.lookup);
 const resolveTxt = promisify(dns.resolveTxt);
 const execAsync = promisify(exec);
 
-// Template and config directories
-const NGINX_TEMPLATES_DIR = path.join(process.cwd(), 'nginx-templates');
-const NGINX_CONFIG_DIR = path.join(process.cwd(), 'nginx-configs');
+// Template and config directories - use home directory for better permissions
+const NGINX_TEMPLATES_DIR = process.platform === 'win32'
+  ? path.join(process.cwd(), 'nginx-templates')
+  : '/home/ubuntu/nginx-templates';
+const NGINX_CONFIG_DIR = process.platform === 'win32'
+  ? path.join(process.cwd(), 'nginx-configs')
+  : '/home/ubuntu/nginx-configs';
 
 // Production Nginx directories
 const NGINX_SITES_AVAILABLE = '/etc/nginx/sites-available';
@@ -338,6 +340,36 @@ server {
 }`;
     
     await fs.writeFile(path.join(NGINX_TEMPLATES_DIR, 'wildcard.conf.template'), wildcardTemplate);
+  }
+  /**
+   * Initialize domain management system
+   * Creates necessary directories and templates
+   */
+  static async initialize(): Promise<void> {
+    try {
+      // Ensure directories exist
+      await fs.ensureDir(NGINX_TEMPLATES_DIR);
+      await fs.ensureDir(NGINX_CONFIG_DIR);
+      
+      // Create default templates if they don't exist
+      await this.createDefaultTemplates();
+      
+      // Set proper permissions for the directories in production
+      if (IS_PRODUCTION && process.platform !== 'win32') {
+        try {
+          await PrivilegedCommandUtil.executeCommand('chmod', ['-R', '755', NGINX_TEMPLATES_DIR]);
+          await PrivilegedCommandUtil.executeCommand('chmod', ['-R', '755', NGINX_CONFIG_DIR]);
+          Logger.info('Set permissions on Nginx configuration directories');
+        } catch (error) {
+          Logger.warn(`Failed to set permissions on Nginx directories: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+      }
+      
+      Logger.info('Domain management system initialized successfully');
+    } catch (error) {
+      Logger.error(`Failed to initialize domain management system: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw error;
+    }
   }
 
   static async getDomainStatus(domain: string, verificationToken?: string): Promise<{

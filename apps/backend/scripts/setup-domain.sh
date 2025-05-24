@@ -26,6 +26,9 @@ VERBOSE=false
 NGINX_SITES_AVAILABLE="/etc/nginx/sites-available"
 NGINX_SITES_ENABLED="/etc/nginx/sites-enabled"
 CERTBOT_WEBROOT="/var/www/certbot"
+NGINX_TEMPLATES_DIR="/home/ubuntu/nginx-templates"
+NGINX_CONFIG_DIR="/home/ubuntu/nginx-configs"
+ACME_DIR="/home/ubuntu/.letsencrypt"
 ADMIN_EMAIL="admin@example.com"
 
 # Parse arguments

@@ -1,13 +1,13 @@
 import mongoose, { Schema, Document, Types } from 'mongoose';
 import { ProjectSettings as ProjectSettingsType, ProjectIntegration } from '@halogen/common/types';
 
-interface IProjectSettings extends Document, Omit<ProjectSettingsType, '_id' | 'project' | 'createdAt' | 'updatedAt'> {
+export interface IProjectSettings extends Document, Omit<ProjectSettingsType, '_id' | 'project' | 'createdAt' | 'updatedAt'> {
   project: Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
 }
 
-const ProjectSettingsSchema = new Schema<ProjectSettingsType>(
+const ProjectSettingsSchema = new Schema<IProjectSettings>(
   {
     project: {
       type: Schema.Types.ObjectId,

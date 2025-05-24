@@ -6,6 +6,14 @@ import { DomainLib } from '../../lib/domain.lib';
 import { SSLManager } from '../../lib/ssl.lib';
 import { DomainQueue } from '../../lib/domain-queue.lib';
 import { isDomainBlacklisted } from './domain-blacklist';
+import fs from 'fs-extra';
+import path from 'path';
+import PrivilegedCommandUtil from '../../lib/privileged-command.util';
+
+// Get the Nginx configuration directory
+const NGINX_CONFIG_DIR = process.platform === 'win32'
+  ? path.join(process.cwd(), 'nginx-configs')
+  : '/home/ubuntu/nginx-configs';
 
 export class DomainsService {    static async addDomain(projectId: string, domainData: AddDomainDTO): Promise<DomainData & { verificationToken?: string }> {
         try {
@@ -286,9 +294,7 @@ export class DomainsService {    static async addDomain(projectId: string, domai
             Logger.error(`Check SSL status error: ${error instanceof Error ? error.message : 'Unknown error'}`);
             throw error;
         }
-    }
-
-    static async deleteDomain(domainId: string): Promise<boolean> {
+    }    static async deleteDomain(domainId: string): Promise<boolean> {
         try {
             const domain = await DomainModel.findById(domainId);
             if (!domain) {
@@ -301,12 +307,41 @@ export class DomainsService {    static async addDomain(projectId: string, domai
                 await SSLManager.revokeCertificate(domain.name);
             }
             
-            // Remove Nginx configuration if exists
-            const configPath = `${process.cwd()}/nginx-configs/${domain.name}.conf`;
-            const fs = require('fs-extra');
-            if (await fs.pathExists(configPath)) {
-                await fs.remove(configPath);
-                await DomainLib.reloadNginx();
+            // In production, use a privileged script to remove Nginx configuration
+            if (process.env.NODE_ENV === 'production') {
+                const removeConfigScript = `#!/bin/bash
+# Check if Nginx configuration exists
+if [ -f "/etc/nginx/sites-available/${domain.name}.conf" ]; then
+  # Remove configuration file and symlink
+  rm -f "/etc/nginx/sites-available/${domain.name}.conf"
+  rm -f "/etc/nginx/sites-enabled/${domain.name}.conf"
+  
+  # Remove local copy if it exists
+  if [ -f "/home/ubuntu/nginx-configs/${domain.name}.conf" ]; then
+    rm -f "/home/ubuntu/nginx-configs/${domain.name}.conf"
+  fi
+  
+  # Reload Nginx if configuration was removed
+  nginx -t && nginx -s reload
+  echo "Nginx configuration for ${domain.name} removed successfully"
+  exit 0
+else
+  echo "No Nginx configuration found for ${domain.name}"
+  exit 0
+fi`;
+
+                await PrivilegedCommandUtil.createAndExecuteScript(
+                    `remove-nginx-${domain.name}.sh`,
+                    removeConfigScript
+                );
+            } else {
+                // In development, just remove local files
+                // Remove Nginx configuration from local directory if exists
+                const configPath = path.join(NGINX_CONFIG_DIR, `${domain.name}.conf`);
+                if (await fs.pathExists(configPath)) {
+                    await fs.remove(configPath);
+                    await DomainLib.reloadNginx();
+                }
             }
             
             await DomainModel.findByIdAndDelete(domainId);
@@ -315,7 +350,7 @@ export class DomainsService {    static async addDomain(projectId: string, domai
             Logger.error(`Delete domain error: ${error instanceof Error ? error.message : 'Unknown error'}`);
             throw error;
         }
-    }    static async updateDomainStatus(domainId: string, status: DomainStatus): Promise<DomainData> {
+    }static async updateDomainStatus(domainId: string, status: DomainStatus): Promise<DomainData> {
         try {
             const domain = await DomainModel.findById(domainId);
             if (!domain) {

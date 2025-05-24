@@ -19,16 +19,18 @@ export class ProjectSettingsService {
         project: projectId,
         headingFont: 'Inter',
         bodyFont: 'Inter'
-      });
-      
+      });      
       await defaultSettings.save();
-      Logger.info(`Created default project settings for project: ${projectId}`);      const settingsObj = defaultSettings.toObject();
+      Logger.info(`Created default project settings for project: ${projectId}`);
+      const settingsObj = defaultSettings.toObject();
       return {
-        ...settingsObj,
         _id: settingsObj._id?.toString(),
         project: settingsObj.project?.toString(),
         createdAt: settingsObj.createdAt?.toISOString(),
-        updatedAt: settingsObj.updatedAt?.toISOString()
+        updatedAt: settingsObj.updatedAt?.toISOString(),
+        headingFont: settingsObj.headingFont,
+        bodyFont: settingsObj.bodyFont,
+        integrations: settingsObj.integrations
       };
     } catch (error) {
       Logger.error(`Failed to create default project settings for project ${projectId}: ${error}`);
@@ -43,15 +45,18 @@ export class ProjectSettingsService {
    * @returns The project settings or null if not found
    */
   public static async getByProjectId(projectId: Types.ObjectId | string): Promise<ProjectSettingsType | null> {
-    try {
-      const settings = await ProjectSettings.findOne({ project: projectId });
-      if (!settings) return null;      const settingsObj = settings.toObject();
+    try {      const settings = await ProjectSettings.findOne({ project: projectId });
+      if (!settings) return null;
+      
+      const settingsObj = settings.toObject();
       return {
-        ...settingsObj,
         _id: settingsObj._id?.toString(),
         project: settingsObj.project?.toString(),
         createdAt: settingsObj.createdAt?.toISOString(),
-        updatedAt: settingsObj.updatedAt?.toISOString()
+        updatedAt: settingsObj.updatedAt?.toISOString(),
+        headingFont: settingsObj.headingFont,
+        bodyFont: settingsObj.bodyFont,
+        integrations: settingsObj.integrations
       };
     } catch (error) {
       Logger.error(`Error fetching project settings for project ${projectId}: ${error}`);
@@ -75,15 +80,18 @@ export class ProjectSettingsService {
         { project: projectId },
         { $set: settings },
         { new: true, runValidators: true }
-      );
+      );      
+      if (!updatedSettings) return null;
       
-      if (!updatedSettings) return null;      const settingsObj = updatedSettings.toObject();
+      const settingsObj = updatedSettings.toObject();
       return {
-        ...settingsObj,
         _id: settingsObj._id?.toString(),
         project: settingsObj.project?.toString(),
         createdAt: settingsObj.createdAt?.toISOString(),
-        updatedAt: settingsObj.updatedAt?.toISOString()
+        updatedAt: settingsObj.updatedAt?.toISOString(),
+        headingFont: settingsObj.headingFont,
+        bodyFont: settingsObj.bodyFont,
+        integrations: settingsObj.integrations
       };
     } catch (error) {
       Logger.error(`Error updating settings for project ${projectId}: ${error}`);
