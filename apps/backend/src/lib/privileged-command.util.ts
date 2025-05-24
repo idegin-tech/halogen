@@ -9,7 +9,7 @@ const execAsync = promisify(exec);
 const env = validateEnv();
 
 // Directory for privileged command scripts - use home directory for user permissions
-const SCRIPTS_DIR = '/home/ubuntu/halogen-scripts';
+const SCRIPTS_DIR = '/home/msuser/halogen-scripts';
 const IS_PRODUCTION = env.NODE_ENV === 'production';
 
 export interface CommandResult {

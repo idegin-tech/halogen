@@ -5,23 +5,23 @@
 #
 
 # Create the scripts directory
-mkdir -p /home/ubuntu/halogen-scripts
-chmod 755 /home/ubuntu/halogen-scripts
-chown ubuntu:ubuntu /home/ubuntu/halogen-scripts
+mkdir -p /home/msuser/halogen-scripts
+chmod 755 /home/msuser/halogen-scripts
+chown msuser:msuser /home/msuser/halogen-scripts
 
 # Create the ACME directory
-mkdir -p /home/ubuntu/.letsencrypt
-chmod 755 /home/ubuntu/.letsencrypt
-chown ubuntu:ubuntu /home/ubuntu/.letsencrypt
+mkdir -p /home/msuser/.letsencrypt
+chmod 755 /home/msuser/.letsencrypt
+chown msuser:msuser /home/msuser/.letsencrypt
 
 # Create the Nginx templates directory
-mkdir -p /home/ubuntu/nginx-templates
-chmod 755 /home/ubuntu/nginx-templates
-chown ubuntu:ubuntu /home/ubuntu/nginx-templates
+mkdir -p /home/msuser/nginx-templates
+chmod 755 /home/msuser/nginx-templates
+chown msuser:msuser /home/msuser/nginx-templates
 
 # Create the Nginx configs directory
-mkdir -p /home/ubuntu/nginx-configs
-chmod 755 /home/ubuntu/nginx-configs
-chown ubuntu:ubuntu /home/ubuntu/nginx-configs
+mkdir -p /home/msuser/nginx-configs
+chmod 755 /home/msuser/nginx-configs
+chown msuser:msuser /home/msuser/nginx-configs
 
 echo "Directories created successfully with proper permissions"

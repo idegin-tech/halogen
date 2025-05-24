@@ -13,8 +13,8 @@ const env = validateEnv();
 // Store certificates in user-accessible directories
 const CERTS_DIR = '/etc/letsencrypt/live';
   
-// Store ACME account key in a user-accessible location to avoid permission issues
-const ACME_DIR = '/home/ubuntu/.letsencrypt';
+
+const ACME_DIR = '/home/msuser/.letsencrypt';
 const ACCOUNT_KEY_PATH = path.join(ACME_DIR, 'account.key');
 const CHALLENGES_DIR = '/var/www/certbot';
 
@@ -38,7 +38,7 @@ export class SSLManager {
     static async initializeClient(): Promise<void> {
     if (this.initialized) return;
 
-    // Skip initialization in non-production environments
+
     if (!IS_PRODUCTION) {
       Logger.info('Skipping SSL manager initialization in non-production environment');
       this.initialized = true;
@@ -46,7 +46,7 @@ export class SSLManager {
     }
 
     try {
-      // Ensure both directories exist with proper permissions
+
       await fs.ensureDir(CERTS_DIR);
       await fs.ensureDir(ACME_DIR);
       
@@ -56,11 +56,11 @@ export class SSLManager {
       try {
         accountKey = await fs.readFile(ACCOUNT_KEY_PATH);
       } catch (error) {
-        // Generate a new account key if it doesn't exist
+
         Logger.info('Creating new ACME account key');
         privateKey = await AcmeClient.forge.createPrivateKey();
         await fs.writeFile(ACCOUNT_KEY_PATH, privateKey);
-        // Set proper permissions for the account key
+
         try {
           await execAsync(`chmod 600 "${ACCOUNT_KEY_PATH}"`);
         } catch (chmodError) {

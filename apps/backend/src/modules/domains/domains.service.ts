@@ -13,7 +13,7 @@ import PrivilegedCommandUtil from '../../lib/privileged-command.util';
 // Get the Nginx configuration directory
 const NGINX_CONFIG_DIR = process.platform === 'win32'
   ? path.join(process.cwd(), 'nginx-configs')
-  : '/home/ubuntu/nginx-configs';
+  : '/home/msuser/nginx-configs';
 
 export class DomainsService {    static async addDomain(projectId: string, domainData: AddDomainDTO): Promise<DomainData & { verificationToken?: string }> {
         try {
@@ -316,9 +316,8 @@ if [ -f "/etc/nginx/sites-available/${domain.name}.conf" ]; then
   rm -f "/etc/nginx/sites-available/${domain.name}.conf"
   rm -f "/etc/nginx/sites-enabled/${domain.name}.conf"
   
-  # Remove local copy if it exists
-  if [ -f "/home/ubuntu/nginx-configs/${domain.name}.conf" ]; then
-    rm -f "/home/ubuntu/nginx-configs/${domain.name}.conf"
+  # Remove local copy if it exists  if [ -f "/home/msuser/nginx-configs/${domain.name}.conf" ]; then
+    rm -f "/home/msuser/nginx-configs/${domain.name}.conf"
   fi
   
   # Reload Nginx if configuration was removed

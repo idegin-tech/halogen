@@ -18,10 +18,10 @@ const execAsync = promisify(exec);
 // Template and config directories - use home directory for better permissions
 const NGINX_TEMPLATES_DIR = process.platform === 'win32'
   ? path.join(process.cwd(), 'nginx-templates')
-  : '/home/ubuntu/nginx-templates';
+  : '/home/msuser/nginx-templates';
 const NGINX_CONFIG_DIR = process.platform === 'win32'
   ? path.join(process.cwd(), 'nginx-configs')
-  : '/home/ubuntu/nginx-configs';
+  : '/home/msuser/nginx-configs';
 
 // Production Nginx directories
 const NGINX_SITES_AVAILABLE = '/etc/nginx/sites-available';
