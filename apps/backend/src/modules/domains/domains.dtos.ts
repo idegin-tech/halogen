@@ -7,7 +7,7 @@ export const addDomainSchema = z.object({
     .transform(val => val.toLowerCase())
 });
 
-export const domainVerificationSchema = z.object({
+export const domainCheckSchema = z.object({
   domainId: z.string().min(1, 'Domain ID is required')
 });
 
@@ -26,6 +26,6 @@ export const domainsQuerySchema = z.object({
 });
 
 export type AddDomainDTO = z.infer<typeof addDomainSchema>;
-export type DomainVerificationDTO = z.infer<typeof domainVerificationSchema>;
+export type DomainVerificationDTO = z.infer<typeof domainCheckSchema>;
 export type SSLCertificateDTO = z.infer<typeof sslCertificateSchema>;
 export type DomainsQueryDTO = z.infer<typeof domainsQuerySchema>;

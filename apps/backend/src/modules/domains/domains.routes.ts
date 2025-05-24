@@ -3,9 +3,9 @@ import { DomainsController } from './domains.controller';
 import { RequestValidation } from '../../middleware/request.middleware';
 import { 
     addDomainSchema, 
-    domainVerificationSchema, 
     sslCertificateSchema,
-    domainsQuerySchema 
+    domainsQuerySchema, 
+    domainCheckSchema
 } from './domains.dtos';
 import { domainRateLimiter } from './domains.middleware';
 
@@ -33,7 +33,7 @@ router.get(
 );
 router.post(
     '/check',
-    RequestValidation.validateBody(domainVerificationSchema),
+    RequestValidation.validateBody(domainCheckSchema),
     DomainsController.triggerDomainVerification
 );
 router.get(
