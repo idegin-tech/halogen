@@ -1,20 +1,29 @@
 import { CronJob } from 'cron';
-import { SSLManager, CertificateInfo } from '../lib/ssl.lib';
+import { SSLManager, CertificateInfo } from './ssl.lib';
 import { DomainStatus } from '@halogen/common';
 import { DomainsService } from '../modules/domains/domains.service';
-import { DomainQueue } from '../lib/domain-queue.lib';
-import { DomainLib } from '../lib/domain.lib';
+import { DomainQueue } from './domain-queue.lib';
+import { DomainLib } from './domain.lib';
 import Logger from '../config/logger.config';
 import PrivilegedCommandUtil from './privileged-command.util';
+import { validateEnv } from '../config/env.config';
+
+const env = validateEnv();
+const IS_PRODUCTION = env.NODE_ENV === 'production';
 
 export class DomainCronJobs {
     private static renewalJob: CronJob;
     private static verificationRetryJob: CronJob;
     private static domainHealthCheckJob: CronJob;
-    private static initialized = false;
-
-    static initialize(): void {
+    private static initialized = false;    static initialize(): void {
         if (this.initialized) return;
+
+        // Skip cron jobs in non-production environments
+        if (!IS_PRODUCTION) {
+            Logger.info('Skipping domain cron jobs initialization in non-production environment');
+            this.initialized = true;
+            return;
+        }
 
         // Run SSL certificate renewal check daily at 2 AM
         this.renewalJob = new CronJob('0 2 * * *', async () => {

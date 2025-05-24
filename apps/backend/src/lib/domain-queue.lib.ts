@@ -27,9 +27,15 @@ interface SSLGenerationJob {
 export class DomainQueue {
   public static verificationQueue = new Queue<DomainVerificationJob>('domain-verification', REDIS_URL);
   public static sslQueue = new Queue<SSLGenerationJob>('ssl-generation', REDIS_URL);
-  private static initialized = false;
-  static initialize(domainsService: any): void {
+  private static initialized = false;  static initialize(domainsService: any): void {
     if (this.initialized) return;
+    
+    // Skip queue processing in non-production environments
+    if (!IS_PRODUCTION) {
+      Logger.info('Skipping domain queue initialization in non-production environment');
+      this.initialized = true;
+      return;
+    }
     
     this.verificationQueue.process(async (job) => {
       try {

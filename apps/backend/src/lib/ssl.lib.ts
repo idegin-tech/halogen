@@ -11,18 +11,15 @@ const execAsync = promisify(exec);
 const env = validateEnv();
 
 // Store certificates in user-accessible directories
-const CERTS_DIR = process.platform === 'win32' 
-  ? 'C:\\ssl\\certificates' 
-  : '/etc/letsencrypt/live';
+const CERTS_DIR = '/etc/letsencrypt/live';
   
 // Store ACME account key in a user-accessible location to avoid permission issues
-const ACME_DIR = process.platform === 'win32'
-  ? 'C:\\ssl\\acme'
-  : '/home/ubuntu/.letsencrypt';
+const ACME_DIR = '/home/ubuntu/.letsencrypt';
 const ACCOUNT_KEY_PATH = path.join(ACME_DIR, 'account.key');
 const CHALLENGES_DIR = '/var/www/certbot';
 
 // Certbot configuration
+const IS_PRODUCTION = env.NODE_ENV === 'production';
 const USE_CERTBOT = process.platform !== 'win32' && env.NODE_ENV === 'production';
 const CERTBOT_EMAIL = env.ADMIN_EMAIL || 'admin@example.com';
 
@@ -36,10 +33,17 @@ export interface CertificateInfo {
 }
 
 export class SSLManager {
-  private static acme: AcmeClient.Client;
-  private static initialized = false;
+  private static acme: AcmeClient.Client;  private static initialized = false;
+  
   static async initializeClient(): Promise<void> {
     if (this.initialized) return;
+
+    // Skip initialization in non-production environments
+    if (!IS_PRODUCTION) {
+      Logger.info('Skipping SSL manager initialization in non-production environment');
+      this.initialized = true;
+      return;
+    }
 
     try {
       // Ensure both directories exist with proper permissions
@@ -47,6 +51,7 @@ export class SSLManager {
       await fs.ensureDir(ACME_DIR);
       
       let accountKey: Buffer;
+      let privateKey: Buffer;
       
       try {
         accountKey = await fs.readFile(ACCOUNT_KEY_PATH);
@@ -54,21 +59,18 @@ export class SSLManager {
         // Generate a new account key if it doesn't exist
         Logger.info('Creating new ACME account key');
         // Fix for TS error - AcmeClient.forge.createPrivateKey() returns the key directly
-        const privateKey = await AcmeClient.forge.createPrivateKey();
+        privateKey = await AcmeClient.forge.createPrivateKey();
         await fs.writeFile(ACCOUNT_KEY_PATH, privateKey);
         // Set proper permissions for the account key
-        if (process.platform !== 'win32') {
-          try {
-            await execAsync(`chmod 600 "${ACCOUNT_KEY_PATH}"`);
-          } catch (chmodError) {
-            Logger.warn(`Failed to set permissions on account key: ${chmodError instanceof Error ? chmodError.message : 'Unknown error'}`);
-          }
+        try {
+          await execAsync(`chmod 600 "${ACCOUNT_KEY_PATH}"`);
+        } catch (chmodError) {
+          Logger.warn(`Failed to set permissions on account key: ${chmodError instanceof Error ? chmodError.message : 'Unknown error'}`);
         }
         accountKey = privateKey;
       }
       
-      this.acme = new AcmeClient.Client({
-        directoryUrl: env.NODE_ENV === 'production' 
+      this.acme = new AcmeClient.Client({        directoryUrl: env.NODE_ENV === 'production' 
           ? AcmeClient.directory.letsencrypt.production
           : AcmeClient.directory.letsencrypt.staging,
         accountKey
@@ -81,6 +83,7 @@ export class SSLManager {
       throw new Error('Failed to initialize SSL manager');
     }
   }
+
   static async requestCertificate(domain: string, projectId: string): Promise<CertificateInfo> {
     try {
       // In production, use Certbot for certificate issuance

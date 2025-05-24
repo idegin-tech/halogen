@@ -8,10 +8,9 @@ import { validateEnv } from '../config/env.config';
 const execAsync = promisify(exec);
 const env = validateEnv();
 
-// Directory for privileged command scripts
-const SCRIPTS_DIR = process.platform === 'win32' 
-  ? 'C:\\scripts'
-  : '/usr/local/bin/halogen-scripts';
+// Directory for privileged command scripts - use home directory for user permissions
+const SCRIPTS_DIR = '/home/ubuntu/halogen-scripts';
+const IS_PRODUCTION = env.NODE_ENV === 'production';
 
 export interface CommandResult {
   success: boolean;
@@ -24,11 +23,16 @@ export interface CommandResult {
  * Utility class for executing privileged commands
  * Uses a secure approach to execute system commands with elevated privileges
  */
-export class PrivilegedCommandUtil {
-  /**
+export class PrivilegedCommandUtil {  /**
    * Initialize the script directory and ensure it exists
    */
   static async initialize(): Promise<void> {
+    // Skip initialization in non-production environments
+    if (!IS_PRODUCTION) {
+      Logger.info('Skipping privileged command scripts initialization in non-production environment');
+      return;
+    }
+    
     try {
       await fs.ensureDir(SCRIPTS_DIR);
       Logger.info(`Privileged command scripts directory initialized at ${SCRIPTS_DIR}`);
@@ -43,16 +47,19 @@ export class PrivilegedCommandUtil {
    * @param scriptName Name of the script file
    * @param scriptContent Content of the script
    * @returns Path to the created script
-   */
-  static async createScript(scriptName: string, scriptContent: string): Promise<string> {
+   */  static async createScript(scriptName: string, scriptContent: string): Promise<string> {
+    // Skip script creation in non-production environments
+    if (!IS_PRODUCTION) {
+      Logger.info(`Skipping script creation in non-production environment: ${scriptName}`);
+      return `${SCRIPTS_DIR}/${scriptName}`;
+    }
+    
     try {
       const scriptPath = path.join(SCRIPTS_DIR, scriptName);
       await fs.writeFile(scriptPath, scriptContent);
       
       // Make script executable
-      if (process.platform !== 'win32') {
-        await execAsync(`chmod +x "${scriptPath}"`);
-      }
+      await execAsync(`chmod +x "${scriptPath}"`);
       
       return scriptPath;
     } catch (error) {
@@ -66,29 +73,28 @@ export class PrivilegedCommandUtil {
    * @param command Command to execute
    * @param args Command arguments
    * @returns Result of command execution
-   */
-  static async executeCommand(command: string, args: string[] = []): Promise<CommandResult> {
+   */  static async executeCommand(command: string, args: string[] = []): Promise<CommandResult> {
+    // Skip execution in non-production environments
+    if (!IS_PRODUCTION) {
+      Logger.info(`Skipping command execution in non-production environment: ${command} ${args.join(' ')}`);
+      return {
+        success: true,
+        stdout: 'Command execution skipped in non-production environment',
+        stderr: ''
+      };
+    }
+    
     try {
       Logger.info(`Executing privileged command: ${command} ${args.join(' ')}`);
       
-      // For Linux/Unix systems, use sudo
-      if (process.platform !== 'win32') {
-        const sudoCommand = `sudo ${command} ${args.join(' ')}`;
-        const { stdout, stderr } = await execAsync(sudoCommand);
-        return {
-          success: true,
-          stdout,
-          stderr
-        };
-      } else {
-        // For Windows, just execute the command
-        const { stdout, stderr } = await execAsync(`${command} ${args.join(' ')}`);
-        return {
-          success: true,
-          stdout,
-          stderr
-        };
-      }
+      // Use sudo for privileged execution
+      const sudoCommand = `sudo ${command} ${args.join(' ')}`;
+      const { stdout, stderr } = await execAsync(sudoCommand);
+      return {
+        success: true,
+        stdout,
+        stderr
+      };
     } catch (error) {
       Logger.error(`Privileged command execution error: ${error instanceof Error ? error.message : 'Unknown error'}`);
       return {
