@@ -33,9 +33,9 @@ export interface CertificateInfo {
 }
 
 export class SSLManager {
-  private static acme: AcmeClient.Client;  private static initialized = false;
-  
-  static async initializeClient(): Promise<void> {
+  private static acme: AcmeClient.Client;
+  private static initialized = false;
+    static async initializeClient(): Promise<void> {
     if (this.initialized) return;
 
     // Skip initialization in non-production environments
@@ -58,7 +58,6 @@ export class SSLManager {
       } catch (error) {
         // Generate a new account key if it doesn't exist
         Logger.info('Creating new ACME account key');
-        // Fix for TS error - AcmeClient.forge.createPrivateKey() returns the key directly
         privateKey = await AcmeClient.forge.createPrivateKey();
         await fs.writeFile(ACCOUNT_KEY_PATH, privateKey);
         // Set proper permissions for the account key
@@ -70,7 +69,8 @@ export class SSLManager {
         accountKey = privateKey;
       }
       
-      this.acme = new AcmeClient.Client({        directoryUrl: env.NODE_ENV === 'production' 
+      this.acme = new AcmeClient.Client({
+        directoryUrl: env.NODE_ENV === 'production' 
           ? AcmeClient.directory.letsencrypt.production
           : AcmeClient.directory.letsencrypt.staging,
         accountKey

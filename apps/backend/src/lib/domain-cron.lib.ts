@@ -15,7 +15,9 @@ export class DomainCronJobs {
     private static renewalJob: CronJob;
     private static verificationRetryJob: CronJob;
     private static domainHealthCheckJob: CronJob;
-    private static initialized = false;    static initialize(): void {
+    private static initialized = false;
+    
+    static initialize(): void {
         if (this.initialized) return;
 
         // Skip cron jobs in non-production environments
