@@ -411,4 +411,66 @@ export class DomainsService {    static async addDomain(projectId: string, domai
             throw error;
         }
     }
+
+    /**
+     * Update domain verification attempt information
+     * @param domainId Domain ID
+     * @param reason Verification failure reason or message
+     * @returns Updated domain data
+     */
+    static async updateDomainVerificationAttempt(domainId: string, reason: string): Promise<DomainData> {
+        try {
+            const domain = await DomainModel.findByIdAndUpdate(
+                domainId,
+                {
+                    lastVerificationAttempt: new Date(),
+                    verificationFailReason: reason
+                },
+                { new: true }
+            );
+            
+            if (!domain) {
+                throw new Error('Domain not found');
+            }
+            
+            return domain.toObject() as DomainData;
+        } catch (error) {
+            Logger.error(`Update domain verification attempt error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            throw error;
+        }
+    }
+    
+    /**
+     * Update domain SSL certificate status
+     * @param domainId Domain ID
+     * @param status SSL status (ACTIVE, FAILED, etc.)
+     * @param expiryDate Certificate expiry date
+     * @returns Updated domain data
+     */
+    static async updateDomainSSLStatus(domainId: string, status: string, expiryDate: Date | null): Promise<DomainData> {
+        try {
+            const updateData: any = {
+                sslIssuedAt: status === 'ACTIVE' ? new Date() : null
+            };
+            
+            if (expiryDate) {
+                updateData.sslExpiresAt = expiryDate;
+            }
+            
+            const domain = await DomainModel.findByIdAndUpdate(
+                domainId,
+                updateData,
+                { new: true }
+            );
+            
+            if (!domain) {
+                throw new Error('Domain not found');
+            }
+            
+            return domain.toObject() as DomainData;
+        } catch (error) {
+            Logger.error(`Update domain SSL status error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            throw error;
+        }
+    }
 }

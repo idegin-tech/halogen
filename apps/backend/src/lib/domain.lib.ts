@@ -1,21 +1,33 @@
+
+
+import { validateEnv } from '../config/env.config';
 import dns from 'dns';
 import { promisify } from 'util';
-import { DomainStatus } from '@halogen/common';
-import Logger from '../config/logger.config';
-import { exec } from 'child_process';
 import fs from 'fs-extra';
 import path from 'path';
+import { exec } from 'child_process';
 import mustache from 'mustache';
-import { validateEnv } from '../config/env.config';
+import Logger from '../config/logger.config';
+import { DomainStatus } from '@halogen/common';
+import PrivilegedCommandUtil from './privileged-command.util';
+import { SSLManager } from './ssl.lib';
 
 const env = validateEnv();
 const lookup = promisify(dns.lookup);
 const resolveTxt = promisify(dns.resolveTxt);
 const execAsync = promisify(exec);
 
+// Template and config directories
 const NGINX_TEMPLATES_DIR = path.join(process.cwd(), 'nginx-templates');
 const NGINX_CONFIG_DIR = path.join(process.cwd(), 'nginx-configs');
+
+// Production Nginx directories
+const NGINX_SITES_AVAILABLE = '/etc/nginx/sites-available';
+const NGINX_SITES_ENABLED = '/etc/nginx/sites-enabled';
+
+// Verification constants
 const VERIFICATION_TXT_NAME = 'halogen-domain-verification';
+const IS_PRODUCTION = env.NODE_ENV === 'production';
 
 export interface DomainInfo {
   name: string;
@@ -66,7 +78,6 @@ export class DomainLib {
       return false;
     }
   }
-
   static async generateNginxConfig(options: NginxConfigOptions): Promise<string> {
     try {
       await fs.ensureDir(NGINX_TEMPLATES_DIR);
@@ -83,37 +94,121 @@ export class DomainLib {
         domain: options.domain,
         projectId: options.projectId,
         apiEndpoint: env.API_ENDPOINT || 'api.mortarstudio.com',
-        sslCertPath: options.sslCertPath,
-        sslKeyPath: options.sslKeyPath
+        sslCertPath: options.sslCertPath || '/etc/letsencrypt/live/' + options.domain + '/fullchain.pem',
+        sslKeyPath: options.sslKeyPath || '/etc/letsencrypt/live/' + options.domain + '/privkey.pem'
       });
       
-      const outputPath = path.join(NGINX_CONFIG_DIR, `${options.domain}.conf`);
-      await fs.writeFile(outputPath, outputConfig);
+      // Save config locally for reference
+      const localOutputPath = path.join(NGINX_CONFIG_DIR, `${options.domain}.conf`);
+      await fs.writeFile(localOutputPath, outputConfig);
       
-      return outputPath;
+      // If in production, use privileged commands to create the actual Nginx config
+      if (IS_PRODUCTION) {
+        return this.deployNginxConfig(options.domain, outputConfig);
+      }
+      
+      return localOutputPath;
     } catch (error) {
       Logger.error(`Error generating Nginx config: ${error instanceof Error ? error.message : 'Unknown error'}`);
       throw new Error('Failed to generate Nginx configuration');
     }
   }
-
-  static async reloadNginx(): Promise<boolean> {
+  
+  /**
+   * Deploy Nginx configuration file to production server
+   * @param domain Domain name
+   * @param configContent Nginx configuration content
+   * @returns Path to the deployed configuration file
+   */
+  static async deployNginxConfig(domain: string, configContent: string): Promise<string> {
     try {
-      const { stdout, stderr } = await execAsync('nginx -t');
+      const configPath = path.join(NGINX_SITES_AVAILABLE, `${domain}.conf`);
+      const enabledPath = path.join(NGINX_SITES_ENABLED, `${domain}.conf`);
       
-      if (stderr && !stderr.includes('syntax is ok')) {
-        Logger.error(`Nginx config test failed: ${stderr}`);
-        return false;
+      // Create a script to deploy the Nginx configuration
+      const deployScript = `#!/bin/bash
+# Create the configuration file
+cat > "${configPath}" << 'EOL'
+${configContent}
+EOL
+
+# Create symlink if it doesn't exist
+if [ ! -f "${enabledPath}" ]; then
+  ln -s "${configPath}" "${enabledPath}"
+fi
+
+# Test Nginx configuration
+nginx -t
+
+# If successful, reload Nginx
+if [ $? -eq 0 ]; then
+  nginx -s reload
+  echo "Nginx configuration for ${domain} deployed successfully"
+else
+  echo "Nginx configuration test failed"
+  exit 1
+fi
+`;
+      
+      // Execute the deployment script with elevated privileges
+      const result = await PrivilegedCommandUtil.createAndExecuteScript(
+        `deploy-nginx-${domain}.sh`,
+        deployScript
+      );
+      
+      if (!result.success) {
+        throw new Error(`Failed to deploy Nginx configuration: ${result.stderr}`);
       }
       
-      await execAsync('nginx -s reload');
-      return true;
+      Logger.info(`Nginx configuration for ${domain} deployed successfully`);
+      return configPath;
+    } catch (error) {
+      Logger.error(`Error deploying Nginx config: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error('Failed to deploy Nginx configuration');
+    }
+  }
+  static async reloadNginx(): Promise<boolean> {
+    try {
+      if (IS_PRODUCTION) {
+        // Use privileged command utility to reload Nginx
+        const reloadScript = `#!/bin/bash
+# Test Nginx configuration
+nginx -t
+
+# If successful, reload Nginx
+if [ $? -eq 0 ]; then
+  nginx -s reload
+  echo "Nginx reloaded successfully"
+  exit 0
+else
+  echo "Nginx configuration test failed"
+  exit 1
+fi
+`;
+        
+        const result = await PrivilegedCommandUtil.createAndExecuteScript(
+          'reload-nginx.sh',
+          reloadScript
+        );
+        
+        return result.success;
+      } else {
+        // Development mode - simulate reload or use local Nginx if available
+        const { stdout, stderr } = await execAsync('nginx -t');
+        
+        if (stderr && !stderr.includes('syntax is ok')) {
+          Logger.error(`Nginx config test failed: ${stderr}`);
+          return false;
+        }
+        
+        await execAsync('nginx -s reload');
+        return true;
+      }
     } catch (error) {
       Logger.error(`Error reloading Nginx: ${error instanceof Error ? error.message : 'Unknown error'}`);
       return false;
     }
   }
-
   static async createDefaultTemplates(): Promise<void> {
     await fs.ensureDir(NGINX_TEMPLATES_DIR);
     
@@ -128,6 +223,8 @@ export class DomainLib {
         proxy_set_header Connection 'upgrade';
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
         proxy_cache_bypass $http_upgrade;
         proxy_set_header X-Project-ID {{projectId}};
     }
@@ -159,6 +256,14 @@ server {
     include /etc/letsencrypt/options-ssl-nginx.conf;
     ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
     
+    # Security headers
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    
+    # Proxy to application
     location / {
         proxy_pass http://localhost:3001;
         proxy_http_version 1.1;
@@ -166,13 +271,73 @@ server {
         proxy_set_header Connection 'upgrade';
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
         proxy_cache_bypass $http_upgrade;
         proxy_set_header X-Project-ID {{projectId}};
+        
+        # Timeout settings
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+    
+    # Deny access to hidden files
+    location ~ /\\. {
+        deny all;
+        access_log off;
+        log_not_found off;
     }
 }`;
 
     await fs.writeFile(path.join(NGINX_TEMPLATES_DIR, 'domain.conf.template'), httpTemplate);
     await fs.writeFile(path.join(NGINX_TEMPLATES_DIR, 'ssl-domain.conf.template'), httpsTemplate);
+    
+    // Create additional templates for specific use cases if needed
+    const wildcardTemplate = `server {
+    listen 80;
+    server_name *.{{domain}};
+    
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+    
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl http2;
+    server_name *.{{domain}};
+    
+    ssl_certificate {{sslCertPath}};
+    ssl_certificate_key {{sslKeyPath}};
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+    
+    # Security headers
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    
+    location / {
+        proxy_pass http://localhost:3001;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+        proxy_set_header X-Project-ID {{projectId}};
+    }
+}`;
+    
+    await fs.writeFile(path.join(NGINX_TEMPLATES_DIR, 'wildcard.conf.template'), wildcardTemplate);
   }
 
   static async getDomainStatus(domain: string, verificationToken?: string): Promise<{
@@ -202,5 +367,65 @@ server {
       verified,
       recommendedStatus
     };
+  }
+
+  /**
+   * Set up a domain with Nginx configuration and SSL certificate
+   * This is the main method that should be called to configure a domain
+   * @param domain Domain name
+   * @param projectId Project ID
+   * @param generateSSL Whether to generate SSL certificate
+   * @returns Result of domain setup
+   */
+  static async setupDomain(domain: string, projectId: string, generateSSL: boolean = true): Promise<boolean> {
+    try {
+      Logger.info(`Setting up domain ${domain} for project ${projectId}`);
+      
+      // In production, use privileged command utility
+      if (IS_PRODUCTION) {
+        const result = await PrivilegedCommandUtil.setupDomain(domain, projectId, {
+          configureOnly: !generateSSL
+        });
+        
+        if (!result.success) {
+          Logger.error(`Failed to set up domain ${domain}: ${result.stderr}`);
+          return false;
+        }
+        
+        Logger.info(`Domain ${domain} set up successfully`);
+        return true;
+      } else {
+        // In development, use local methods
+        // Generate Nginx config
+        await this.generateNginxConfig({
+          domain,
+          projectId
+        });
+        
+        // Generate SSL if requested
+        if (generateSSL) {
+          const certificate = await SSLManager.requestCertificate(domain, projectId);
+          
+          if (!certificate.isValid) {
+            Logger.error(`Failed to generate SSL certificate for ${domain}`);
+            return false;
+          }
+          
+          // Update Nginx config with SSL
+          await this.generateNginxConfig({
+            domain,
+            projectId,
+            sslCertPath: certificate.certPath,
+            sslKeyPath: certificate.keyPath
+          });
+        }
+        
+        await this.reloadNginx();
+        return true;
+      }
+    } catch (error) {
+      Logger.error(`Error setting up domain ${domain}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      return false;
+    }
   }
 }

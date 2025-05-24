@@ -3,9 +3,7 @@ import Logger from '../config/logger.config';
 import { FileSystemUtil } from './fs.util';
 import { appConfig } from '@halogen/common';
 
-/**
- * Utility class for file replacement operations
- */
+
 export class FileReplacementUtil {
   /**
    * Replace or create a file in Cloudinary with a consistent naming pattern
