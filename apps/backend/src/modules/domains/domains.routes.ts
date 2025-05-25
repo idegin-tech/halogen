@@ -12,10 +12,7 @@ const router = Router();
 
 router.use(domainRateLimiter);
 
-router.post(
-    '/:projectId',
-    DomainsController.addDomain
-);
+
 router.get(
     '/:projectId',
     RequestValidation.validateQuery(domainsQuerySchema),
@@ -52,5 +49,10 @@ router.delete(
     DomainsController.deleteDomain
 );
 router.get('/domains-status', DomainsController.getDomainSystemStatus);
+
+router.post(
+    '/new/:projectId',
+    DomainsController.addDomain
+);
 
 export default router;

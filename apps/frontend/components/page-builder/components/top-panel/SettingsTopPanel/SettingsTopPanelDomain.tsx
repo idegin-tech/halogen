@@ -16,35 +16,7 @@ import { DomainData, DomainStatus, appConfig } from '@halogen/common';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import axios from 'axios';
 
-const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL,
-  withCredentials: true,
-  headers: {
-    'Content-Type': 'application/json',
-  }
-});
 
-
-const getDomainUiStatus = (domainData?: DomainData | null): 'initial' | 'pending-dns' | 'propagating' | 'connected' | 'failed' => {
-    if (!domainData) return 'initial';
-
-    switch (domainData.status) {
-        case DomainStatus.PENDING:
-            return 'initial';
-        case DomainStatus.PENDING_DNS:
-            return 'pending-dns';
-        case DomainStatus.PROPAGATING:
-            return 'propagating';
-        case DomainStatus.ACTIVE:
-            return 'connected';
-        case DomainStatus.FAILED:
-            return 'failed';
-        case DomainStatus.SUSPENDED:
-            return 'failed';
-        default:
-            return 'initial';
-    }
-};
 
 interface DnsRecord {
     type: string;
@@ -54,13 +26,42 @@ interface DnsRecord {
 }
 
 export default function SettingsTopPanelDomain() {
+    const api = axios.create({
+        baseURL: process.env.NEXT_PUBLIC_API_URL,
+        withCredentials: true,
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    });
+
+
+    const getDomainUiStatus = (domainData?: DomainData | null): 'initial' | 'pending-dns' | 'propagating' | 'connected' | 'failed' => {
+        if (!domainData) return 'initial';
+
+        switch (domainData.status) {
+            case DomainStatus.PENDING:
+                return 'initial';
+            case DomainStatus.PENDING_DNS:
+                return 'pending-dns';
+            case DomainStatus.PROPAGATING:
+                return 'propagating';
+            case DomainStatus.ACTIVE:
+                return 'connected';
+            case DomainStatus.FAILED:
+                return 'failed';
+            case DomainStatus.SUSPENDED:
+                return 'failed';
+            default:
+                return 'initial';
+        }
+    };
     const { state: { project } } = useProjectContext();
     const projectId = project?._id;
 
     const [domain, setDomain] = useState('');
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-    const [verificationToken, setVerificationToken] = useState<string | null>(null);    const [serverIP, setServerIP] = useState<string>(appConfig.ServerIPAddress); 
-      const fetchDomainVerificationToken = async (domainId: string) => {
+    const [verificationToken, setVerificationToken] = useState<string | null>(null); const [serverIP, setServerIP] = useState<string>(appConfig.ServerIPAddress);
+    const fetchDomainVerificationToken = async (domainId: string) => {
         if (!domainId) return null;
 
         try {
@@ -104,11 +105,11 @@ export default function SettingsTopPanelDomain() {
         return () => {
             if (interval) clearInterval(interval);
         };
-    }, [domainData]);    const handleDomainSubmit = async () => {
+    }, [domainData]); const handleDomainSubmit = async () => {
         if (!domain || !projectId) return;
 
         try {
-            const response = await api.post(`/domains/${projectId}`, { name: domain });
+            const response = await api.post(`/domains/new/${projectId}`, { name: domain });
             const result = response.data.payload;
 
             if (result) {
@@ -123,7 +124,7 @@ export default function SettingsTopPanelDomain() {
             const errorMessage = error instanceof Error ? error.message : 'Failed to add domain';
             toast.error(errorMessage);
         }
-    };    const checkVerificationStatus = async (domainId: string) => {
+    }; const checkVerificationStatus = async (domainId: string) => {
         try {
             if (!verificationToken) {
                 const token = await fetchDomainVerificationToken(domainId);
@@ -149,7 +150,7 @@ export default function SettingsTopPanelDomain() {
             const errorMessage = error instanceof Error ? error.message : 'Failed to check verification status';
             toast.error(errorMessage);
         }
-    };const handleDnsVerification = async () => {
+    }; const handleDnsVerification = async () => {
         if (!domainData?._id) return;
 
         try {
@@ -170,7 +171,7 @@ export default function SettingsTopPanelDomain() {
             console.error('Domain verification error:', error);
             toast.error(errorMessage);
         }
-    };const handleRequestSSL = async () => {
+    }; const handleRequestSSL = async () => {
         if (!domainData?._id) return;
 
         try {
@@ -182,7 +183,7 @@ export default function SettingsTopPanelDomain() {
             console.error('SSL generation error:', error);
             toast.error(errorMessage);
         }
-    };    const handleDelete = async () => {
+    }; const handleDelete = async () => {
         if (!domainData?._id) return;
 
         try {
