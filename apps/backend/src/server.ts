@@ -40,6 +40,7 @@ class App {
 
     constructor() {
         this.app = express();
+        this.app.set('trust proxy', true);
         this.configureSecurityMiddleware();
         this.configureStandardMiddleware();
         this.configureRoutes();
@@ -50,24 +51,29 @@ class App {
         this.app.use(helmet());
         const corsOrigins = env.CORS_ORIGIN.split(',');
         this.app.use(cors({
-            origin: (origin, callback) => {
-                if (!origin) return callback(null, true);
+            origin: (origin, callback) => {                if (!origin) return callback(null, true);
                 if (env.NODE_ENV === 'development') return callback(null, true);
 
+                Logger.debug(`CORS: Checking origin: ${origin} against allowed origins: ${corsOrigins.join(', ')}`);
+
                 const isAllowed = corsOrigins.some(allowedOrigin => {
-                    if (allowedOrigin === origin) return true;
+                    if (allowedOrigin === origin) {
+                        Logger.debug(`CORS: Direct match for ${origin}`);
+                        return true;
+                    }
 
                     if (allowedOrigin.includes('*')) {
                         const domainPart = allowedOrigin.replace('*.', '');
-                        return origin.endsWith(domainPart);
+                        const matches = origin.endsWith(domainPart);
+                        Logger.debug(`CORS: Wildcard check for ${origin} against ${domainPart} - Match: ${matches}`);
+                        return matches;
                     }
 
                     return false;
-                });
-
-                if (isAllowed) {
+                });                if (isAllowed) {
                     callback(null, true);
                 } else {
+                    Logger.warn(`CORS: Origin rejected: ${origin}`);
                     callback(new Error('Not allowed by CORS'));
                 }
             },
