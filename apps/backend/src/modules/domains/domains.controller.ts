@@ -6,7 +6,7 @@ import { DomainQueryOptions, DomainStatus } from '@halogen/common';
 import Logger from '../../config/logger.config';
 import { DomainQueue } from '../../lib/domain-queue.lib';
 import { SSLManager } from '../../lib/ssl.lib';
-import { isProduction, shouldRunProductionOperations } from '../../config/env.config';
+
 
 export class DomainsController {
     /**

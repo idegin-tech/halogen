@@ -6,11 +6,7 @@ import { SSLManager } from '../../lib/ssl.lib';
 import { DomainQueue } from '../../lib/domain-queue.lib';
 import { isDomainBlacklisted } from './domain-blacklist';
 import PrivilegedCommandUtil from '../../lib/privileged-command.util';
-import { isProduction } from '../../config/env.config';
-
-const shouldRunProductionOperations = (): boolean => {
-    return isProduction() && process.platform !== 'win32';
-};
+import { isProd } from '../../config/env.config';
 
 export class DomainsService {
     static async addDomain(projectId: string, domainData: { name: string }): Promise<DomainData & { verificationToken?: string }> {
@@ -52,7 +48,7 @@ export class DomainsService {
             await savedDomain.save();
 
             // Only queue verification job in production environment
-            if (shouldRunProductionOperations()) {
+            if (isProd) {
                 await DomainQueue.addVerificationJob(savedDomain.toObject() as DomainData, verificationToken);
                 Logger.info(`Domain verification job queued for ${domainName} in production environment`);
             } else {
@@ -165,7 +161,7 @@ export class DomainsService {
             const updatedDomain = await domain.save();
 
             // Only queue verification job in production environment
-            if (shouldRunProductionOperations()) {
+            if (isProd) {
                 await DomainQueue.addVerificationJob(updatedDomain.toObject() as DomainData, verificationToken);
                 Logger.info(`Domain verification triggered for ${domain.name} in production environment`);
             } else {
@@ -201,7 +197,7 @@ export class DomainsService {
             }
 
             // Only check actual verification in production
-            if (shouldRunProductionOperations()) {
+            if (isProd) {
                 const jobStatus = await DomainQueue.getVerificationJobStatus(domainId);
                 const isVerified = domain.status === DomainStatus.ACTIVE;
 
@@ -280,7 +276,6 @@ export class DomainsService {
         domainId: string;
         sslStatus: string;
         message: string;
-        isProduction?: boolean;
     }> {
         try {
             const domain = await DomainModel.findById(domainId);
@@ -294,7 +289,7 @@ export class DomainsService {
                 throw new Error('Domain must be verified before SSL certificate can be generated');
             }
 
-            if (shouldRunProductionOperations()) {
+            if (isProd) {
                 await DomainQueue.addSSLGenerationJob(domain.toObject() as DomainData);
                 Logger.info(`SSL generation job queued for ${domain.name} in production environment`);
 
@@ -302,7 +297,6 @@ export class DomainsService {
                     domainId: (domain._id as any).toString(),
                     sslStatus: 'generating',
                     message: 'SSL certificate generation initiated',
-                    isProduction: true
                 };
             } else {
                 Logger.info(`SSL generation skipped for ${domain.name} - not in production environment`);
@@ -312,7 +306,6 @@ export class DomainsService {
                     domainId: (domain._id as any).toString(),
                     sslStatus: 'active',
                     message: 'SSL certificate generation simulated in development environment',
-                    isProduction: false
                 };
             }
         } catch (error) {
@@ -335,7 +328,7 @@ export class DomainsService {
                 throw new Error('Domain not found');
             }
 
-            if (shouldRunProductionOperations()) {
+            if (isProd) {
                 const jobStatus = await DomainQueue.getSSLJobStatus(domainId);
 
                 if (jobStatus.inProgress) {
@@ -382,7 +375,7 @@ export class DomainsService {
                 return false;
             }
 
-            if (shouldRunProductionOperations()) {
+            if (isProd) {
                 // Only in production and on Linux, revoke SSL and remove Nginx config
 
                 // If the domain has SSL certificate, revoke it
@@ -448,7 +441,7 @@ fi`;
 
             // If domain becomes active, generate Nginx config only in production
             if (status === DomainStatus.ACTIVE) {
-                if (shouldRunProductionOperations()) {
+                if (isProd) {
                     try {
                         await DomainLib.generateNginxConfig({
                             domain: domain.name,

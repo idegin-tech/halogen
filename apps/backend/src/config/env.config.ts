@@ -5,15 +5,9 @@ import Logger from './logger.config';
 
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
-// Export a helper function to check if we're in production environment
-export const isProduction = (): boolean => {
-  return process.env.NODE_ENV === 'production';
-};
 
-// Helper to determine if operations that modify the filesystem should run
-export const shouldRunProductionOperations = (): boolean => {
-  return isProduction() && process.platform !== 'win32';
-};
+export const isProd = process.env.NODE_ENV === 'production';
+
 
 export function validateEnv() {try {
     const env = cleanEnv(process.env, {
