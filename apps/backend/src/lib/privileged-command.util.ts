@@ -3,12 +3,11 @@ import { promisify } from 'util';
 import fs from 'fs-extra';
 import path from 'path';
 import Logger from '../config/logger.config';
-import { validateEnv, isProduction, shouldRunProductionOperations } from '../config/env.config';
+import { isProd, validateEnv } from '../config/env.config';
 
 const execAsync = promisify(exec);
 const env = validateEnv();
 
-// Directory for privileged command scripts - use home directory for user permissions
 const SCRIPTS_DIR = '/home/msuser/halogen-scripts';
 
 export interface CommandResult {
@@ -26,11 +25,11 @@ export class PrivilegedCommandUtil {  /**
    * Initialize the script directory and ensure it exists
    */  static async initialize(): Promise<void> {
     // Skip initialization in non-production environments
-    if (!shouldRunProductionOperations()) {
+    if (!isProd) {
       Logger.info('Skipping privileged command scripts initialization in non-production environment');
       return;
     }
-    
+
     try {
       await fs.ensureDir(SCRIPTS_DIR);
       Logger.info(`Privileged command scripts directory initialized at ${SCRIPTS_DIR}`);
@@ -46,19 +45,19 @@ export class PrivilegedCommandUtil {  /**
    * @param scriptContent Content of the script
    * @returns Path to the created script
    */  static async createScript(scriptName: string, scriptContent: string): Promise<string> {
-    // Skip script creation in non-production environments
-    if (!shouldRunProductionOperations()) {
+
+    if (!isProd) {
       Logger.info(`Skipping script creation in non-production environment: ${scriptName}`);
       return `${SCRIPTS_DIR}/${scriptName}`;
     }
-    
+
     try {
       const scriptPath = path.join(SCRIPTS_DIR, scriptName);
       await fs.writeFile(scriptPath, scriptContent);
-      
+
       // Make script executable
       await execAsync(`chmod +x "${scriptPath}"`);
-      
+
       return scriptPath;
     } catch (error) {
       Logger.error(`Failed to create script ${scriptName}: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -73,7 +72,7 @@ export class PrivilegedCommandUtil {  /**
    * @returns Result of command execution
    */  static async executeCommand(command: string, args: string[] = []): Promise<CommandResult> {
     // Skip execution in non-production environments
-    if (!shouldRunProductionOperations()) {
+    if (!isProd) {
       Logger.info(`Skipping command execution in non-production environment: ${command} ${args.join(' ')}`);
       return {
         success: true,
@@ -81,10 +80,10 @@ export class PrivilegedCommandUtil {  /**
         stderr: ''
       };
     }
-    
+
     try {
       Logger.info(`Executing privileged command: ${command} ${args.join(' ')}`);
-      
+
       // Use sudo for privileged execution
       const sudoCommand = `sudo ${command} ${args.join(' ')}`;
       const { stdout, stderr } = await execAsync(sudoCommand);
@@ -134,37 +133,37 @@ export class PrivilegedCommandUtil {  /**
    * @returns Result of domain setup
    */
   static async setupDomain(
-    domain: string, 
-    projectId: string, 
+    domain: string,
+    projectId: string,
     options: { configureOnly?: boolean; renewCert?: boolean } = {}
   ): Promise<CommandResult> {
     try {
       const scriptPath = path.join(SCRIPTS_DIR, 'setup-domain.sh');
       const setupScriptExists = await fs.pathExists(scriptPath);
-      
+
       if (!setupScriptExists) {
         // Copy script from our local scripts directory to the executable scripts directory
         const sourcePath = path.join(process.cwd(), 'scripts', 'setup-domain.sh');
         await fs.copy(sourcePath, scriptPath);
         await fs.chmod(scriptPath, 0o755); // Make executable
       }
-      
+
       const args = [
         '-d', domain,
         '-p', projectId
       ];
-      
+
       if (options.configureOnly) {
         args.push('-c');
       }
-      
+
       if (options.renewCert) {
         args.push('-r');
       }
-      
+
       // Add verbose flag for better logging
       args.push('-v');
-      
+
       return this.executeScript(scriptPath, args);
     } catch (error) {
       Logger.error(`Domain setup error: ${error instanceof Error ? error.message : 'Unknown error'}`);
