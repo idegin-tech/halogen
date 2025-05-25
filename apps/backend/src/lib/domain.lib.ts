@@ -354,13 +354,12 @@ server {
       await fs.ensureDir(NGINX_TEMPLATES_DIR);
       await fs.ensureDir(NGINX_CONFIG_DIR);
       
-      // Create default templates if they don't exist
       await this.createDefaultTemplates();
       
-      // Set proper permissions for the directories in production
       try {
-        await PrivilegedCommandUtil.executeCommand('chmod', ['-R', '755', NGINX_TEMPLATES_DIR]);
-        await PrivilegedCommandUtil.executeCommand('chmod', ['-R', '755', NGINX_CONFIG_DIR]);
+        //todo: check if this is still needed
+        // await PrivilegedCommandUtil.executeCommand('chmod', ['-R', '755', NGINX_TEMPLATES_DIR]);
+        // await PrivilegedCommandUtil.executeCommand('chmod', ['-R', '755', NGINX_CONFIG_DIR]);
         Logger.info('Set permissions on Nginx configuration directories');
       } catch (error) {
         Logger.warn(`Failed to set permissions on Nginx directories: ${error instanceof Error ? error.message : 'Unknown error'}`);
