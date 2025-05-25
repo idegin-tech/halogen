@@ -58,25 +58,73 @@ export class DomainLib {
       return false;
     }
   }
-
   static async verifyDomainOwnership(domain: string, expectedToken: string): Promise<boolean> {
     try {
-      const records = await resolveTxt(domain);
+      Logger.info(`Verifying domain ownership for ${domain} with token: ${expectedToken}`);
       
-      for (const record of records) {
-        for (const txt of record) {
-          if (txt === expectedToken) {
-            return true;
+      // Try checking the TXT record on the main domain
+      try {
+        const records = await resolveTxt(domain);
+        Logger.info(`Found ${records.length} TXT records for ${domain}`);
+        
+        for (const record of records) {
+          for (const txt of record) {
+            Logger.info(`Checking TXT record: "${txt}" against expected: "${expectedToken}"`);
+            if (txt === expectedToken) {
+              return true;
+            }
           }
         }
+      } catch (error) {
+        Logger.warn(`Error checking TXT records for ${domain}: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
       
+      // Try with _txt prefix (common pattern for some DNS providers)
+      try {
+        const txtPrefixDomain = `_txt.${domain}`;
+        Logger.info(`Trying alternative TXT location: ${txtPrefixDomain}`);
+        const txtPrefixRecords = await resolveTxt(txtPrefixDomain);
+        
+        for (const record of txtPrefixRecords) {
+          for (const txt of record) {
+            Logger.info(`Checking TXT record at _txt prefix: "${txt}"`);
+            if (txt === expectedToken) {
+              return true;
+            }
+          }
+        }
+      } catch (error) {
+        // Ignore errors for this secondary check
+        Logger.warn(`No TXT records found at _txt prefix for ${domain}`);
+      }
+      
+      // Try with standard DNS service prefixes
+      try {
+        const txtServiceDomain = `${VERIFICATION_TXT_NAME}.${domain}`;
+        Logger.info(`Trying service-specific TXT location: ${txtServiceDomain}`);
+        const txtServiceRecords = await resolveTxt(txtServiceDomain);
+        
+        for (const record of txtServiceRecords) {
+          for (const txt of record) {
+            // For service-specific subdomain, the value might just be the token part
+            Logger.info(`Checking TXT record at service subdomain: "${txt}"`);
+            if (txt === expectedToken || txt === expectedToken.split('=')[1]) {
+              return true;
+            }
+          }
+        }
+      } catch (error) {
+        // Ignore errors for this secondary check
+        Logger.warn(`No TXT records found at service subdomain for ${domain}`);
+      }
+      
+      Logger.warn(`No matching TXT record found for ${domain}. Expected: ${expectedToken}`);
       return false;
     } catch (error) {
       Logger.error(`Error verifying domain ownership for ${domain}: ${error instanceof Error ? error.message : 'Unknown error'}`);
       return false;
     }
-  }  static async generateNginxConfig(options: NginxConfigOptions): Promise<string> {
+  }static async generateNginxConfig(options: NginxConfigOptions): Promise<string> {
     try {
       // Skip file operations in non-production environments
       if (!isProd) {

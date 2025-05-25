@@ -66,7 +66,12 @@ export default function SettingsTopPanelDomain() {
 
         try {
             const response = await api.get(`/domains/verify/${domainId}`);
-            return response.data.payload?.verificationToken || null;
+            const token = response.data.payload?.verificationToken || null;
+            if (token) {
+                setVerificationToken(token);
+                return token;
+            }
+            return null;
         } catch (error) {
             console.error('Error fetching verification token:', error);
             const errorMessage = error instanceof Error ? error.message : 'Failed to fetch verification token';
@@ -94,6 +99,19 @@ export default function SettingsTopPanelDomain() {
     useEffect(() => {
         let interval: NodeJS.Timeout;
 
+        if (domainData && !verificationToken && (
+            domainData.status === DomainStatus.PENDING || 
+            domainData.status === DomainStatus.PENDING_DNS || 
+            domainData.status === DomainStatus.PROPAGATING || 
+            domainData.status === DomainStatus.FAILED
+        )) {
+            fetchDomainVerificationToken(`${domainData._id}`)
+                .then(token => {
+                    if (token) setVerificationToken(token);
+                });
+        }
+
+        // Set up polling for domains that are in verification process
         if (domainData && (domainData.status === DomainStatus.PENDING_DNS || domainData.status === DomainStatus.PROPAGATING)) {
             interval = setInterval(() => {
                 if (domainData._id) {
@@ -105,7 +123,7 @@ export default function SettingsTopPanelDomain() {
         return () => {
             if (interval) clearInterval(interval);
         };
-    }, [domainData]); const handleDomainSubmit = async () => {
+    }, [domainData]);const handleDomainSubmit = async () => {
         if (!domain || !projectId) return;
 
         try {
@@ -200,32 +218,51 @@ export default function SettingsTopPanelDomain() {
 
     const getDnsRecords = useCallback((): DnsRecord[] => {
         const records: DnsRecord[] = [];
+        const ip = serverIP;
 
-        if (domainData) {
-            const ip = serverIP;
+        // Always add the A records regardless of domain state
+        records.push({
+            type: 'A',
+            host: '@',
+            value: ip,
+            ttl: '3600'
+        });
 
+        records.push({
+            type: 'A',
+            host: 'www',
+            value: ip,
+            ttl: '3600'
+        });
+
+        // Always add the TXT record if we have a verification token, regardless of domain state
+        if (verificationToken) {
+            // Option 1: Add as TXT record at root domain
             records.push({
-                type: 'A',
+                type: 'TXT',
                 host: '@',
-                value: ip,
+                value: verificationToken,
                 ttl: '3600'
             });
-
-            records.push({
-                type: 'A',
-                host: 'www',
-                value: ip,
-                ttl: '3600'
-            });
-
-            if (verificationToken || (domainData && domainData.verificationFailReason && domainData.status === DomainStatus.PENDING_DNS)) {
+            
+            // Option 2: Add as TXT record at subdomain (for providers that don't support @ records)
+            if (domainData) {
+                const tokenValue = verificationToken.split('=')[1] || verificationToken;
                 records.push({
                     type: 'TXT',
-                    host: '@',
-                    value: verificationToken || 'halogen-domain-verification=token-not-available',
+                    host: 'halogen-domain-verification',
+                    value: tokenValue,
                     ttl: '3600'
                 });
             }
+        } else if (domainData && domainData.status !== DomainStatus.ACTIVE) {
+            // If we don't have the token but the domain is not active yet, show a placeholder
+            records.push({
+                type: 'TXT',
+                host: '@',
+                value: 'halogen-domain-verification=loading-verification-token',
+                ttl: '3600'
+            });
         }
 
         return records;
@@ -245,6 +282,55 @@ export default function SettingsTopPanelDomain() {
     }
 
     const dnsRecords = getDnsRecords();
+
+    // Add a function to render the DNS Records table consistently
+    const renderDnsRecordsTable = () => (
+        <div className="rounded-lg border bg-card">
+            <div className="p-3 border-b bg-muted/20">
+                <h4 className="text-sm font-medium">Required DNS Records</h4>
+                <p className="text-xs text-muted-foreground mt-1">Add these records to your domain provider's DNS management area.</p>
+            </div>
+            <Table>
+                <TableHeader>
+                    <TableRow>
+                        <TableHead>Record Type</TableHead>
+                        <TableHead>Host</TableHead>
+                        <TableHead>Value</TableHead>
+                        <TableHead>TTL</TableHead>
+                        <TableHead className="w-8"></TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {dnsRecords.map((record, index) => (
+                        <TableRow key={index} className={record.type === 'TXT' ? 'bg-amber-50/30' : ''}>
+                            <TableCell>
+                                <Badge variant={record.type === 'TXT' ? 'secondary' : 'outline'}>
+                                    {record.type}
+                                </Badge>
+                            </TableCell>
+                            <TableCell className="font-mono text-xs">
+                                {record.host}
+                            </TableCell>
+                            <TableCell className="font-mono text-xs max-w-64 truncate">
+                                {record.value}
+                            </TableCell>
+                            <TableCell>{record.ttl}</TableCell>
+                            <TableCell>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => copyToClipboard(record.value)}
+                                    title="Copy Value"
+                                >
+                                    <Copy className="h-4 w-4" />
+                                </Button>
+                            </TableCell>
+                        </TableRow>
+                    ))}
+                </TableBody>
+            </Table>
+        </div>
+    );
 
     return (
         <div className="space-y-6 p-6 select-none">
@@ -306,16 +392,35 @@ export default function SettingsTopPanelDomain() {
                                 Your domain {domainData?.name} needs to be configured
                             </CardDescription>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="space-y-6">
                             <Alert className="mb-4">
                                 <AlertCircle className="h-4 w-4" />
                                 <AlertTitle>Setup Required</AlertTitle>
                                 <AlertDescription>
-                                    To make your domain work, you need to configure DNS settings at your domain provider.
+                                    To make your domain work, you need to add the following DNS records at your domain provider.
                                 </AlertDescription>
                             </Alert>
-                            <Button onClick={handleDnsVerification}>
-                                Continue Domain Setup
+                            
+                            {/* Show DNS records table */}
+                            {renderDnsRecordsTable()}
+                            
+                            <div className="rounded-lg border p-4 bg-muted/20 space-y-2">
+                                <h4 className="text-sm font-medium">Important Note</h4>
+                                <p className="text-sm text-muted-foreground">
+                                    DNS changes may take up to 24-48 hours to propagate globally. The TXT record is required to verify your domain ownership.
+                                </p>
+                            </div>
+                            
+                            <Button 
+                                onClick={handleDnsVerification}
+                                className="mt-4"
+                            >
+                                {verifyMutation.isLoading ? (
+                                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                ) : (
+                                    <Check className="h-4 w-4 mr-2" />
+                                )}
+                                Verify DNS Settings
                             </Button>
                         </CardContent>
                     </Card>
@@ -337,77 +442,45 @@ export default function SettingsTopPanelDomain() {
                                 Add the following DNS records to your domain provider
                             </CardDescription>
                         </CardHeader>
-                        <CardContent className="space-y-6">
-                            <Alert>
+                        <CardContent className="space-y-6">                            <Alert>
                                 <AlertCircle className="h-4 w-4" />
-                                <AlertTitle>Important</AlertTitle>
-                                <AlertDescription>
-                                    DNS changes may take up to 24 hours to propagate globally. Add a TXT record to verify domain ownership.
+                                <AlertTitle>DNS Verification Options</AlertTitle>
+                                <AlertDescription className="space-y-2">
+                                    <p>Add the TXT record to verify domain ownership. You have two options:</p>
+                                    <ol className="list-decimal pl-5 space-y-1">
+                                        <li><strong>Root domain (@):</strong> Add the full verification token as a TXT record</li>
+                                        <li><strong>Subdomain:</strong> If your DNS provider doesn't support @ records, you can add the TXT record at <code>halogen-domain-verification.{domainData?.name}</code></li>
+                                    </ol>
+                                    <p className="mt-2 text-sm text-muted-foreground">DNS changes may take up to 24 hours to propagate globally.</p>
                                 </AlertDescription>
                             </Alert>
 
-                            <div className="rounded-lg border bg-card">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Record Type</TableHead>
-                                            <TableHead>Host</TableHead>
-                                            <TableHead>Value</TableHead>
-                                            <TableHead>TTL</TableHead>
-                                            <TableHead className="w-8"></TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {dnsRecords.map((record, index) => (
-                                            <TableRow key={index}>
-                                                <TableCell>
-                                                    <Badge variant={record.type === 'TXT' ? 'secondary' : 'outline'}>
-                                                        {record.type}
-                                                    </Badge>
-                                                </TableCell>
-                                                <TableCell className="font-mono text-xs">
-                                                    {record.host}
-                                                </TableCell>
-                                                <TableCell className="font-mono text-xs max-w-64 truncate">
-                                                    {record.value}
-                                                </TableCell>
-                                                <TableCell>{record.ttl}</TableCell>
-                                                <TableCell>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        onClick={() => copyToClipboard(record.value)}
-                                                        title="Copy Value"
-                                                    >
-                                                        <Copy className="h-4 w-4" />
-                                                    </Button>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                            </div>
-
+                            {renderDnsRecordsTable()}
+                            
                             <div className="grid md:grid-cols-2 gap-4">
                                 <div className="rounded-lg border p-4 bg-muted/20 space-y-2">
-                                    <h4 className="text-sm font-medium">Common DNS Providers</h4>
+                                    <h4 className="text-sm font-medium">DNS Record Tips</h4>
                                     <div className="text-sm text-muted-foreground space-y-1">
-                                        <p>• Go54 (Formerly WhoGoHost)</p>
-                                        <p>• Cloudflare</p>
-                                        <p>• GoDaddy</p>
-                                        <p>• Namecheap</p>
+                                        <p>• For the TXT record, some providers require you to enter just the value after the "=" sign</p>
+                                        <p>• The @ symbol means the root domain</p>
+                                        <p>• TTL (Time to Live) can be set to any value between 300-3600 seconds</p>
+                                        <p>• DNS changes typically take 15 minutes to 48 hours to propagate globally</p>
                                     </div>
                                 </div>
 
                                 <div className="rounded-lg border p-4 bg-muted/20 space-y-2">
-                                    <h4 className="text-sm font-medium">Need Help?</h4>
-                                    <p className="text-sm text-muted-foreground">
-                                        Visit our documentation for step-by-step guides for popular domain providers.
-                                    </p>
-                                    <Button variant="outline" size="sm" className="mt-2">
-                                        <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
-                                        View Guides
-                                    </Button>
+                                    <h4 className="text-sm font-medium">Common DNS Providers</h4>
+                                    <div className="text-sm text-muted-foreground space-y-2">
+                                        <p className="flex flex-col">
+                                            <span>• <strong>Cloudflare:</strong> DNS → Records → Add record</span>
+                                        </p>
+                                        <p className="flex flex-col">
+                                            <span>• <strong>GoDaddy:</strong> DNS Management → Add → Record type</span>
+                                        </p>
+                                        <p className="flex flex-col">
+                                            <span>• <strong>Namecheap:</strong> Advanced DNS → Add New Record</span>
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
                         </CardContent>
@@ -452,7 +525,7 @@ export default function SettingsTopPanelDomain() {
                                 Your domain {domainData?.name} is being verified and configured
                             </CardDescription>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="space-y-6">
                             <div className="space-y-4">
                                 <div className="h-2 bg-muted rounded-full overflow-hidden">
                                     <div
@@ -474,9 +547,12 @@ export default function SettingsTopPanelDomain() {
                                 `}</style>
                                 <p className="text-sm text-muted-foreground">
                                     We're verifying your DNS settings and setting up SSL certificates.
-                                    This process is automatic and usually takes 5-10 minutes, but can take longer.
+                                    This process is automatic and usually takes 5-10 minutes, but can take longer if DNS propagation is still in progress.
                                 </p>
 
+                                {/* Always show the required DNS records for reference */}
+                                {renderDnsRecordsTable()}
+                                
                                 <div className="grid grid-cols-2 gap-3 mt-4">
                                     <div className="flex flex-col p-3 border rounded-lg">
                                         <span className="text-xs text-muted-foreground">Domain Verification</span>
@@ -584,19 +660,22 @@ export default function SettingsTopPanelDomain() {
                                         </span>
                                     )}
                                 </div>
-                            </div>
-
-                            {needsSSL && (
+                            </div>                            {needsSSL && (
                                 <Alert className="mt-2 bg-amber-50 text-amber-800 border-amber-200">
                                     <AlertCircle className="h-4 w-4" />
                                     <AlertTitle>SSL Certificate Required</AlertTitle>
                                     <AlertDescription className="flex flex-col gap-3">
-                                        <p>Your domain is verified but needs an SSL certificate to enable HTTPS.</p>
+                                        <p>Your domain is verified but needs an SSL certificate to enable HTTPS. This provides:</p>
+                                        <ul className="list-disc pl-5 space-y-1 text-sm">
+                                            <li>Secure, encrypted connections</li>
+                                            <li>Better search engine rankings</li>
+                                            <li>Improved visitor trust</li>
+                                        </ul>
                                         <Button
                                             onClick={handleRequestSSL}
                                             size="sm"
                                             disabled={sslMutation.isLoading}
-                                            className="w-fit"
+                                            className="w-fit mt-2"
                                         >
                                             {sslMutation.isLoading ? (
                                                 <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
@@ -628,7 +707,7 @@ export default function SettingsTopPanelDomain() {
                                 We couldn't verify your domain ownership
                             </CardDescription>
                         </CardHeader>
-                        <CardContent className="space-y-4">
+                        <CardContent className="space-y-6">
                             <Alert variant="destructive">
                                 <AlertCircle className="h-4 w-4" />
                                 <AlertTitle>Verification Error</AlertTitle>
@@ -638,12 +717,16 @@ export default function SettingsTopPanelDomain() {
                                 </AlertDescription>
                             </Alert>
 
+                            {/* Always show the required DNS records, even in failed state */}
+                            {renderDnsRecordsTable()}
+
                             <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4">
                                 <h4 className="text-sm font-medium mb-2">Troubleshooting Steps:</h4>
                                 <ul className="text-sm space-y-1 list-disc pl-5">
-                                    <li>Verify that you've added all required DNS records</li>
-                                    <li>Check for typos in your DNS configuration</li>
-                                    <li>Wait 24-48 hours for DNS propagation</li>
+                                    <li>Verify that you've added all required DNS records exactly as shown above</li>
+                                    <li>Make sure the TXT record is added to the correct domain (root domain)</li>
+                                    <li>Some DNS providers require you to add the TXT record without the @ symbol</li>
+                                    <li>DNS changes can take 24-48 hours to fully propagate globally</li>
                                     <li>Try using a tool like <a href="https://dnschecker.org" target="_blank" rel="noopener noreferrer" className="text-primary underline">dnschecker.org</a> to verify your DNS records</li>
                                 </ul>
                             </div>
