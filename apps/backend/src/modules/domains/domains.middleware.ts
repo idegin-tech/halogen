@@ -4,7 +4,7 @@ import Logger from '../../config/logger.config';
 
 export const domainRateLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
-  max: 10, // 10 requests per IP
+  max: 30, 
   standardHeaders: true,
   legacyHeaders: false,
   skipSuccessfulRequests: false,
