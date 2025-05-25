@@ -14,8 +14,17 @@ import { useMutation, useQuery } from '@/hooks/useApi';
 import { Badge } from '@/components/ui/badge';
 import { DomainData, DomainStatus, appConfig } from '@halogen/common';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import axios from 'axios';
 
-// Map backend domain status to UI states
+const api = axios.create({
+  baseURL: process.env.NEXT_PUBLIC_API_URL,
+  withCredentials: true,
+  headers: {
+    'Content-Type': 'application/json',
+  }
+});
+
+
 const getDomainUiStatus = (domainData?: DomainData | null): 'initial' | 'pending-dns' | 'propagating' | 'connected' | 'failed' => {
     if (!domainData) return 'initial';
 
@@ -51,16 +60,12 @@ export default function SettingsTopPanelDomain() {
     const [domain, setDomain] = useState('');
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [verificationToken, setVerificationToken] = useState<string | null>(null);    const [serverIP, setServerIP] = useState<string>(appConfig.ServerIPAddress); 
-    
-    const fetchDomainVerificationToken = async (domainId: string) => {
+      const fetchDomainVerificationToken = async (domainId: string) => {
         if (!domainId) return null;
 
         try {
-            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/domains/verify/${domainId}`, {
-                credentials: 'include'
-            });
-            const data = await response.json();
-            return data.payload?.verificationToken || null;
+            const response = await api.get(`/domains/verify/${domainId}`);
+            return response.data.payload?.verificationToken || null;
         } catch (error) {
             console.error('Error fetching verification token:', error);
             const errorMessage = error instanceof Error ? error.message : 'Failed to fetch verification token';
@@ -99,13 +104,12 @@ export default function SettingsTopPanelDomain() {
         return () => {
             if (interval) clearInterval(interval);
         };
-    }, [domainData]);
-
-    const handleDomainSubmit = async () => {
+    }, [domainData]);    const handleDomainSubmit = async () => {
         if (!domain || !projectId) return;
 
         try {
-            const result = await domainMutation.mutate(projectId, { name: domain });
+            const response = await api.post(`/domains/${projectId}`, { name: domain });
+            const result = response.data.payload;
 
             if (result) {
                 if (typeof result === 'object' && result !== null && 'verificationToken' in result) {
@@ -119,9 +123,7 @@ export default function SettingsTopPanelDomain() {
             const errorMessage = error instanceof Error ? error.message : 'Failed to add domain';
             toast.error(errorMessage);
         }
-    };
-
-    const checkVerificationStatus = async (domainId: string) => {
+    };    const checkVerificationStatus = async (domainId: string) => {
         try {
             if (!verificationToken) {
                 const token = await fetchDomainVerificationToken(domainId);
@@ -130,11 +132,20 @@ export default function SettingsTopPanelDomain() {
                 }
             }
 
-            // Using the correct method to send domainId in the request body
-            await verifyMutation.mutate({ domainId });
+            // Using axios directly for the verification check
+            console.log('Sending verification check with payload:', { domainId });
+            await api.post('/domains/check', { domainId });
             domainQuery.refetch();
         } catch (error) {
             console.error('Failed to check verification status:', error);
+            if (axios.isAxiosError(error)) {
+                console.error('Request details:', {
+                    url: error.config?.url,
+                    method: error.config?.method,
+                    data: error.config?.data,
+                    response: error.response?.data
+                });
+            }
             const errorMessage = error instanceof Error ? error.message : 'Failed to check verification status';
             toast.error(errorMessage);
         }
@@ -142,19 +153,28 @@ export default function SettingsTopPanelDomain() {
         if (!domainData?._id) return;
 
         try {
-            await verifyMutation.mutate({ domainId: domainData._id });
+            console.log('Sending DNS verification with payload:', { domainId: domainData._id });
+            await api.post('/domains/check', { domainId: domainData._id });
             domainQuery.refetch();
             toast.success('Verification check initiated');
         } catch (error) {
+            if (axios.isAxiosError(error)) {
+                console.error('Request details:', {
+                    url: error.config?.url,
+                    method: error.config?.method,
+                    data: error.config?.data,
+                    response: error.response?.data
+                });
+            }
             const errorMessage = error instanceof Error ? error.message : 'Failed to verify DNS settings';
             console.error('Domain verification error:', error);
             toast.error(errorMessage);
         }
-    };    const handleRequestSSL = async () => {
+    };const handleRequestSSL = async () => {
         if (!domainData?._id) return;
 
         try {
-            await sslMutation.mutate({ domainId: domainData._id });
+            await api.post('/domains/ssl', { domainId: domainData._id });
             domainQuery.refetch();
             toast.success('SSL certificate generation initiated');
         } catch (error) {
@@ -162,13 +182,11 @@ export default function SettingsTopPanelDomain() {
             console.error('SSL generation error:', error);
             toast.error(errorMessage);
         }
-    };
-
-    const handleDelete = async () => {
+    };    const handleDelete = async () => {
         if (!domainData?._id) return;
 
         try {
-            await domainMutation.remove(`domain/${domainData._id}`);
+            await api.delete(`/domains/domain/${domainData._id}`);
             setDeleteDialogOpen(false);
             domainQuery.refetch();
             toast.success('Domain deleted successfully');
