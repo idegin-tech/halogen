@@ -1,5 +1,14 @@
 import { User } from "./users.types";
 
+export enum DomainStatus {
+  PENDING = 'PENDING',
+  PENDING_DNS = 'PENDING_DNS',
+  PROPAGATING = 'PROPAGATING',
+  ACTIVE = 'ACTIVE',
+  FAILED = 'FAILED',
+  SUSPENDED = 'SUSPENDED'
+}
+
 export type ProjectData = {
   _id?: string;
   project_id: string;
@@ -18,6 +27,23 @@ export type ProjectData = {
     bodyFont: string;
   } | null;
   metadata?: any | null; // Using any as a temporary solution, could be replaced with a proper type
+}
+
+export type DomainData = {
+  _id?: string;
+  name: string;
+  status: DomainStatus;
+  project: string | ProjectData;
+  verifiedAt?: string;
+  sslIssuedAt?: string;
+  sslExpiresAt?: string;
+  txtRecord?: {
+    type: string;
+    name: string;
+    value: string;
+  };
+  createdAt: string;
+  updatedAt: string;
 }
 
 export type PageData = {

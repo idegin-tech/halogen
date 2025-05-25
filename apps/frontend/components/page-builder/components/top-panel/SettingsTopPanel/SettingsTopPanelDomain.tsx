@@ -1,20 +1,62 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { AlertCircle, ArrowRight, Check, Copy, ExternalLink, Globe, Loader2, MoreVertical, RefreshCw, Shield, X } from 'lucide-react';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { useState, useCallback, useEffect } from 'react';
+import axios from 'axios';
+import { appConfig, DomainData, DomainStatus } from '@halogen/common';
 import { toast } from 'sonner';
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardFooter,
+    CardHeader,
+    CardTitle,
+} from '@/components/ui/card';
+import {
+    Alert,
+    AlertDescription,
+    AlertTitle,
+} from '@/components/ui/alert';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+    AlertCircle,
+    ArrowRight,
+    Check,
+    Copy,
+    ExternalLink,
+    Globe,
+    Loader2,
+    MoreVertical,
+    RefreshCw,
+    Shield,
+    X
+} from 'lucide-react';
 import { useProjectContext } from '@/context/project.context';
 import { useMutation, useQuery } from '@/hooks/useApi';
-import { Badge } from '@/components/ui/badge';
-import { DomainData, DomainStatus, appConfig } from '@halogen/common';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import axios from 'axios';
 
 interface DnsRecord {
     type: string;
@@ -31,12 +73,23 @@ export default function SettingsTopPanelDomain() {
         headers: {
             'Content-Type': 'application/json',
         }
-    });    const { state: { project } } = useProjectContext();
+    }); const { state: { project } } = useProjectContext();
     const projectId = project?._id;
     const [domain, setDomain] = useState('');
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-    const [verificationToken, setVerificationToken] = useState<string | null>(null); 
+    const [verificationToken, setVerificationToken] = useState<string | null>(null);
     const [serverIP, setServerIP] = useState<string>(appConfig.ServerIPAddress);
+    const [domains, setDomains] = useState<DomainData[]>([]);
+
+    const copyToClipboard = async (text: string) => {
+        try {
+            await navigator.clipboard.writeText(text);
+            toast.success('Copied to clipboard');
+        } catch (err) {
+            console.error('Failed to copy:', err);
+            toast.error('Failed to copy');
+        }
+    };
 
     const getDomainUiStatus = (domainData?: DomainData | null): 'initial' | 'pending-dns' | 'propagating' | 'connected' | 'failed' => {
         if (!domainData) return 'initial';
@@ -57,7 +110,7 @@ export default function SettingsTopPanelDomain() {
             default:
                 return 'initial';
         }
-    };    const fetchDomainVerificationToken = async (domainId: string) => {
+    }; const fetchDomainVerificationToken = async (domainId: string) => {
         if (!domainId) return null;
 
         try {
@@ -74,7 +127,7 @@ export default function SettingsTopPanelDomain() {
             toast.error(errorMessage);
             return null;
         }
-    };const domainQuery = useQuery<DomainData | null>(
+    }; const domainQuery = useQuery<DomainData | null>(
         projectId ? `/domains/primary/${projectId}` : '',
         {},
         [projectId],
@@ -93,12 +146,11 @@ export default function SettingsTopPanelDomain() {
 
     useEffect(() => {
         let interval: NodeJS.Timeout;
-        
-        // For all pending domains, automatically fetch the verification token if we don't have it
+
         if (domainData && !verificationToken && (
-            domainData.status === DomainStatus.PENDING || 
-            domainData.status === DomainStatus.PENDING_DNS || 
-            domainData.status === DomainStatus.PROPAGATING || 
+            domainData.status === DomainStatus.PENDING ||
+            domainData.status === DomainStatus.PENDING_DNS ||
+            domainData.status === DomainStatus.PROPAGATING ||
             domainData.status === DomainStatus.FAILED
         )) {
             fetchDomainVerificationToken(`${domainData._id}`)
@@ -107,7 +159,6 @@ export default function SettingsTopPanelDomain() {
                 });
         }
 
-        // Set up polling for domains that are in verification process
         if (domainData && (domainData.status === DomainStatus.PENDING_DNS || domainData.status === DomainStatus.PROPAGATING)) {
             interval = setInterval(() => {
                 if (domainData._id) {
@@ -119,7 +170,7 @@ export default function SettingsTopPanelDomain() {
         return () => {
             if (interval) clearInterval(interval);
         };
-    }, [domainData]);    const handleDomainSubmit = async () => {
+    }, [domainData]); const handleDomainSubmit = async () => {
         if (!domain || !projectId) return;
 
         try {
@@ -138,7 +189,9 @@ export default function SettingsTopPanelDomain() {
             const errorMessage = error instanceof Error ? error.message : 'Failed to add domain';
             toast.error(errorMessage);
         }
-    };    const checkVerificationStatus = async (domainId: string) => {
+    };
+
+    const checkVerificationStatus = async (domainId: string) => {
         try {
             if (!verificationToken) {
                 const token = await fetchDomainVerificationToken(domainId);
@@ -147,7 +200,6 @@ export default function SettingsTopPanelDomain() {
                 }
             }
 
-            // Using axios directly for the verification check
             console.log('Sending verification check with payload:', { domainId });
             await api.post('/domains/check', { domainId });
             domainQuery.refetch();
@@ -164,7 +216,7 @@ export default function SettingsTopPanelDomain() {
             const errorMessage = error instanceof Error ? error.message : 'Failed to check verification status';
             toast.error(errorMessage);
         }
-    };    const handleDnsVerification = async () => {
+    }; const handleDnsVerification = async () => {
         if (!domainData?._id) return;
 
         try {
@@ -185,7 +237,9 @@ export default function SettingsTopPanelDomain() {
             console.error('Domain verification error:', error);
             toast.error(errorMessage);
         }
-    };    const handleRequestSSL = async () => {
+    }; 
+    
+    const handleRequestSSL = async () => {
         if (!domainData?._id) return;
 
         try {
@@ -197,7 +251,9 @@ export default function SettingsTopPanelDomain() {
             console.error('SSL generation error:', error);
             toast.error(errorMessage);
         }
-    };    const handleDelete = async () => {
+    }; 
+    
+    const handleDelete = async () => {
         if (!domainData?._id) return;
 
         try {
@@ -212,60 +268,44 @@ export default function SettingsTopPanelDomain() {
         }
     };
 
-    const getDnsRecords = useCallback((): DnsRecord[] => {
+    const getDnsRecords = useCallback((domain: DomainData): DnsRecord[] => {
         const records: DnsRecord[] = [];
-        const ip = serverIP;
 
-        // Always add the A records regardless of domain state
         records.push({
             type: 'A',
             host: '@',
-            value: ip,
+            value: serverIP,
             ttl: '3600'
         });
 
-        records.push({
-            type: 'A',
-            host: 'www',
-            value: ip,
-            ttl: '3600'
-        });        // Add the TXT record only if we have a real verification token
-        if (verificationToken) {
-            // Only show one consistent method to add the verification token
-            // The backend supports verification in multiple locations
-            
-            // Primary method: Add TXT record at root domain (recommended)
+        //@ts-ignore
+        if (domain?.txtRecord?.value) {
             records.push({
                 type: 'TXT',
                 host: '@',
-                value: verificationToken,
+                //@ts-ignore
+                value: domain?.txtRecord.value,
                 ttl: '3600'
             });
-            
-            // Alternative method: Add subdomain record (for DNS providers that don't support @ records)
-            // In this case we must use just the value part after the equals sign
-            if (domainData && verificationToken.includes('=')) {
-                const tokenValue = verificationToken.split('=')[1];
-                records.push({
-                    type: 'TXT',
-                    host: 'halogen-domain-verification',
-                    value: tokenValue,
-                    ttl: '3600',
-                    note: 'Alternative method if your DNS provider does not support @ records'
-                });
-            }
-        } else if (domainData && domainData.status !== DomainStatus.ACTIVE) {
-            // If verification token is not yet available, just show info message elsewhere in UI
-            // instead of adding a placeholder token that could confuse users
         }
 
         return records;
-    }, [domainData, verificationToken, serverIP]);
+    }, [serverIP]);
 
-    const copyToClipboard = (text: string) => {
-        navigator.clipboard.writeText(text);
-        toast.success('Copied to clipboard');
-    };
+    const fetchDomains = useCallback(async () => {
+        if (!projectId) return;
+
+        try {
+            const response = await api.get(`/domains/${projectId}`);
+            setDomains(response.data.data);
+        } catch (error) {
+            console.error('Error fetching domains:', error);
+        }
+    }, [projectId, api]);
+
+    useEffect(() => {
+        fetchDomains();
+    }, [fetchDomains]);
 
     // Loading state
     if (domainQuery.isLoading) {
@@ -294,7 +334,7 @@ export default function SettingsTopPanelDomain() {
                     </Alert>
                 </CardContent>
                 <CardFooter>
-                    <Button 
+                    <Button
                         onClick={() => domainQuery.refetch()}
                         className="w-full"
                     >
@@ -306,7 +346,7 @@ export default function SettingsTopPanelDomain() {
         );
     }
 
-    const dnsRecords = getDnsRecords();
+    const dnsRecords = getDnsRecords(domainData as DomainData);
 
     // Add a function to render the DNS Records table consistently
     const renderDnsRecordsTable = () => (
@@ -425,19 +465,19 @@ export default function SettingsTopPanelDomain() {
                                     To make your domain work, you need to add the following DNS records at your domain provider.
                                 </AlertDescription>
                             </Alert>
-                            
+
                             {/* Show DNS records table */}
                             {renderDnsRecordsTable()}
-                            
+
                             <div className="rounded-lg border p-4 bg-muted/20 space-y-2">
                                 <h4 className="text-sm font-medium">Important Note</h4>
                                 <p className="text-sm text-muted-foreground">
                                     DNS changes may take up to 24-48 hours to propagate globally. The TXT record is required to verify your domain ownership.
                                 </p>
                             </div>
-                            
+
                             {!verificationToken ? (
-                                <Button 
+                                <Button
                                     variant="outline"
                                     disabled
                                     className="mt-4"
@@ -446,7 +486,7 @@ export default function SettingsTopPanelDomain() {
                                     Loading Verification Token...
                                 </Button>
                             ) : (
-                                <Button 
+                                <Button
                                     onClick={handleDnsVerification}
                                     className="mt-4"
                                 >
@@ -479,17 +519,17 @@ export default function SettingsTopPanelDomain() {
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-6">                            <Alert>
-                                <AlertCircle className="h-4 w-4" />
-                                <AlertTitle>DNS Verification Options</AlertTitle>
-                                <AlertDescription className="space-y-2">
-                                    <p>Add the TXT record to verify domain ownership. You have two options:</p>
-                                    <ol className="list-decimal pl-5 space-y-1">
-                                        <li><strong>Root domain (@):</strong> Add the full verification token as a TXT record</li>
-                                        <li><strong>Subdomain:</strong> If your DNS provider doesn't support @ records, you can add the TXT record at <code>halogen-domain-verification.{domainData?.name}</code></li>
-                                    </ol>
-                                    <p className="mt-2 text-sm text-muted-foreground">DNS changes may take up to 24 hours to propagate globally.</p>
-                                </AlertDescription>
-                            </Alert>
+                            <AlertCircle className="h-4 w-4" />
+                            <AlertTitle>DNS Verification Options</AlertTitle>
+                            <AlertDescription className="space-y-2">
+                                <p>Add the TXT record to verify domain ownership. You have two options:</p>
+                                <ol className="list-decimal pl-5 space-y-1">
+                                    <li><strong>Root domain (@):</strong> Add the full verification token as a TXT record</li>
+                                    <li><strong>Subdomain:</strong> If your DNS provider doesn't support @ records, you can add the TXT record at <code>halogen-domain-verification.{domainData?.name}</code></li>
+                                </ol>
+                                <p className="mt-2 text-sm text-muted-foreground">DNS changes may take up to 24 hours to propagate globally.</p>
+                            </AlertDescription>
+                        </Alert>
 
                             {!verificationToken ? (
                                 <div className="flex items-center justify-center p-8 border rounded-lg bg-muted/10">
@@ -501,7 +541,7 @@ export default function SettingsTopPanelDomain() {
                             ) : (
                                 renderDnsRecordsTable()
                             )}
-                            
+
                             <div className="grid md:grid-cols-2 gap-4">
                                 <div className="rounded-lg border p-4 bg-muted/20 space-y-2">
                                     <h4 className="text-sm font-medium">DNS Record Tips</h4>
@@ -583,7 +623,7 @@ export default function SettingsTopPanelDomain() {
 
                                 {/* Always show the required DNS records for reference */}
                                 {renderDnsRecordsTable()}
-                                
+
                                 <div className="grid grid-cols-2 gap-3 mt-4">
                                     <div className="flex flex-col p-3 border rounded-lg">
                                         <span className="text-xs text-muted-foreground">Domain Verification</span>
