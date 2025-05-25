@@ -8,7 +8,7 @@ import { isProd, validateEnv } from '../config/env.config';
 const execAsync = promisify(exec);
 const env = validateEnv();
 
-const SCRIPTS_DIR = '/home/msuser/halogen-scripts';
+const SCRIPTS_DIR = '/home/msuser/nginx-configs';
 
 export interface CommandResult {
   success: boolean;
@@ -23,7 +23,9 @@ export interface CommandResult {
  */
 export class PrivilegedCommandUtil {  /**
    * Initialize the script directory and ensure it exists
-   */  static async initialize(): Promise<void> {
+   */
+
+  static async initialize(): Promise<void> {
     // Skip initialization in non-production environments
     if (!isProd) {
       Logger.info('Skipping privileged command scripts initialization in non-production environment');
@@ -75,11 +77,11 @@ export class PrivilegedCommandUtil {  /**
     try {
       const fullCommand = `${command} ${args.join(' ')}`;
       Logger.info(`[PRIVILEGED_CMD_EXEC] Executing command: ${fullCommand}`);
-      
+
       // Log environment information
       Logger.info(`[PRIVILEGED_CMD_EXEC] Current working directory: ${process.cwd()}`);
       Logger.info(`[PRIVILEGED_CMD_EXEC] Current user: ${process.env.USER || 'unknown'}`);
-      
+
       // Check if the command exists
       try {
         const checkCommand = command.split('/').pop(); // Get the base command without path
@@ -89,36 +91,36 @@ export class PrivilegedCommandUtil {  /**
         const whichErr = error as Error;
         Logger.warn(`[PRIVILEGED_CMD_EXEC] Command check failed: ${whichErr.message}`);
       }
-      
+
       // Execute the command
       const startTime = Date.now();
       const { stdout, stderr } = await execAsync(fullCommand);
       const executionTime = Date.now() - startTime;
-      
+
       Logger.info(`[PRIVILEGED_CMD_EXEC] Command executed in ${executionTime}ms`);
       Logger.info(`[PRIVILEGED_CMD_EXEC] Command stdout length: ${stdout.length} characters`);
       Logger.info(`[PRIVILEGED_CMD_EXEC] Command stdout: ${stdout}`);
-      
+
       if (stderr && stderr.trim().length > 0) {
         Logger.warn(`[PRIVILEGED_CMD_EXEC] Command stderr length: ${stderr.length} characters`);
         Logger.warn(`[PRIVILEGED_CMD_EXEC] Command stderr: ${stderr}`);
       } else {
         Logger.info(`[PRIVILEGED_CMD_EXEC] No stderr output`);
       }
-      
+
       const success = !stderr || stderr.trim().length === 0;
-      
+
       // If this is a sudo command, log more details
       if (command === 'sudo') {
         Logger.info(`[PRIVILEGED_CMD_EXEC] Sudo command executed: ${args.join(' ')}`);
-        
+
         // Check if the target of sudo exists
         if (args.length > 0) {
           const targetPath = args[0];
           try {
             const targetExists = await fs.pathExists(targetPath);
             Logger.info(`[PRIVILEGED_CMD_EXEC] Sudo target exists: ${targetExists}`);
-            
+
             if (targetExists) {
               const stats = await fs.stat(targetPath);
               Logger.info(`[PRIVILEGED_CMD_EXEC] Sudo target permissions: ${stats.mode.toString(8)}`);
@@ -129,7 +131,7 @@ export class PrivilegedCommandUtil {  /**
           }
         }
       }
-      
+
       return {
         success,
         stdout,
@@ -137,7 +139,7 @@ export class PrivilegedCommandUtil {  /**
       };
     } catch (error) {
       Logger.error(`[PRIVILEGED_CMD_EXEC] Error executing command ${command}: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      
+
       // Get more details about the error
       const errorDetails = error instanceof Error ? {
         name: error.name,
@@ -154,9 +156,9 @@ export class PrivilegedCommandUtil {  /**
         // @ts-ignore
         stderr: error.stderr
       } : 'Unknown error';
-      
+
       Logger.error(`[PRIVILEGED_CMD_EXEC] Error details: ${JSON.stringify(errorDetails)}`);
-      
+
       return {
         success: false,
         stdout: '',
@@ -188,11 +190,11 @@ export class PrivilegedCommandUtil {  /**
       Logger.info(`[PRIVILEGED_CMD] Creating script: ${scriptName}`);
       const scriptPath = await this.createScript(scriptName, scriptContent);
       Logger.info(`[PRIVILEGED_CMD] Script created at: ${scriptPath}`);
-      
+
       // Check if script file actually exists
       const scriptExists = await fs.pathExists(scriptPath);
       Logger.info(`[PRIVILEGED_CMD] Script file exists: ${scriptExists}`);
-      
+
       if (!scriptExists) {
         Logger.error(`[PRIVILEGED_CMD] Script file was not created at ${scriptPath}`);
         return {
@@ -202,7 +204,7 @@ export class PrivilegedCommandUtil {  /**
           error: new Error(`Script file was not created at ${scriptPath}`)
         };
       }
-      
+
       // Check the script content to make sure it was written correctly
       try {
         const actualContent = await fs.readFile(scriptPath, 'utf8');
@@ -213,12 +215,12 @@ export class PrivilegedCommandUtil {  /**
         const readErr = error as Error;
         Logger.error(`[PRIVILEGED_CMD] Error reading script content: ${readErr.message}`);
       }
-      
+
       // Make script executable
       try {
         await fs.chmod(scriptPath, '755');
         Logger.info(`[PRIVILEGED_CMD] Script permissions set to executable`);
-        
+
         // Verify permissions were set
         const stats = await fs.stat(scriptPath);
         Logger.info(`[PRIVILEGED_CMD] Script file permissions: ${stats.mode.toString(8)}`);
@@ -226,16 +228,16 @@ export class PrivilegedCommandUtil {  /**
         const chmodErr = error as Error;
         Logger.error(`[PRIVILEGED_CMD] Error setting script permissions: ${chmodErr.message}`);
       }
-      
+
       // In production, use sudo
       let command: string;
       let args: string[] = [];
-      
+
       if (isProd) {
         Logger.info(`[PRIVILEGED_CMD] Running script with sudo`);
         command = 'sudo';
         args = [scriptPath];
-        
+
         // Check if sudo is available
         try {
           const { stdout } = await execAsync('which sudo');
@@ -248,25 +250,25 @@ export class PrivilegedCommandUtil {  /**
         Logger.info(`[PRIVILEGED_CMD] Running script directly (non-production)`);
         command = scriptPath;
       }
-      
+
       Logger.info(`[PRIVILEGED_CMD] Executing script: ${command} ${args.join(' ')}`);
       const result = await this.executeCommand(command, args);
-      
+
       Logger.info(`[PRIVILEGED_CMD] Script execution result: success=${result.success}`);
       Logger.info(`[PRIVILEGED_CMD] Script stdout: ${result.stdout}`);
-      
+
       if (result.stderr) {
         Logger.error(`[PRIVILEGED_CMD] Script stderr: ${result.stderr}`);
       }
-      
+
       // Log additional information about the script execution
       if (!result.success) {
         Logger.error(`[PRIVILEGED_CMD] Script execution failed for ${scriptName}`);
-        
+
         // Check if the script exists after execution
         const scriptExistsAfter = await fs.pathExists(scriptPath);
         Logger.info(`[PRIVILEGED_CMD] Script file exists after execution: ${scriptExistsAfter}`);
-        
+
         // Try to determine why sudo might have failed
         if (isProd) {
           try {
@@ -279,7 +281,7 @@ export class PrivilegedCommandUtil {  /**
           }
         }
       }
-      
+
       return result;
     } catch (error) {
       Logger.error(`[PRIVILEGED_CMD] Error executing script ${scriptName}: ${error instanceof Error ? error.message : 'Unknown error'}`);

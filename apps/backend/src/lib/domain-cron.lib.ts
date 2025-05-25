@@ -7,6 +7,8 @@ import { DomainLib } from './domain.lib';
 import Logger from '../config/logger.config';
 import PrivilegedCommandUtil from './privileged-command.util';
 import { isProd, validateEnv } from '../config/env.config';
+import { promises as fs } from 'fs';
+import path from 'path';
 
 const env = validateEnv();
 
@@ -15,8 +17,9 @@ export class DomainCronJobs {
     private static verificationRetryJob: CronJob;
     private static domainHealthCheckJob: CronJob;
     private static initialized = false;
+    private static NGINX_SITES_AVAILABLE = '/etc/nginx/sites-available';
     
-    static initialize(): void {
+    static async initialize() {
         if (this.initialized) return;        // Skip cron jobs in non-production environments
         if (!isProd) {
             Logger.info('Skipping domain cron jobs initialization in non-production environment');
@@ -24,7 +27,8 @@ export class DomainCronJobs {
             return;
         }
 
-        // Run SSL certificate renewal check daily at 2 AM
+        await this.verifyActiveDomainsNginxConfigs();
+
         this.renewalJob = new CronJob('0 2 * * *', async () => {
             try {
                 Logger.info('Running SSL certificate renewal check');
@@ -34,7 +38,6 @@ export class DomainCronJobs {
             }
         });
 
-        // Run verification retry job every 4 hours for failed domains
         this.verificationRetryJob = new CronJob('0 */4 * * *', async () => {
             try {
                 Logger.info('Running domain verification retry job');
@@ -44,7 +47,6 @@ export class DomainCronJobs {
             }
         });
 
-        // Run domain health check every 6 hours
         this.domainHealthCheckJob = new CronJob('0 */6 * * *', async () => {
             try {
                 Logger.info('Running domain health check');
@@ -60,7 +62,38 @@ export class DomainCronJobs {
         this.initialized = true;
 
         Logger.info('Domain cron jobs initialized');
-    }    private static async checkAndRenewCertificates(): Promise<void> {
+    }    private static async verifyActiveDomainsNginxConfigs(): Promise<void> {
+        try {
+            Logger.info('Verifying nginx configs for active domains...');
+            
+            // Get all active domains
+            const DomainModel = require('../modules/domains/domains.model').default;
+            const activeDomains = await DomainModel.find({ 
+                status: 'active',
+                isActive: true 
+            });
+
+            for (const domain of activeDomains) {
+                const configPath = path.join(this.NGINX_SITES_AVAILABLE, `${domain.name}`);
+                try {
+                    await fs.access(configPath);
+                } catch (err) {
+                    Logger.warn(`Nginx config not found for domain ${domain.name}, marking as inactive`);
+                    await DomainModel.findByIdAndUpdate(domain._id, {
+                        isActive: false,
+                        status: 'FAILED',
+                        verificationFailReason: 'Nginx configuration file not found'
+                    });
+                }
+            }
+            
+            Logger.info('Completed verifying nginx configs for active domains');
+        } catch (error) {
+            Logger.error('Error verifying domain nginx configs:', error);
+        }
+    }
+
+    private static async checkAndRenewCertificates(): Promise<void> {
         const DomainModel = require('../modules/domains/domains.model').default;
 
         // Find domains with active status
