@@ -40,7 +40,7 @@ class App {
 
     constructor() {
         this.app = express();
-        this.app.set('trust proxy', true);
+        this.app.set('trust proxy', '127.0.0.1');
         this.configureSecurityMiddleware();
         this.configureStandardMiddleware();
         this.configureRoutes();

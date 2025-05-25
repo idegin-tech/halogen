@@ -20,10 +20,11 @@ if (!fs.existsSync(logDir)) {
 const env = validateEnv();
 const port = env.PORT;
 
-async function startServer() {  try {    await Database.getInstance().connect();    // Initialize privileged command utilities
+async function startServer() {
+  try {
+    await Database.getInstance().connect();
     await PrivilegedCommandUtil.initialize();
 
-    // Initialize domain services    
     await DomainLib.initialize();
     await SSLManager.initializeClient();
     DomainQueue.initialize(DomainsService);
