@@ -16,6 +16,12 @@ require('dotenv').config();
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/halogen';
 const VERIFICATION_TXT_NAME = 'halogen-domain-verification';
 
+// Generate a TXT record value
+function generateVerificationToken() {
+  const randomToken = crypto.randomBytes(32).toString('hex');
+  return `${VERIFICATION_TXT_NAME}=${randomToken}`;
+}
+
 // Connect to MongoDB
 mongoose.connect(MONGODB_URI, {
   useNewUrlParser: true,
@@ -36,13 +42,6 @@ const ProjectSchema = new mongoose.Schema({
 });
 
 const Project = mongoose.model('Project', ProjectSchema);
-
-// Generate a verification token for a project
-function generateVerificationToken(projectId) {
-  const timestamp = Date.now();
-  const randomString = crypto.randomBytes(8).toString('hex');
-  return `${VERIFICATION_TXT_NAME}=${projectId}-${timestamp}-${randomString}`;
-}
 
 // Main migration function
 async function migrateProjects() {

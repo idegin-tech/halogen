@@ -6,6 +6,10 @@ import { DomainQueryOptions, DomainStatus } from '@halogen/common';
 import Logger from '../../config/logger.config';
 import { DomainQueue } from '../../lib/domain-queue.lib';
 import { SSLManager } from '../../lib/ssl.lib';
+import DomainModel from './domains.model';
+import ProjectModel from '../projects/projects.model';
+import { VERIFICATION_TXT_NAME } from '../../config/constants';
+
 
 
 export class DomainsController {
@@ -101,33 +105,28 @@ export class DomainsController {
         }
     }
 
-    /**
-     * Get domain by ID
-     */
     static async getDomainById(req: Request, res: Response): Promise<void> {
         try {
-            const { domainId } = req.params;
-
-            if (!domainId) {
-                ResponseHelper.error(res, 'Domain ID is required', 400);
-                return;
-            }
-
-            const domain = await DomainsService.getDomainById(domainId);
-
+            const domain = await DomainModel.findById(req.params.domainId);
             if (!domain) {
-                ResponseHelper.notFound(res, 'Domain');
+                ResponseHelper.error(res, 'Domain not found', 404);
                 return;
             }
 
-            ResponseHelper.success(res, domain, 'Domain retrieved successfully');
+            const project = await ProjectModel.findById(domain.project, 'name verificationToken');
+            
+            ResponseHelper.success(res, {
+                ...domain.toObject(),
+                project,
+                txtRecord: {
+                    type: 'TXT',
+                    name: VERIFICATION_TXT_NAME,
+                    value: project?.verificationToken || ''
+                }
+            });
         } catch (error) {
-            Logger.error(`Get domain by ID error: ${error instanceof Error ? error.message : 'Unknown error'}`);
-            ResponseHelper.error(
-                res,
-                error instanceof Error ? error.message : 'Failed to retrieve domain',
-                500
-            );
+            Logger.error('Error in getDomainById:', error);
+            ResponseHelper.error(res, 'Error getting domain');
         }
     }
 

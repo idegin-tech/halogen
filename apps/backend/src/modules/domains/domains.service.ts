@@ -6,6 +6,7 @@ import { SSLManager } from '../../lib/ssl.lib';
 import { DomainQueue } from '../../lib/domain-queue.lib';
 import { isDomainBlacklisted } from './domain-blacklist';
 import { isProd } from '../../config/env.config';
+import ProjectModel from '../projects/projects.model';
 
 export class DomainsService {
     static async addDomain(projectId: string, domainData: { name: string }): Promise<DomainData & { verificationToken?: string }> {
@@ -185,84 +186,43 @@ export class DomainsService {
         jobStatus?: string;
         isProduction?: boolean;
     }> {
-        try {
-            const domain = await DomainModel.findById(domainId);
-            if (!domain) {
-                throw new Error('Domain not found');
-            }
-
-            if (isProd) {
-                const jobStatus = await DomainQueue.getVerificationJobStatus(domainId);
-                const isVerified = domain.status === DomainStatus.ACTIVE;
-
-                if (jobStatus.inProgress) {
-                    return {
-                        domainId: (domain._id as any).toString(),
-                        status: domain.status,
-                        isVerified,
-                        verifiedAt: domain.verifiedAt,
-                        jobStatus: jobStatus.status,
-                        isProduction: true
-                    };
-                }
-
-                if (domain.status === DomainStatus.PENDING_DNS) {
-                    const verificationToken = await DomainLib.generateVerificationToken(domain.name, domain.project);
-
-                    const status = await DomainLib.getDomainStatus(domain.name, verificationToken);
-
-                    if (status.recommendedStatus !== domain.status) {
-                        await this.updateDomainStatus(domainId, status.recommendedStatus);
-                        domain.status = status.recommendedStatus;
-
-                        if (status.recommendedStatus === DomainStatus.ACTIVE) {
-                            domain.verifiedAt = new Date().toISOString();
-                        }
-                    }
-
-                    return {
-                        domainId: (domain._id as any).toString(),
-                        status: domain.status,
-                        isVerified: domain.status === DomainStatus.ACTIVE,
-                        verificationToken,
-                        verifiedAt: domain.verifiedAt,
-                        isProduction: true
-                    };
-                }
-
-                return {
-                    domainId: (domain._id as any).toString(),
-                    status: domain.status,
-                    isVerified,
-                    verifiedAt: domain.verifiedAt,
-                    isProduction: true
-                };
-            } else {
-                Logger.info(`Domain verification check skipped for ${domain.name} - not in production environment`);
-
-                if (domain.status === DomainStatus.PENDING_DNS) {
-                    domain.status = DomainStatus.ACTIVE;
-                    domain.verifiedAt = new Date().toISOString();
-                    await domain.save();
-                }
-
-                const verificationToken = await DomainLib.generateVerificationToken(domain.name, domain.project);
-
-                return {
-                    domainId: (domain._id as any).toString(),
-                    status: domain.status,
-                    isVerified: domain.status === DomainStatus.ACTIVE,
-                    verificationToken,
-                    verifiedAt: domain.verifiedAt,
-                    isProduction: false
-                };
-            }
-        } catch (error) {
-            Logger.error(`Check verification status error: ${error instanceof Error ? error.message : 'Unknown error'}`);
-            throw error;
+        const domain = await DomainModel.findById(domainId);
+        if (!domain) {
+            throw new Error('Domain not found');
         }
-    }
 
+        const project = await ProjectModel.findById(domain.project);
+        if (!project) {
+            throw new Error('Project not found');
+        }
+
+        if (!project.verificationToken) {
+            Logger.error(`Project ${project._id} has no verification token`);
+            throw new Error('Project verification token not found');
+        }
+
+        const expectedTxtRecord = project.verificationToken;
+        const txtRecords = await DomainLib.getDomainTxtRecords(domain.name);
+        
+        const isVerified = txtRecords.some(records => 
+            records.some(record => record.trim() === expectedTxtRecord.trim())
+        );
+
+        if (isVerified && !domain.verifiedAt) {
+            domain.verifiedAt = new Date().toISOString();
+            domain.status = DomainStatus.ACTIVE;
+            await domain.save();
+        }
+
+        return {
+            domainId: `${domain?._id?.toString()}`,
+            status: domain.status as DomainStatus,
+            isVerified,
+            verificationToken: expectedTxtRecord,
+            verifiedAt: domain.verifiedAt?.toString(),
+            isProduction: isProd
+        };
+    }
 
     static async triggerSSLGeneration(domainId: string): Promise<{
         domainId: string;

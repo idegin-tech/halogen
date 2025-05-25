@@ -751,4 +751,13 @@ fi
       return false;
     }
   }
+
+  static async getDomainTxtRecords(domain: string): Promise<string[][]> {
+    try {
+      return await resolveTxt(domain);
+    } catch (error) {
+      Logger.warn(`No TXT records found for domain ${domain}`);
+      return [];
+    }
+  }
 }
