@@ -157,7 +157,6 @@ export class SSLManager {
       };
     }
   }
-
   /**
    * Request a certificate using Certbot (for production environments)
    * @param domain Domain to request certificate for
@@ -166,121 +165,47 @@ export class SSLManager {
    */
   static async requestCertificateWithCertbot(domain: string, projectId: string): Promise<CertificateInfo> {
     try {
-      Logger.info(`Requesting certificate for ${domain} using Certbot`);
+      const certPaths = {
+        cert: path.join(CERTS_DIR, domain, 'fullchain.pem'),
+        key: path.join(CERTS_DIR, domain, 'privkey.pem')
+      };
 
-      // Ensure Nginx configuration exists for the domain
-      // This is required for Certbot to validate ownership
-      const domainConfigPath = path.join('/etc/nginx/sites-available', `${domain}.conf`);
+      // Request certificate using certbot
+      const result = await PrivilegedCommandUtil.executeCommand('certbot', [
+        'certonly',
+        '--nginx',
+        '--non-interactive',
+        '--agree-tos',
+        '--email', CERTBOT_EMAIL,
+        '-d', domain
+      ]);
 
-      if (!await fs.pathExists(domainConfigPath)) {
-        // Generate a basic Nginx config for Certbot validation
-        const nginxConfig = `server {
-    listen 80;
-    server_name ${domain};
-
-    location /.well-known/acme-challenge/ {
-        root /var/www/certbot;
-    }
-
-    location / {
-        return 444;
-    }
-}`;
-
-        // Create the Nginx config using privileged commands
-        const createConfigScript = `#!/bin/bash
-cat > "${domainConfigPath}" << 'EOL'
-${nginxConfig}
-EOL
-
-if [ ! -f "/etc/nginx/sites-enabled/${domain}.conf" ]; then
-    ln -s "${domainConfigPath}" "/etc/nginx/sites-enabled/${domain}.conf"
-fi
-
-nginx -t && nginx -s reload
-`;
-
-        const createConfigResult = await PrivilegedCommandUtil.createAndExecuteScript(
-          `create-nginx-config-${domain}.sh`,
-          createConfigScript
-        );
-
-        if (!createConfigResult.success) {
-          throw new Error(`Failed to create Nginx config: ${createConfigResult.stderr}`);
-        }
+      if (!result.success) {
+        throw new Error(`Certbot failed: ${result.stderr}`);
       }
 
-      // Create the Certbot script
-      const certbotScript = `#!/bin/bash
-# Ensure the certbot directories exist
-mkdir -p /var/www/certbot
-mkdir -p /etc/letsencrypt/live
+      // Verify certificate files exist
+      const certExists = await fs.access(certPaths.cert).then(() => true).catch(() => false);
+      const keyExists = await fs.access(certPaths.key).then(() => true).catch(() => false);
 
-# Request certificate using Certbot
-certbot certonly --nginx \
-  -d ${domain} \
-  --non-interactive \
-  --agree-tos \
-  -m ${CERTBOT_EMAIL} \
-  --keep-until-expiring
-
-# Check if certificate was successfully issued
-if [ -d "/etc/letsencrypt/live/${domain}" ]; then
-  echo "Certificate successfully issued for ${domain}"
-  exit 0
-else
-  echo "Failed to issue certificate for ${domain}"
-  exit 1
-fi
-`;
-
-      // Execute the Certbot script with elevated privileges
-      const certbotResult = await PrivilegedCommandUtil.createAndExecuteScript(
-        `certbot-${domain}.sh`,
-        certbotScript
-      );
-
-      if (!certbotResult.success) {
-        Logger.error(`Certbot failed for ${domain}: ${certbotResult.stderr}`);
-        throw new Error(`Failed to obtain certificate: ${certbotResult.stderr}`);
+      if (!certExists || !keyExists) {
+        throw new Error('Certificate files not found after generation');
       }
-
-      // Check if certificate was issued successfully
-      const certPath = path.join('/etc/letsencrypt/live', domain, 'fullchain.pem');
-      const keyPath = path.join('/etc/letsencrypt/live', domain, 'privkey.pem');
-
-      if (!await fs.pathExists(certPath) || !await fs.pathExists(keyPath)) {
-        throw new Error('Certificate files not found after Certbot execution');
-      }
-
-      // Get certificate details
-      const { stdout } = await execAsync(`openssl x509 -in "${certPath}" -noout -dates`);
-      const notAfterMatch = stdout.match(/notAfter=(.+)/);
-      const notBeforeMatch = stdout.match(/notBefore=(.+)/);
-
-      if (!notAfterMatch || !notBeforeMatch) {
-        throw new Error('Failed to parse certificate dates');
-      }
-
-      const expiryDate = new Date(notAfterMatch[1]);
-      const issuedDate = new Date(notBeforeMatch[1]);
 
       return {
         domain,
-        issuedDate,
-        expiryDate,
-        certPath,
-        keyPath,
+        issuedDate: new Date(),
+        expiryDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), // 90 days
+        certPath: certPaths.cert,
+        keyPath: certPaths.key,
         isValid: true
       };
     } catch (error) {
-      Logger.error(`Failed to request certificate with Certbot for ${domain}: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      return {
-        domain,
-        isValid: false
-      };
+      Logger.error(`Failed to request certificate with Certbot for ${domain}: ${error}`);
+      throw error;
     }
   }
+
   static async checkCertificate(domain: string): Promise<CertificateInfo> {
     try {
       const certPath = path.join('/etc/letsencrypt/live', domain, 'fullchain.pem');

@@ -7,7 +7,7 @@ import { DomainLib } from './domain.lib';
 import Logger from '../config/logger.config';
 import PrivilegedCommandUtil from './privileged-command.util';
 import { isProd, validateEnv } from '../config/env.config';
-import { promises as fs } from 'fs';
+import fs from 'fs-extra';
 import path from 'path';
 
 const env = validateEnv();

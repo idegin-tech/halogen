@@ -7,8 +7,7 @@ import { exec } from 'child_process';
 import mustache from 'mustache';
 import Logger from '../config/logger.config';
 import { DomainStatus } from '@halogen/common';
-import PrivilegedCommandUtil from './privileged-command.util';
-import { SSLManager } from './ssl.lib';
+import { PrivilegedCommandUtil } from './privileged-command.util';
 
 const env = validateEnv();
 const lookup = promisify(dns.lookup);
@@ -161,96 +160,37 @@ export class DomainLib {  static async generateVerificationToken(domain: string,
       return false;
     }
   }static async generateNginxConfig(options: NginxConfigOptions): Promise<string> {
+    const { domain, projectId, sslCertPath, sslKeyPath } = options;
+    const templatePath = path.join(
+      NGINX_TEMPLATES_DIR,
+      sslCertPath ? 'ssl-domain.conf.template' : 'domain.conf.template'
+    );
+
     try {
-      // Skip file operations in non-production environments
-      if (!isProd) {
-        Logger.info(`[GENERATE_NGINX] Skipping Nginx config generation for ${options.domain} in non-production environment`);
-        return `${options.domain}.conf`;
-      }
-      
-      Logger.info(`[GENERATE_NGINX] Starting Nginx config generation for domain: ${options.domain}, projectId: ${options.projectId}`);
-      Logger.info(`[GENERATE_NGINX] SSL paths provided: cert=${options.sslCertPath || 'none'}, key=${options.sslKeyPath || 'none'}`);
-      
-      // Ensure directories exist
-      await fs.ensureDir(NGINX_TEMPLATES_DIR);
-      await fs.ensureDir(NGINX_CONFIG_DIR);
-      
-      Logger.info(`[GENERATE_NGINX] Created directories if needed: ${NGINX_TEMPLATES_DIR}, ${NGINX_CONFIG_DIR}`);
-      
-      const templatesExist = await fs.pathExists(NGINX_TEMPLATES_DIR);
-      const configsExist = await fs.pathExists(NGINX_CONFIG_DIR);
-      Logger.info(`[GENERATE_NGINX] Directory existence check: templates=${templatesExist}, configs=${configsExist}`);
-       
-      try {
-        const templateFiles = await fs.readdir(NGINX_TEMPLATES_DIR);
-        Logger.info(`[GENERATE_NGINX] Template directory contents: ${JSON.stringify(templateFiles)}`);
-      } catch (error) {
-        const err = error as Error;
-        Logger.error(`[GENERATE_NGINX] Error reading template directory: ${err.message}`);
-      }
-      
-      const templatePath = path.join(NGINX_TEMPLATES_DIR, options.sslCertPath ? 'ssl-domain.conf.template' : 'domain.conf.template');
-      Logger.info(`[GENERATE_NGINX] Using template at: ${templatePath}`);
-      
-      if (!await fs.pathExists(templatePath)) {
-        Logger.info(`[GENERATE_NGINX] Template not found, creating default templates`);
-        await this.createDefaultTemplates();
-        
-        // Verify templates were created
-        const templateExists = await fs.pathExists(templatePath);
-        Logger.info(`[GENERATE_NGINX] After createDefaultTemplates, template exists: ${templateExists}`);
-      }
-      
-      // Read the template file
+      // Read the template
       const template = await fs.readFile(templatePath, 'utf8');
-      Logger.info(`[GENERATE_NGINX] Template loaded, length: ${template.length} characters`);
-      Logger.debug(`[GENERATE_NGINX] Template content: ${template.substring(0, 100)}...`);
       
-      // Render the template with the provided options
-      const outputConfig = mustache.render(template, {
-        domain: options.domain,
-        projectId: options.projectId,
-        apiEndpoint: env.API_ENDPOINT || 'api.mortarstudio.com',
-        sslCertPath: options.sslCertPath || '/etc/letsencrypt/live/' + options.domain + '/fullchain.pem',
-        sslKeyPath: options.sslKeyPath || '/etc/letsencrypt/live/' + options.domain + '/privkey.pem'
-      });
-      
-      Logger.info(`[GENERATE_NGINX] Rendered config, length: ${outputConfig.length} characters`);
-      Logger.debug(`[GENERATE_NGINX] Config content: ${outputConfig.substring(0, 100)}...`);
-      
-      // Save config locally for reference - only in production
-      if (isProd) {
-        const localOutputPath = path.join(NGINX_CONFIG_DIR, `${options.domain}.conf`);
-        Logger.info(`[GENERATE_NGINX] Saving local copy to: ${localOutputPath}`);
-        await fs.writeFile(localOutputPath, outputConfig);
-          try {
-          const localFileExists = await fs.pathExists(localOutputPath);
-          const stats = await fs.stat(localOutputPath);
-          Logger.info(`[GENERATE_NGINX] Local file created successfully: ${localFileExists}, size: ${stats.size} bytes`);
-          
-          // Check permissions on the local file
-          Logger.info(`[GENERATE_NGINX] Local file permissions: ${stats.mode.toString(8)}`);
-        } catch (error) {
-          const err = error as Error;
-          Logger.error(`[GENERATE_NGINX] Error checking local file: ${err.message}`);
-        }
-        
-        // If in production, use privileged commands to create the actual Nginx config
-        Logger.info(`[GENERATE_NGINX] Deploying Nginx config to production servers`);
-        try {
-          const deployedPath = await this.deployNginxConfig(options.domain, outputConfig);
-          Logger.info(`[GENERATE_NGINX] Config deployed to: ${deployedPath}`);
-          return deployedPath;
-        } catch (deployError) {
-          Logger.error(`[GENERATE_NGINX] Deploy error: ${deployError instanceof Error ? deployError.message : 'Unknown error'}`);
-          throw deployError;
-        }
+      // Replace variables
+      const config = template
+        .replace(/\$\{DOMAIN\}/g, domain)
+        .replace(/\$\{PROJECT_ID\}/g, projectId)
+        .replace(/\$\{SSL_CERT_PATH\}/g, sslCertPath || '')
+        .replace(/\$\{SSL_KEY_PATH\}/g, sslKeyPath || '');
+
+      // Save local copy
+      const localPath = path.join(NGINX_CONFIG_DIR, `${domain}.conf`);
+      await fs.writeFile(localPath, config);
+
+      // Deploy using PrivilegedCommandUtil
+      const result = await PrivilegedCommandUtil.deployNginxConfig(domain, config);
+      if (!result.success) {
+        throw new Error(`Failed to deploy Nginx config: ${result.stderr}`);
       }
-      
-      return `${options.domain}.conf`;
+
+      return config;
     } catch (error) {
-      Logger.error(`[GENERATE_NGINX] Error generating Nginx config: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      throw new Error('Failed to generate Nginx configuration');
+      Logger.error(`Error generating Nginx config: ${error}`);
+      throw error;
     }
   }
   
@@ -262,52 +202,44 @@ export class DomainLib {  static async generateVerificationToken(domain: string,
    */
   static async deployNginxConfig(domain: string, configContent: string): Promise<string> {
     try {
-      if (!isProd) {
-        Logger.info(`[DEPLOY_NGINX] Skipping Nginx config deployment for ${domain} in non-production environment`);
-        return `${domain}.conf`;
-      }
-
       const configPath = path.join(NGINX_SITES_AVAILABLE, `${domain}.conf`);
       const enabledPath = path.join(NGINX_SITES_ENABLED, `${domain}.conf`);
       const localConfigPath = path.join(NGINX_CONFIG_DIR, `${domain}.conf`);
 
-      Logger.info(`[DEPLOY_NGINX] Starting Nginx config deployment for domain: ${domain}`);
-      
-      // Save local copy first
+      // Save local copy
       await fs.writeFile(localConfigPath, configContent);
 
       // Copy to sites-available using privileged command
       const copyResult = await PrivilegedCommandUtil.executeCommand('cp', [localConfigPath, configPath]);
       if (!copyResult.success) {
-        throw new Error(`Failed to copy config file: ${copyResult.stderr}`);
+        throw new Error(`Failed to copy config: ${copyResult.stderr}`);
       }
 
-      // Create symlink in sites-enabled if it doesn't exist
-      if (!await fs.pathExists(enabledPath)) {
+      // Check if symlink exists using stat instead of pathExists
+      try {
+        await fs.stat(enabledPath);
+      } catch (error) {
+        // If file doesn't exist, create symlink
         const linkResult = await PrivilegedCommandUtil.executeCommand('ln', ['-s', configPath, enabledPath]);
         if (!linkResult.success) {
           throw new Error(`Failed to create symlink: ${linkResult.stderr}`);
         }
       }
 
-      // Test Nginx configuration
+      // Test and reload nginx
       const testResult = await PrivilegedCommandUtil.executeCommand('nginx', ['-t']);
       if (!testResult.success) {
-        // If test fails, revert changes
-        await PrivilegedCommandUtil.executeCommand('rm', [enabledPath]);
-        throw new Error(`Nginx configuration test failed: ${testResult.stderr}`);
+        throw new Error(`Nginx config test failed: ${testResult.stderr}`);
       }
 
-      // Reload Nginx
       const reloadResult = await PrivilegedCommandUtil.executeCommand('nginx', ['-s', 'reload']);
       if (!reloadResult.success) {
-        throw new Error(`Failed to reload Nginx: ${reloadResult.stderr}`);
+        throw new Error(`Nginx reload failed: ${reloadResult.stderr}`);
       }
 
-      Logger.info(`[DEPLOY_NGINX] Nginx configuration for ${domain} deployed successfully`);
       return configPath;
     } catch (error) {
-      Logger.error(`[DEPLOY_NGINX] Error deploying Nginx config for ${domain}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      Logger.error(`Error deploying Nginx config: ${error}`);
       throw error;
     }
   }  static async reloadNginx(): Promise<boolean> {

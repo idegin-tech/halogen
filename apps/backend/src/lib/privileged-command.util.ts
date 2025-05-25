@@ -1,14 +1,15 @@
-import { exec, spawn } from 'child_process';
+import { exec } from 'child_process';
 import { promisify } from 'util';
-import fs from 'fs-extra';
+import { promises as fs } from 'fs';
 import path from 'path';
+import { isProd } from '../config/env.config';
 import Logger from '../config/logger.config';
-import { isProd, validateEnv } from '../config/env.config';
 
 const execAsync = promisify(exec);
-const env = validateEnv();
 
-const SCRIPTS_DIR = '/home/msuser/nginx-configs';
+const NGINX_CONFIG_DIR = '/home/msuser/nginx-configs';
+const NGINX_SITES_AVAILABLE = '/etc/nginx/sites-available';
+const NGINX_SITES_ENABLED = '/etc/nginx/sites-enabled';
 
 export interface CommandResult {
   success: boolean;
@@ -33,36 +34,10 @@ export class PrivilegedCommandUtil {  /**
     }
 
     try {
-      await fs.ensureDir(SCRIPTS_DIR);
-      Logger.info(`Privileged command scripts directory initialized at ${SCRIPTS_DIR}`);
+      await fs.mkdir(NGINX_CONFIG_DIR, { recursive: true });
+      Logger.info(`Initialized ${NGINX_CONFIG_DIR} directory`);
     } catch (error) {
-      Logger.error(`Failed to initialize privileged command scripts: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      throw error;
-    }
-  }
-
-  /**
-   * Create a script with the given name and content in the scripts directory
-   * @param scriptName Name of the script file
-   * @param scriptContent Content of the script
-   * @returns Path to the created script
-   */  static async createScript(scriptName: string, scriptContent: string): Promise<string> {
-
-    if (!isProd) {
-      Logger.info(`Skipping script creation in non-production environment: ${scriptName}`);
-      return `${SCRIPTS_DIR}/${scriptName}`;
-    }
-
-    try {
-      const scriptPath = path.join(SCRIPTS_DIR, scriptName);
-      await fs.writeFile(scriptPath, scriptContent);
-
-      // Make script executable
-      await execAsync(`chmod +x "${scriptPath}"`);
-
-      return scriptPath;
-    } catch (error) {
-      Logger.error(`Failed to create script ${scriptName}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      Logger.error(`Failed to initialize directories: ${error}`);
       throw error;
     }
   }
@@ -92,11 +67,11 @@ export class PrivilegedCommandUtil {  /**
 
       // Check if this is an allowed NOPASSWD command
       let cmdToExecute = '';
-      if (command === 'cp' && args[0].startsWith('/home/msuser/nginx-configs/')) {
+      if (command === 'cp' && args[0].startsWith(NGINX_CONFIG_DIR)) {
         cmdToExecute = `sudo ${ALLOWED_NOPASSWD_COMMANDS.cp} ${args.join(' ')}`;
-      } else if (command === 'ln' && args.includes('-s') && args.some(arg => arg.startsWith('/etc/nginx/sites-available/'))) {
+      } else if (command === 'ln' && args.includes('-s') && args.some(arg => arg.startsWith(NGINX_SITES_AVAILABLE))) {
         cmdToExecute = `sudo ${ALLOWED_NOPASSWD_COMMANDS.ln} ${args.join(' ')}`;
-      } else if (command === 'rm' && args.some(arg => arg.startsWith('/etc/nginx/sites-enabled/'))) {
+      } else if (command === 'rm' && args.some(arg => arg.startsWith(NGINX_SITES_ENABLED))) {
         cmdToExecute = `sudo ${ALLOWED_NOPASSWD_COMMANDS.rm} ${args.join(' ')}`;
       } else if (command === 'nginx') {
         if (args.includes('-t')) {
@@ -116,194 +91,202 @@ export class PrivilegedCommandUtil {  /**
       const { stdout, stderr } = await execAsync(cmdToExecute);
       
       return {
-        success: !stderr,
-        stdout,
-        stderr
+        success: true,
+        stdout: stdout.trim(),
+        stderr: stderr.trim()
       };
-    } catch (error) {
-      Logger.error(`[PRIVILEGED_CMD] Error executing command: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } catch (error: any) {
+      Logger.error(`[PRIVILEGED_CMD] Error executing command: ${error.message}`);
       return {
         success: false,
         stdout: '',
-        stderr: error instanceof Error ? error.message : 'Unknown error',
-        error: error instanceof Error ? error : new Error('Unknown error')
+        stderr: error.message,
+        error
       };
     }
   }
 
   /**
-   * Execute a script with elevated privileges
-   * @param scriptPath Path to the script
-   * @param args Script arguments
-   * @returns Result of script execution
+   * Deploy Nginx configuration for a specific domain
+   * @param domain Domain name
+   * @param configContent Nginx configuration content
+   * @returns Result of the deployment
    */
-  static async executeScript(scriptPath: string, args: string[] = []): Promise<CommandResult> {
-    return this.executeCommand(scriptPath, args);
+  static async deployNginxConfig(domain: string, configContent: string): Promise<CommandResult> {
+    const configPath = path.join(NGINX_SITES_AVAILABLE, `${domain}.conf`);
+    const enabledPath = path.join(NGINX_SITES_ENABLED, `${domain}.conf`);
+    const localPath = path.join(NGINX_CONFIG_DIR, `${domain}.conf`);
+
+    try {
+      // Write config locally first
+      await fs.writeFile(localPath, configContent);
+
+      // Copy to sites-available
+      await this.executeCommand('cp', [localPath, configPath]);
+
+      // Create symlink in sites-enabled
+      await this.executeCommand('ln', ['-s', configPath, enabledPath]);
+
+      // Test nginx config
+      const testResult = await this.executeCommand('nginx', ['-t']);
+      if (!testResult.success) {
+        // Cleanup on failure
+        await this.executeCommand('rm', [enabledPath]);
+        await this.executeCommand('rm', [configPath]);
+        throw new Error(`Nginx config test failed: ${testResult.stderr}`);
+      }
+
+      // Reload nginx
+      const reloadResult = await this.executeCommand('nginx', ['-s', 'reload']);
+      if (!reloadResult.success) {
+        throw new Error(`Nginx reload failed: ${reloadResult.stderr}`);
+      }
+
+      return {
+        success: true,
+        stdout: 'Nginx configuration deployed successfully',
+        stderr: ''
+      };
+    } catch (error: any) {
+      Logger.error(`Failed to deploy Nginx config for ${domain}: ${error.message}`);
+      return {
+        success: false,
+        stdout: '',
+        stderr: error.message,
+        error
+      };
+    }
   }
 
   /**
-   * Creates and executes a privileged script
-   * @param scriptName Name of the script
+   * Create and execute a shell script with elevated privileges
+   * @param scriptName Name of the script file
    * @param scriptContent Content of the script
-   * @param args Arguments to pass to the script
    * @returns Result of script execution
    */
   static async createAndExecuteScript(scriptName: string, scriptContent: string): Promise<CommandResult> {
     try {
-      Logger.info(`[PRIVILEGED_CMD] Creating script: ${scriptName}`);
-      const scriptPath = await this.createScript(scriptName, scriptContent);
-      Logger.info(`[PRIVILEGED_CMD] Script created at: ${scriptPath}`);
-
-      // Check if script file actually exists
-      const scriptExists = await fs.pathExists(scriptPath);
-      Logger.info(`[PRIVILEGED_CMD] Script file exists: ${scriptExists}`);
-
-      if (!scriptExists) {
-        Logger.error(`[PRIVILEGED_CMD] Script file was not created at ${scriptPath}`);
-        return {
-          success: false,
-          stdout: '',
-          stderr: `Script file was not created at ${scriptPath}`,
-          error: new Error(`Script file was not created at ${scriptPath}`)
-        };
+      if (!isProd) {
+        Logger.info(`[PRIVILEGED_SCRIPT] Skipping script execution in non-production environment: ${scriptName}`);
+        return { success: true, stdout: '', stderr: '' };
       }
 
-      // Check the script content to make sure it was written correctly
+      // Create a temporary script file
+      const tempDir = '/tmp';
+      const scriptPath = path.join(tempDir, scriptName);
+      
+      // Write script content to file
+      await fs.writeFile(scriptPath, scriptContent, { mode: 0o755 });
+      
+      Logger.info(`[PRIVILEGED_SCRIPT] Created script: ${scriptPath}`);
+      
+      // Execute the script with sudo
+      const { stdout, stderr } = await execAsync(`sudo bash "${scriptPath}"`);
+      
+      // Clean up the script file
       try {
-        const actualContent = await fs.readFile(scriptPath, 'utf8');
-        Logger.info(`[PRIVILEGED_CMD] Script content length: ${actualContent.length} characters`);
-        const contentMatch = actualContent.length === scriptContent.length;
-        Logger.info(`[PRIVILEGED_CMD] Script content length matches expected: ${contentMatch}`);
-      } catch (error) {
-        const readErr = error as Error;
-        Logger.error(`[PRIVILEGED_CMD] Error reading script content: ${readErr.message}`);
+        await fs.unlink(scriptPath);
+      } catch (cleanupError) {
+        Logger.warn(`[PRIVILEGED_SCRIPT] Failed to cleanup script ${scriptPath}: ${cleanupError}`);
       }
-
-      // Make script executable
-      try {
-        await fs.chmod(scriptPath, '755');
-        Logger.info(`[PRIVILEGED_CMD] Script permissions set to executable`);
-
-        // Verify permissions were set
-        const stats = await fs.stat(scriptPath);
-        Logger.info(`[PRIVILEGED_CMD] Script file permissions: ${stats.mode.toString(8)}`);
-      } catch (error) {
-        const chmodErr = error as Error;
-        Logger.error(`[PRIVILEGED_CMD] Error setting script permissions: ${chmodErr.message}`);
-      }
-
-      // In production, use sudo
-      let command: string;
-      let args: string[] = [];
-
-      if (isProd) {
-        Logger.info(`[PRIVILEGED_CMD] Running script with sudo`);
-        command = 'sudo';
-        args = [scriptPath];
-
-        // Check if sudo is available
-        try {
-          const { stdout } = await execAsync('which sudo');
-          Logger.info(`[PRIVILEGED_CMD] Sudo found at: ${stdout.trim()}`);
-        } catch (error) {
-          const sudoErr = error as Error;
-          Logger.error(`[PRIVILEGED_CMD] Error checking sudo: ${sudoErr.message}`);
-        }
-      } else {
-        Logger.info(`[PRIVILEGED_CMD] Running script directly (non-production)`);
-        command = scriptPath;
-      }
-
-      Logger.info(`[PRIVILEGED_CMD] Executing script: ${command} ${args.join(' ')}`);
-      const result = await this.executeCommand(command, args);
-
-      Logger.info(`[PRIVILEGED_CMD] Script execution result: success=${result.success}`);
-      Logger.info(`[PRIVILEGED_CMD] Script stdout: ${result.stdout}`);
-
-      if (result.stderr) {
-        Logger.error(`[PRIVILEGED_CMD] Script stderr: ${result.stderr}`);
-      }
-
-      // Log additional information about the script execution
-      if (!result.success) {
-        Logger.error(`[PRIVILEGED_CMD] Script execution failed for ${scriptName}`);
-
-        // Check if the script exists after execution
-        const scriptExistsAfter = await fs.pathExists(scriptPath);
-        Logger.info(`[PRIVILEGED_CMD] Script file exists after execution: ${scriptExistsAfter}`);
-
-        // Try to determine why sudo might have failed
-        if (isProd) {
-          try {
-            // Check sudoers configuration (this might require sudo itself)
-            const sudoersResult = await this.executeCommand('sudo', ['-l']);
-            Logger.info(`[PRIVILEGED_CMD] Sudo permissions: ${sudoersResult.stdout}`);
-          } catch (error) {
-            const sudoersErr = error as Error;
-            Logger.error(`[PRIVILEGED_CMD] Error checking sudo permissions: ${sudoersErr.message}`);
-          }
-        }
-      }
-
-      return result;
-    } catch (error) {
-      Logger.error(`[PRIVILEGED_CMD] Error executing script ${scriptName}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      
+      return {
+        success: true,
+        stdout: stdout.trim(),
+        stderr: stderr.trim()
+      };
+    } catch (error: any) {
+      Logger.error(`[PRIVILEGED_SCRIPT] Error executing script ${scriptName}: ${error.message}`);
       return {
         success: false,
         stdout: '',
-        stderr: error instanceof Error ? error.message : 'Unknown error',
-        error: error instanceof Error ? error : new Error('Unknown error')
+        stderr: error.message,
+        error
       };
     }
   }
 
   /**
-   * Set up a domain with Nginx configuration and SSL certificate
+   * Set up a domain with Nginx configuration and optional SSL certificate
    * @param domain Domain name
    * @param projectId Project ID
-   * @param options Additional options
+   * @param options Configuration options
    * @returns Result of domain setup
    */
-  static async setupDomain(
-    domain: string,
-    projectId: string,
-    options: { configureOnly?: boolean; renewCert?: boolean } = {}
-  ): Promise<CommandResult> {
+  static async setupDomain(domain: string, projectId: string, options?: { configureOnly?: boolean }): Promise<CommandResult> {
     try {
-      const scriptPath = path.join(SCRIPTS_DIR, 'setup-domain.sh');
-      const setupScriptExists = await fs.pathExists(scriptPath);
-
-      if (!setupScriptExists) {
-        // Copy script from our local scripts directory to the executable scripts directory
-        const sourcePath = path.join(process.cwd(), 'scripts', 'setup-domain.sh');
-        await fs.copy(sourcePath, scriptPath);
-        await fs.chmod(scriptPath, 0o755); // Make executable
+      if (!isProd) {
+        Logger.info(`[SETUP_DOMAIN] Skipping domain setup in non-production environment: ${domain}`);
+        return { success: true, stdout: '', stderr: '' };
       }
 
-      const args = [
-        '-d', domain,
-        '-p', projectId
-      ];
+      const configureOnly = options?.configureOnly || false;
+      
+      // Construct the setup script that calls the existing setup-domain.sh script
+      const setupScript = `#!/bin/bash
+echo "[SETUP_DOMAIN_SCRIPT] Setting up domain: ${domain}"
+echo "[SETUP_DOMAIN_SCRIPT] Project ID: ${projectId}"
+echo "[SETUP_DOMAIN_SCRIPT] Configure only: ${configureOnly}"
 
-      if (options.configureOnly) {
-        args.push('-c');
+# Path to the setup-domain.sh script
+SETUP_SCRIPT="/usr/local/bin/halogen-scripts/setup-domain.sh"
+
+# Check if the setup script exists
+if [ ! -f "\$SETUP_SCRIPT" ]; then
+  # Try alternative location in the backend scripts directory
+  SETUP_SCRIPT="${process.cwd()}/scripts/setup-domain.sh"
+  if [ ! -f "\$SETUP_SCRIPT" ]; then
+    echo "[SETUP_DOMAIN_SCRIPT] Error: setup-domain.sh script not found"
+    exit 1
+  fi
+fi
+
+# Make sure the script is executable
+chmod +x "\$SETUP_SCRIPT"
+
+# Build command arguments
+ARGS="-d ${domain} -p ${projectId}"
+if [ "${configureOnly}" = "true" ]; then
+  ARGS="\$ARGS -c"
+fi
+
+echo "[SETUP_DOMAIN_SCRIPT] Executing: \$SETUP_SCRIPT \$ARGS"
+
+# Execute the domain setup script
+"\$SETUP_SCRIPT" \$ARGS
+
+# Check the exit code
+if [ \$? -eq 0 ]; then
+  echo "[SETUP_DOMAIN_SCRIPT] Domain setup completed successfully for ${domain}"
+  exit 0
+else
+  echo "[SETUP_DOMAIN_SCRIPT] Domain setup failed for ${domain}"
+  exit 1
+fi
+`;
+
+      Logger.info(`[SETUP_DOMAIN] Setting up domain ${domain} for project ${projectId} (configureOnly: ${configureOnly})`);
+      
+      // Execute the setup script
+      const result = await this.createAndExecuteScript(
+        `setup-domain-${domain}-${Date.now()}.sh`,
+        setupScript
+      );
+      
+      if (result.success) {
+        Logger.info(`[SETUP_DOMAIN] Domain ${domain} setup completed successfully`);
+      } else {
+        Logger.error(`[SETUP_DOMAIN] Domain ${domain} setup failed: ${result.stderr}`);
       }
-
-      if (options.renewCert) {
-        args.push('-r');
-      }
-
-      // Add verbose flag for better logging
-      args.push('-v');
-
-      return this.executeScript(scriptPath, args);
-    } catch (error) {
-      Logger.error(`Domain setup error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      
+      return result;
+    } catch (error: any) {
+      Logger.error(`[SETUP_DOMAIN] Error setting up domain ${domain}: ${error.message}`);
       return {
         success: false,
         stdout: '',
-        stderr: error instanceof Error ? error.message : 'Unknown error',
-        error: error instanceof Error ? error : new Error('Unknown error')
+        stderr: error.message,
+        error
       };
     }
   }
