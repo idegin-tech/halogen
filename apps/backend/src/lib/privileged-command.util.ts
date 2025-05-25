@@ -4,6 +4,10 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { isProd } from '../config/env.config';
 import Logger from '../config/logger.config';
+import { NginxSetupUtil } from '../utils/nginx-setup.util';
+import { SSLSetupUtil } from '../utils/ssl-setup.util';
+import { SystemPermissionsUtil } from '../utils/system-permissions.util';
+import { SudoersUtil } from '../utils/sudoers.util';
 
 const execAsync = promisify(exec);
 
@@ -25,7 +29,6 @@ export interface CommandResult {
 export class PrivilegedCommandUtil {  /**
    * Initialize the script directory and ensure it exists
    */
-
   static async initialize(): Promise<void> {
     // Skip initialization in non-production environments
     if (!isProd) {
@@ -38,7 +41,29 @@ export class PrivilegedCommandUtil {  /**
       console.log(`\n\n\n\n ============= DOMAIN CONFIG STARTED ==============`)
       Logger.info(`Initialized ${NGINX_CONFIG_DIR} directory`);
       
-      // Also ensure webroot directory is set up during initialization
+      // Set up required directories using SystemPermissionsUtil
+      Logger.info('Setting up required system directories');
+      const dirSetupResult = await SystemPermissionsUtil.setupRequiredDirectories();
+      if (dirSetupResult.success) {
+        Logger.info(`System directories set up successfully: ${dirSetupResult.createdDirectories.length} directories`);
+      } else {
+        Logger.warn(`Directory setup completed with warnings: ${dirSetupResult.errors.join(', ')}`);
+      }
+
+      // Check and update sudoers configuration
+      Logger.info('Checking sudoers configuration');
+      const sudoersCheck = await SudoersUtil.checkSudoersConfiguration();
+      if (!sudoersCheck.isValid) {
+        Logger.warn('Sudoers configuration needs to be updated');
+        const sudoersUpdate = await SudoersUtil.updateSudoersConfiguration();
+        if (sudoersUpdate.success) {
+          Logger.info('Sudoers configuration updated successfully');
+        } else {
+          Logger.error(`Failed to update sudoers: ${sudoersUpdate.errors.join(', ')}`);
+        }
+      }
+
+      // Ensure webroot directory is set up during initialization
       Logger.info('Setting up webroot directory during system initialization');
       const webrootResult = await this.ensureWebrootDirectory();
       if (webrootResult.success) {
@@ -133,7 +158,6 @@ export class PrivilegedCommandUtil {  /**
       };
     }
   }
-
   /**
    * Deploy Nginx configuration for a specific domain
    * @param domain Domain name
@@ -141,42 +165,19 @@ export class PrivilegedCommandUtil {  /**
    * @returns Result of the deployment
    */
   static async deployNginxConfig(domain: string, configContent: string): Promise<CommandResult> {
-    const configPath = path.join(NGINX_SITES_AVAILABLE, `${domain}.conf`);
-    const enabledPath = path.join(NGINX_SITES_ENABLED, `${domain}.conf`);
-    const localPath = path.join(NGINX_CONFIG_DIR, `${domain}.conf`);
-
     try {
-      // Write config locally first
-      await fs.writeFile(localPath, configContent);
-
-      // Copy to sites-available
-      await this.executeCommand('cp', [localPath, configPath]);
-
-      // Create symlink in sites-enabled
-      await this.executeCommand('ln', ['-s', configPath, enabledPath]);
-
-      // Test nginx config
-      const testResult = await this.executeCommand('nginx', ['-t']);
-      if (!testResult.success) {
-        // Cleanup on failure
-        await this.executeCommand('rm', [enabledPath]);
-        await this.executeCommand('rm', [configPath]);
-        throw new Error(`Nginx config test failed: ${testResult.stderr}`);
-      }
-
-      // Reload nginx
-      const reloadResult = await this.executeCommand('nginx', ['-s', 'reload']);
-      if (!reloadResult.success) {
-        throw new Error(`Nginx reload failed: ${reloadResult.stderr}`);
-      }
-
-      return {
-        success: true,
-        stdout: 'Nginx configuration deployed successfully',
-        stderr: ''
+      Logger.info(`[NGINX_DEPLOY] Deploying Nginx config for domain: ${domain}`);
+      
+      // Use the new NginxSetupUtil instead of direct command execution
+      const result = await NginxSetupUtil.deployNginxConfig(domain, configContent);
+        return {
+        success: result.success,
+        stdout: result.stdout || '',
+        stderr: result.stderr || ''
       };
+
     } catch (error: any) {
-      Logger.error(`Failed to deploy Nginx config for ${domain}: ${error.message}`);
+      Logger.error(`[NGINX_DEPLOY] Error deploying Nginx config for ${domain}: ${error.message}`);
       return {
         success: false,
         stdout: '',
@@ -207,6 +208,21 @@ export class PrivilegedCommandUtil {  /**
         const webrootResult = await this.ensureWebrootDirectory();
         if (!webrootResult.success) {
           Logger.warn(`[SETUP_DOMAIN] Webroot setup warning: ${webrootResult.stderr}`);
+        }        // Check if domain is already configured
+        const isDomainConfigured = await NginxSetupUtil.isDomainConfigured(domain);
+        if (isDomainConfigured) {
+          Logger.info(`[SETUP_DOMAIN] Domain ${domain} is already configured`);
+        }
+
+        // Set up SSL certificate if not in configure-only mode
+        if (!configureOnly) {
+          Logger.info(`[SETUP_DOMAIN] Setting up SSL certificate for domain ${domain}`);
+          const sslResult = await SSLSetupUtil.generateSSLCertificate(domain);
+          if (!sslResult.success) {
+            Logger.warn(`[SETUP_DOMAIN] SSL setup failed for ${domain}: ${sslResult.message}`);
+          } else {
+            Logger.info(`[SETUP_DOMAIN] SSL certificate generated successfully for ${domain}`);
+          }
         }
         
         Logger.info(`[SETUP_DOMAIN] Domain ${domain} setup completed successfully`);
