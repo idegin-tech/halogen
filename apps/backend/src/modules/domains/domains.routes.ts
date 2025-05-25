@@ -40,11 +40,11 @@ router.get(
     '/verify/:domainId',
     DomainsController.checkVerificationStatus
 );
-router.post(
-    '/ssl',
-    RequestValidation.validateBody(sslCertificateSchema),
-    DomainsController.triggerSSLGeneration
-);
+// router.post(
+//     '/ssl',
+//     RequestValidation.validateBody(sslCertificateSchema),
+//     DomainsController.triggerSSLGeneration
+// );
 router.get(
     '/ssl/:domainId',
     DomainsController.checkSSLStatus
