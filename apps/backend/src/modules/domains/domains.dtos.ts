@@ -4,7 +4,7 @@ export const addDomainSchema = z.object({
   name: z.string()
     .min(1, 'Domain name is required')
     .regex(/^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/, 'Invalid domain name format')
-    .transform(val => val.toLowerCase())
+    .transform(val => val.toLowerCase()).optional()
 });
 
 export const domainCheckSchema = z.object({
