@@ -1,12 +1,5 @@
 import { z } from 'zod';
 
-export const addDomainSchema = z.object({
-  name: z.string()
-    .min(1, 'Domain name is required')
-    .regex(/^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/, 'Invalid domain name format')
-    .transform(val => val.toLowerCase()).optional()
-});
-
 export const domainCheckSchema = z.object({
   domainId: z.string().min(1, 'Domain ID is required')
 });
@@ -25,7 +18,6 @@ export const domainsQuerySchema = z.object({
   isActive: z.enum(['true', 'false']).optional()
 });
 
-export type AddDomainDTO = z.infer<typeof addDomainSchema>;
 export type DomainVerificationDTO = z.infer<typeof domainCheckSchema>;
 export type SSLCertificateDTO = z.infer<typeof sslCertificateSchema>;
 export type DomainsQueryDTO = z.infer<typeof domainsQuerySchema>;

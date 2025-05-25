@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { DomainsService } from './domains.service';
 import { ResponseHelper } from '../../lib/response.helper';
-import { AddDomainDTO, DomainVerificationDTO, SSLCertificateDTO } from './domains.dtos';
+import { DomainVerificationDTO, SSLCertificateDTO } from './domains.dtos';
 import { DomainQueryOptions, DomainStatus } from '@halogen/common';
 import Logger from '../../config/logger.config';
 import { DomainQueue } from '../../lib/domain-queue.lib';
@@ -15,7 +15,7 @@ export class DomainsController {
     static async addDomain(req: Request, res: Response): Promise<void> {
         try {
             const { projectId } = req.params;
-            const domainData = req.body as AddDomainDTO;
+            const domainData = req.body;
 
             if (!projectId) {
                 ResponseHelper.error(res, 'Project ID is required', 400);
@@ -82,13 +82,13 @@ export class DomainsController {
 
             // Query with limit 1 to get the first domain
             const result = await DomainsService.getDomainsByProject(projectId, { limit: 1 });
-            
+
             // Return the first domain or null
             const primaryDomain = result.docs.length > 0 ? result.docs[0] : null;
-            
+
             ResponseHelper.success(
-                res, 
-                primaryDomain, 
+                res,
+                primaryDomain,
                 primaryDomain ? 'Primary domain retrieved successfully' : 'No domains found for this project'
             );
         } catch (error) {
@@ -182,6 +182,7 @@ export class DomainsController {
             const result = await DomainsService.triggerSSLGeneration(domainId);
             ResponseHelper.success(res, result, 'SSL certificate generation initiated successfully');
         } catch (error) {
+            console.log(error)
             Logger.error(`Trigger SSL generation error: ${error instanceof Error ? error.message : 'Unknown error'}`);
             ResponseHelper.error(
                 res,
@@ -216,9 +217,7 @@ export class DomainsController {
         }
     }
 
-    /**
-     * Delete a domain
-     */
+
     static async deleteDomain(req: Request, res: Response): Promise<void> {
         try {
             const { domainId } = req.params;
@@ -246,9 +245,7 @@ export class DomainsController {
         }
     }
 
-    /**
-     * Get system-wide domain status information
-     */
+    
     static async getDomainSystemStatus(req: Request, res: Response): Promise<void> {
         try {
             const verificationQueueCount = await DomainQueue.verificationQueue.getJobCounts();

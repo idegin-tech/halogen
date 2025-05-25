@@ -2,10 +2,9 @@ import { Router } from 'express';
 import { DomainsController } from './domains.controller';
 import { RequestValidation } from '../../middleware/request.middleware';
 import { 
-    addDomainSchema, 
-    sslCertificateSchema,
     domainsQuerySchema, 
-    domainCheckSchema
+    domainCheckSchema,
+    sslCertificateSchema
 } from './domains.dtos';
 import { domainRateLimiter } from './domains.middleware';
 
@@ -15,7 +14,6 @@ router.use(domainRateLimiter);
 
 router.post(
     '/:projectId',
-    RequestValidation.validateBody(addDomainSchema),
     DomainsController.addDomain
 );
 router.get(
@@ -31,20 +29,20 @@ router.get(
     '/domain/:domainId',
     DomainsController.getDomainById
 );
-// router.post(
-//     '/check',
-//     RequestValidation.validateBody(domainCheckSchema),
-//     DomainsController.triggerDomainVerification
-// );
+router.post(
+    '/check',
+    RequestValidation.validateBody(domainCheckSchema),
+    DomainsController.triggerDomainVerification
+);
 router.get(
     '/verify/:domainId',
     DomainsController.checkVerificationStatus
 );
-// router.post(
-//     '/ssl',
-//     RequestValidation.validateBody(sslCertificateSchema),
-//     DomainsController.triggerSSLGeneration
-// );
+router.post(
+    '/ssl',
+    RequestValidation.validateBody(sslCertificateSchema),
+    DomainsController.triggerSSLGeneration
+);
 router.get(
     '/ssl/:domainId',
     DomainsController.checkSSLStatus
