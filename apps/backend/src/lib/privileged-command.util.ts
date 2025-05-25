@@ -75,90 +75,53 @@ export class PrivilegedCommandUtil {  /**
    */
   static async executeCommand(command: string, args: string[] = []): Promise<CommandResult> {
     try {
-      const fullCommand = `${command} ${args.join(' ')}`;
-      Logger.info(`[PRIVILEGED_CMD_EXEC] Executing command: ${fullCommand}`);
-
-      // Log environment information
-      Logger.info(`[PRIVILEGED_CMD_EXEC] Current working directory: ${process.cwd()}`);
-      Logger.info(`[PRIVILEGED_CMD_EXEC] Current user: ${process.env.USER || 'unknown'}`);
-
-      // Check if the command exists
-      try {
-        const checkCommand = command.split('/').pop(); // Get the base command without path
-        const { stdout: whichOutput } = await execAsync(`which ${checkCommand}`);
-        Logger.info(`[PRIVILEGED_CMD_EXEC] Command ${checkCommand} found at: ${whichOutput.trim()}`);
-      } catch (error) {
-        const whichErr = error as Error;
-        Logger.warn(`[PRIVILEGED_CMD_EXEC] Command check failed: ${whichErr.message}`);
+      if (!isProd) {
+        Logger.info(`[PRIVILEGED_CMD] Skipping command in non-production environment: ${command} ${args.join(' ')}`);
+        return { success: true, stdout: '', stderr: '' };
       }
 
-      // Execute the command
-      const startTime = Date.now();
-      const { stdout, stderr } = await execAsync(fullCommand);
-      const executionTime = Date.now() - startTime;
+      // Paths from sudoers NOPASSWD config
+      const ALLOWED_NOPASSWD_COMMANDS = {
+        cp: '/bin/cp',
+        ln: '/bin/ln -s',
+        rm: '/bin/rm',
+        'nginx-test': '/usr/sbin/nginx -t',
+        'nginx-reload': '/usr/sbin/nginx -s reload',
+        certbot: '/usr/bin/certbot'
+      };
 
-      Logger.info(`[PRIVILEGED_CMD_EXEC] Command executed in ${executionTime}ms`);
-      Logger.info(`[PRIVILEGED_CMD_EXEC] Command stdout length: ${stdout.length} characters`);
-      Logger.info(`[PRIVILEGED_CMD_EXEC] Command stdout: ${stdout}`);
-
-      if (stderr && stderr.trim().length > 0) {
-        Logger.warn(`[PRIVILEGED_CMD_EXEC] Command stderr length: ${stderr.length} characters`);
-        Logger.warn(`[PRIVILEGED_CMD_EXEC] Command stderr: ${stderr}`);
-      } else {
-        Logger.info(`[PRIVILEGED_CMD_EXEC] No stderr output`);
-      }
-
-      const success = !stderr || stderr.trim().length === 0;
-
-      // If this is a sudo command, log more details
-      if (command === 'sudo') {
-        Logger.info(`[PRIVILEGED_CMD_EXEC] Sudo command executed: ${args.join(' ')}`);
-
-        // Check if the target of sudo exists
-        if (args.length > 0) {
-          const targetPath = args[0];
-          try {
-            const targetExists = await fs.pathExists(targetPath);
-            Logger.info(`[PRIVILEGED_CMD_EXEC] Sudo target exists: ${targetExists}`);
-
-            if (targetExists) {
-              const stats = await fs.stat(targetPath);
-              Logger.info(`[PRIVILEGED_CMD_EXEC] Sudo target permissions: ${stats.mode.toString(8)}`);
-            }
-          } catch (error) {
-            const statErr = error as Error;
-            Logger.error(`[PRIVILEGED_CMD_EXEC] Error checking sudo target: ${statErr.message}`);
-          }
+      // Check if this is an allowed NOPASSWD command
+      let cmdToExecute = '';
+      if (command === 'cp' && args[0].startsWith('/home/msuser/nginx-configs/')) {
+        cmdToExecute = `sudo ${ALLOWED_NOPASSWD_COMMANDS.cp} ${args.join(' ')}`;
+      } else if (command === 'ln' && args.includes('-s') && args.some(arg => arg.startsWith('/etc/nginx/sites-available/'))) {
+        cmdToExecute = `sudo ${ALLOWED_NOPASSWD_COMMANDS.ln} ${args.join(' ')}`;
+      } else if (command === 'rm' && args.some(arg => arg.startsWith('/etc/nginx/sites-enabled/'))) {
+        cmdToExecute = `sudo ${ALLOWED_NOPASSWD_COMMANDS.rm} ${args.join(' ')}`;
+      } else if (command === 'nginx') {
+        if (args.includes('-t')) {
+          cmdToExecute = `sudo ${ALLOWED_NOPASSWD_COMMANDS['nginx-test']}`;
+        } else if (args.includes('-s') && args.includes('reload')) {
+          cmdToExecute = `sudo ${ALLOWED_NOPASSWD_COMMANDS['nginx-reload']}`;
         }
+      } else if (command === 'certbot') {
+        cmdToExecute = `sudo ${ALLOWED_NOPASSWD_COMMANDS.certbot} ${args.join(' ')}`;
       }
 
+      if (!cmdToExecute) {
+        throw new Error(`Command not in NOPASSWD list: ${command} ${args.join(' ')}`);
+      }
+
+      Logger.info(`[PRIVILEGED_CMD] Executing: ${cmdToExecute}`);
+      const { stdout, stderr } = await execAsync(cmdToExecute);
+      
       return {
-        success,
+        success: !stderr,
         stdout,
         stderr
       };
     } catch (error) {
-      Logger.error(`[PRIVILEGED_CMD_EXEC] Error executing command ${command}: ${error instanceof Error ? error.message : 'Unknown error'}`);
-
-      // Get more details about the error
-      const errorDetails = error instanceof Error ? {
-        name: error.name,
-        message: error.message,
-        stack: error.stack,
-        // @ts-ignore
-        code: error.code,
-        // @ts-ignore
-        signal: error.signal,
-        // @ts-ignore
-        cmd: error.cmd,
-        // @ts-ignore
-        stdout: error.stdout,
-        // @ts-ignore
-        stderr: error.stderr
-      } : 'Unknown error';
-
-      Logger.error(`[PRIVILEGED_CMD_EXEC] Error details: ${JSON.stringify(errorDetails)}`);
-
+      Logger.error(`[PRIVILEGED_CMD] Error executing command: ${error instanceof Error ? error.message : 'Unknown error'}`);
       return {
         success: false,
         stdout: '',

@@ -262,120 +262,53 @@ export class DomainLib {  static async generateVerificationToken(domain: string,
    */
   static async deployNginxConfig(domain: string, configContent: string): Promise<string> {
     try {
+      if (!isProd) {
+        Logger.info(`[DEPLOY_NGINX] Skipping Nginx config deployment for ${domain} in non-production environment`);
+        return `${domain}.conf`;
+      }
+
       const configPath = path.join(NGINX_SITES_AVAILABLE, `${domain}.conf`);
       const enabledPath = path.join(NGINX_SITES_ENABLED, `${domain}.conf`);
-      
+      const localConfigPath = path.join(NGINX_CONFIG_DIR, `${domain}.conf`);
+
       Logger.info(`[DEPLOY_NGINX] Starting Nginx config deployment for domain: ${domain}`);
-      Logger.info(`[DEPLOY_NGINX] Config path: ${configPath}`);
-      Logger.info(`[DEPLOY_NGINX] Enabled path: ${enabledPath}`);
-      Logger.info(`[DEPLOY_NGINX] Config content length: ${configContent.length} characters`);
       
-      // Create a script to deploy the Nginx configuration
-      const deployScript = `#!/bin/bash
-echo "[DEPLOY_NGINX_SCRIPT] Starting deployment for ${domain}"
-echo "[DEPLOY_NGINX_SCRIPT] Config path: ${configPath}"
-echo "[DEPLOY_NGINX_SCRIPT] Enabled path: ${enabledPath}"
+      // Save local copy first
+      await fs.writeFile(localConfigPath, configContent);
 
-# Check for existing config files
-if [ -f "${configPath}" ]; then
-  echo "[DEPLOY_NGINX_SCRIPT] Existing config file found at ${configPath}, will be replaced"
-else
-  echo "[DEPLOY_NGINX_SCRIPT] No existing config file at ${configPath}"
-fi
-
-echo "[DEPLOY_NGINX_SCRIPT] Creating config file at ${configPath}"
-
-# Create the configuration file
-cat > "${configPath}" << 'EOL'
-${configContent}
-EOL
-
-echo "[DEPLOY_NGINX_SCRIPT] Config file created: $(ls -la ${configPath})"
-
-# Verify the file was created
-if [ -f "${configPath}" ]; then
-  echo "[DEPLOY_NGINX_SCRIPT] Config file exists and has size: $(stat -c%s ${configPath}) bytes"
-else
-  echo "[DEPLOY_NGINX_SCRIPT] ERROR: Config file was not created at ${configPath}"
-  exit 1
-fi
-
-# Create symlink if it doesn't exist
-if [ ! -f "${enabledPath}" ]; then
-  echo "[DEPLOY_NGINX_SCRIPT] Creating symlink from ${configPath} to ${enabledPath}"
-  ln -s "${configPath}" "${enabledPath}"
-  
-  # Verify symlink creation
-  if [ -L "${enabledPath}" ]; then
-    echo "[DEPLOY_NGINX_SCRIPT] Symlink created: $(ls -la ${enabledPath})"
-  else
-    echo "[DEPLOY_NGINX_SCRIPT] ERROR: Failed to create symlink at ${enabledPath}"
-    exit 1
-  fi
-else
-  echo "[DEPLOY_NGINX_SCRIPT] Symlink already exists: $(ls -la ${enabledPath})"
-fi
-
-# Test Nginx configuration
-echo "[DEPLOY_NGINX_SCRIPT] Testing Nginx configuration"
-nginx -t 2>&1
-
-# If successful, reload Nginx
-if [ $? -eq 0 ]; then
-  echo "[DEPLOY_NGINX_SCRIPT] Nginx configuration is valid, reloading"
-  nginx -s reload
-  echo "[DEPLOY_NGINX_SCRIPT] Nginx configuration for ${domain} deployed successfully"
-  exit 0
-else
-  echo "[DEPLOY_NGINX_SCRIPT] ERROR: Nginx configuration test failed"
-  cat "${configPath}"
-  exit 1
-fi
-`;
-      
-      Logger.info(`[DEPLOY_NGINX] Created deployment script for ${domain}`);
-      Logger.debug(`[DEPLOY_NGINX] Script content: ${deployScript}`);
-      
-      // Execute the deployment script with elevated privileges
-      const result = await PrivilegedCommandUtil.createAndExecuteScript(
-        `deploy-nginx-${domain}.sh`,
-        deployScript
-      );
-      
-      Logger.info(`[DEPLOY_NGINX] Script execution result: success=${result.success}`);
-      Logger.info(`[DEPLOY_NGINX] Script stdout: ${result.stdout}`);
-      
-      if (result.stderr) {
-        Logger.error(`[DEPLOY_NGINX] Script stderr: ${result.stderr}`);
+      // Copy to sites-available using privileged command
+      const copyResult = await PrivilegedCommandUtil.executeCommand('cp', [localConfigPath, configPath]);
+      if (!copyResult.success) {
+        throw new Error(`Failed to copy config file: ${copyResult.stderr}`);
       }
-        // Verify the config file was created in sites-available
-      try {
-        const configFileExists = await fs.pathExists(configPath);
-        Logger.info(`[DEPLOY_NGINX] After script execution, config file exists in sites-available: ${configFileExists}`);
-      } catch (error) {
-        const err = error as Error;
-        Logger.error(`[DEPLOY_NGINX] Error checking if config file exists: ${err.message}`);
+
+      // Create symlink in sites-enabled if it doesn't exist
+      if (!await fs.pathExists(enabledPath)) {
+        const linkResult = await PrivilegedCommandUtil.executeCommand('ln', ['-s', configPath, enabledPath]);
+        if (!linkResult.success) {
+          throw new Error(`Failed to create symlink: ${linkResult.stderr}`);
+        }
       }
-      
-      // Verify the symlink was created in sites-enabled
-      try {
-        const symlinkExists = await fs.pathExists(enabledPath);
-        Logger.info(`[DEPLOY_NGINX] After script execution, symlink exists in sites-enabled: ${symlinkExists}`);
-      } catch (error) {
-        const err = error as Error;
-        Logger.error(`[DEPLOY_NGINX] Error checking if symlink exists: ${err.message}`);
+
+      // Test Nginx configuration
+      const testResult = await PrivilegedCommandUtil.executeCommand('nginx', ['-t']);
+      if (!testResult.success) {
+        // If test fails, revert changes
+        await PrivilegedCommandUtil.executeCommand('rm', [enabledPath]);
+        throw new Error(`Nginx configuration test failed: ${testResult.stderr}`);
       }
-      
-      if (!result.success) {
-        Logger.error(`[DEPLOY_NGINX] Failed to deploy Nginx configuration for ${domain}`);
-        throw new Error(`Failed to deploy Nginx configuration: ${result.stderr}`);
+
+      // Reload Nginx
+      const reloadResult = await PrivilegedCommandUtil.executeCommand('nginx', ['-s', 'reload']);
+      if (!reloadResult.success) {
+        throw new Error(`Failed to reload Nginx: ${reloadResult.stderr}`);
       }
-      
+
       Logger.info(`[DEPLOY_NGINX] Nginx configuration for ${domain} deployed successfully`);
       return configPath;
     } catch (error) {
       Logger.error(`[DEPLOY_NGINX] Error deploying Nginx config for ${domain}: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      throw new Error('Failed to deploy Nginx configuration');
+      throw error;
     }
   }  static async reloadNginx(): Promise<boolean> {
     try {
