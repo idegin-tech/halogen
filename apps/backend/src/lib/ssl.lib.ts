@@ -156,8 +156,7 @@ export class SSLManager {
         isValid: false
       };
     }
-  }
-  /**
+  }  /**
    * Request a certificate using Certbot (for production environments)
    * @param domain Domain to request certificate for
    * @param projectId Project ID associated with the domain
@@ -165,32 +164,59 @@ export class SSLManager {
    */
   static async requestCertificateWithCertbot(domain: string, projectId: string): Promise<CertificateInfo> {
     try {
+      Logger.info(`[SSL_CERTBOT] Starting certificate request for domain: ${domain}`);
+      
+      // Validate domain is ready for SSL generation
+      const isValidForSSL = await this.validateDomainForSSL(domain);
+      if (!isValidForSSL) {
+        throw new Error(`Domain ${domain} is not ready for SSL certificate generation`);
+      }
+
       const certPaths = {
         cert: path.join(CERTS_DIR, domain, 'fullchain.pem'),
         key: path.join(CERTS_DIR, domain, 'privkey.pem')
       };
 
-      // Request certificate using certbot
+      // Ensure webroot directory exists and has proper permissions
+      Logger.info(`[SSL_CERTBOT] Ensuring webroot directory is set up for ${domain}`);
+      const webrootResult = await PrivilegedCommandUtil.ensureWebrootDirectory();
+      if (!webrootResult.success) {
+        throw new Error(`Failed to set up webroot directory: ${webrootResult.stderr}`);
+      }
+
+      // Request certificate using certbot with webroot method
+      Logger.info(`[SSL_CERTBOT] Requesting certificate for ${domain} using webroot method`);
       const result = await PrivilegedCommandUtil.executeCommand('certbot', [
         'certonly',
-        '--nginx',
+        '--webroot',
+        '-w', CHALLENGES_DIR,
         '--non-interactive',
         '--agree-tos',
         '--email', CERTBOT_EMAIL,
-        '-d', domain
+        '-d', domain,
+        '--keep-until-expiring',
+        '--expand'
       ]);
 
       if (!result.success) {
+        Logger.error(`[SSL_CERTBOT] Certbot command failed for ${domain}: ${result.stderr}`);
         throw new Error(`Certbot failed: ${result.stderr}`);
       }
+
+      Logger.info(`[SSL_CERTBOT] Certbot command completed successfully for ${domain}`);
 
       // Verify certificate files exist
       const certExists = await fs.access(certPaths.cert).then(() => true).catch(() => false);
       const keyExists = await fs.access(certPaths.key).then(() => true).catch(() => false);
 
       if (!certExists || !keyExists) {
+        Logger.error(`[SSL_CERTBOT] Certificate files not found after generation for ${domain}`);
+        Logger.error(`[SSL_CERTBOT] Expected cert path: ${certPaths.cert}`);
+        Logger.error(`[SSL_CERTBOT] Expected key path: ${certPaths.key}`);
         throw new Error('Certificate files not found after generation');
       }
+
+      Logger.info(`[SSL_CERTBOT] Certificate files verified for ${domain}`);
 
       return {
         domain,
@@ -201,7 +227,7 @@ export class SSLManager {
         isValid: true
       };
     } catch (error) {
-      Logger.error(`Failed to request certificate with Certbot for ${domain}: ${error}`);
+      Logger.error(`[SSL_CERTBOT] Failed to request certificate for ${domain}: ${error instanceof Error ? error.message : 'Unknown error'}`);
       throw error;
     }
   }
@@ -334,6 +360,136 @@ fi
     } catch (error) {
       Logger.error(`Failed to revoke certificate for ${domain}: ${error instanceof Error ? error.message : 'Unknown error'}`);
       return false;
+    }
+  }
+
+  /**
+   * Validate that the domain is properly configured before attempting SSL generation
+   * @param domain Domain to validate
+   * @returns True if domain is ready for SSL generation
+   */
+  static async validateDomainForSSL(domain: string): Promise<boolean> {
+    try {
+      if (!isProd) {
+        Logger.info(`[SSL_VALIDATION] Skipping domain validation in non-production environment: ${domain}`);
+        return true;
+      }
+
+      // Check if domain resolves to our server
+      const { stdout: digOutput } = await execAsync(`dig +short ${domain}`);
+      const resolvedIPs = digOutput.trim().split('\n').filter(ip => ip.length > 0);
+      
+      if (resolvedIPs.length === 0) {
+        Logger.error(`[SSL_VALIDATION] Domain ${domain} does not resolve to any IP`);
+        return false;
+      }
+
+      Logger.info(`[SSL_VALIDATION] Domain ${domain} resolves to: ${resolvedIPs.join(', ')}`);
+
+      // Check if we can reach the domain via HTTP (needed for HTTP-01 challenge)
+      try {
+        const testUrl = `http://${domain}/.well-known/acme-challenge/test`;
+        Logger.info(`[SSL_VALIDATION] Testing HTTP accessibility for ${domain}`);
+        
+        // Create a test file in the webroot
+        const testFilePath = '/var/www/certbot/.well-known/acme-challenge/test';
+        const testContent = 'test-challenge-response';
+        
+        const testScript = `#!/bin/bash
+echo "Creating test challenge file"
+mkdir -p /var/www/certbot/.well-known/acme-challenge
+echo "${testContent}" > "${testFilePath}"
+chmod 644 "${testFilePath}"
+echo "Test file created successfully"
+`;
+
+        const createResult = await PrivilegedCommandUtil.createAndExecuteScript(
+          `create-test-challenge-${domain}-${Date.now()}.sh`,
+          testScript
+        );
+
+        if (!createResult.success) {
+          Logger.error(`[SSL_VALIDATION] Failed to create test challenge file: ${createResult.stderr}`);
+          return false;
+        }
+
+        // Clean up test file
+        const cleanupScript = `#!/bin/bash
+rm -f "${testFilePath}"
+echo "Test file cleaned up"
+`;
+
+        await PrivilegedCommandUtil.createAndExecuteScript(
+          `cleanup-test-challenge-${domain}-${Date.now()}.sh`,
+          cleanupScript
+        );
+
+        return true;
+      } catch (httpError) {
+        Logger.warn(`[SSL_VALIDATION] HTTP test failed for ${domain}: ${httpError instanceof Error ? httpError.message : 'Unknown error'}`);
+        return true; // Don't fail SSL generation just because HTTP test failed
+      }
+    } catch (error) {
+      Logger.error(`[SSL_VALIDATION] Domain validation failed for ${domain}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      return false;
+    }
+  }
+
+  /**
+   * Check if a certificate needs renewal (expires within 30 days)
+   * @param domain Domain to check
+   * @returns True if certificate needs renewal
+   */
+  static async needsRenewal(domain: string): Promise<boolean> {
+    try {
+      const cert = await this.checkCertificate(domain);
+      
+      if (!cert.isValid || !cert.expiryDate) {
+        return true; // Invalid or missing certificate needs renewal
+      }
+      
+      // Check if certificate expires within 30 days
+      const thirtyDaysFromNow = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+      return cert.expiryDate <= thirtyDaysFromNow;
+    } catch (error) {
+      Logger.error(`Error checking renewal status for ${domain}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      return true; // If we can't check, assume it needs renewal
+    }
+  }
+
+  /**
+   * Renew an existing certificate
+   * @param domain Domain to renew certificate for
+   * @param projectId Project ID associated with the domain
+   * @returns Certificate information after renewal
+   */
+  static async renewCertificate(domain: string, projectId: string): Promise<CertificateInfo> {
+    try {
+      Logger.info(`[SSL_RENEWAL] Starting certificate renewal for domain: ${domain}`);
+      
+      if (USE_CERTBOT) {
+        // For Certbot, we can use the renew command
+        const renewResult = await PrivilegedCommandUtil.executeCommand('certbot', [
+          'renew',
+          '--cert-name', domain,
+          '--non-interactive'
+        ]);
+
+        if (renewResult.success) {
+          Logger.info(`[SSL_RENEWAL] Certificate renewed successfully for ${domain}`);
+          return await this.checkCertificate(domain);
+        } else {
+          Logger.warn(`[SSL_RENEWAL] Certbot renew failed for ${domain}, attempting fresh certificate request`);
+          // Fall back to requesting a new certificate
+          return await this.requestCertificate(domain, projectId);
+        }
+      } else {
+        // For ACME client, request a new certificate
+        return await this.requestCertificate(domain, projectId);
+      }
+    } catch (error) {
+      Logger.error(`[SSL_RENEWAL] Failed to renew certificate for ${domain}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw error;
     }
   }
 }

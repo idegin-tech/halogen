@@ -142,27 +142,49 @@ export class DomainQueue {
         console.log(error)
         throw error;
       }
-    });
-    
-    this.sslQueue.process(async (job) => {
+    });    this.sslQueue.process(async (job) => {
       try {
-        Logger.info(`Processing SSL generation job for ${job.data.domainName}`);
+        Logger.info(`[SSL_QUEUE] Processing SSL generation job for ${job.data.domainName}`);
         const { domainId, domainName, projectId } = job.data;
+        const retryCount = job.attemptsMade;
+        
+        Logger.info(`[SSL_QUEUE] SSL generation attempt ${retryCount + 1} for ${domainName}`);
+        
+        // First, ensure domain is properly set up with Nginx configuration
+        Logger.info(`[SSL_QUEUE] Ensuring domain setup for ${domainName} before SSL generation`);
+        const setupResult = await PrivilegedCommandUtil.setupDomain(domainName, projectId, { configureOnly: true });
+        
+        if (!setupResult.success) {
+          Logger.error(`[SSL_QUEUE] Domain setup failed for ${domainName}: ${setupResult.stderr}`);
+          
+          if (retryCount < 2) {
+            Logger.info(`[SSL_QUEUE] Will retry SSL generation for ${domainName} after domain setup failure (attempt ${retryCount + 1}/3)`);
+            throw new Error(`Domain setup failed: ${setupResult.stderr}`);
+          } else {
+            Logger.error(`[SSL_QUEUE] Domain setup failed after ${retryCount + 1} attempts for ${domainName}`);
+            await domainsService.updateDomainSSLStatus(domainId, 'FAILED', null);
+            return { success: false, error: 'Domain setup failed' };
+          }
+        }
+        
+        Logger.info(`[SSL_QUEUE] Domain setup completed for ${domainName}, proceeding with SSL generation`);
+        
+        // Add a small delay to ensure DNS propagation and Nginx reload completion
+        await new Promise(resolve => setTimeout(resolve, 5000)); // 5 second delay
         
         const certificate = await SSLManager.requestCertificate(domainName, projectId);
         
         if (!certificate.isValid) {
-          const retryCount = job.attemptsMade;
-          
-          if (retryCount < 3) {
-            Logger.info(`SSL generation attempt ${retryCount + 1} failed for ${domainName}, will retry`);
+          if (retryCount < 2) {
+            Logger.info(`[SSL_QUEUE] SSL generation attempt ${retryCount + 1} failed for ${domainName}, will retry`);
             throw new Error('SSL generation failed, will retry');
           } else {
-            Logger.warn(`SSL generation failed after ${retryCount} attempts for ${domainName}`);
+            Logger.warn(`[SSL_QUEUE] SSL generation failed after ${retryCount + 1} attempts for ${domainName}`);
             await domainsService.updateDomainSSLStatus(domainId, 'FAILED', null);
+            return { success: false, error: 'SSL generation failed' };
           }
         } else {
-          Logger.info(`SSL certificate for ${domainName} generated successfully`);
+          Logger.info(`[SSL_QUEUE] SSL certificate for ${domainName} generated successfully`);
           
           await domainsService.updateDomainSSLStatus(
             domainId, 
@@ -170,28 +192,36 @@ export class DomainQueue {
             certificate.expiryDate
           );
           
-          const configOptions = {
-            domain: domainName,
-            projectId,
-            sslCertPath: certificate.certPath,
-            sslKeyPath: certificate.keyPath
-          };
-          
-          await DomainLib.generateNginxConfig(configOptions);
-          const reloadSuccess = await DomainLib.reloadNginx();
-          
-          if (reloadSuccess) {
-            Logger.info(`Nginx reloaded successfully with SSL config for ${domainName}`);
+          // Generate updated Nginx config with SSL
+          try {
+            const configOptions = {
+              domain: domainName,
+              projectId,
+              sslCertPath: certificate.certPath,
+              sslKeyPath: certificate.keyPath
+            };
             
-            await domainsService.updateDomainStatus(domainId, DomainStatus.ACTIVE);
-          } else {
-            Logger.error(`Failed to reload Nginx with SSL config for ${domainName}`);
+            Logger.info(`[SSL_QUEUE] Updating Nginx configuration with SSL for ${domainName}`);
+            await DomainLib.generateNginxConfig(configOptions);
+            
+            const reloadSuccess = await DomainLib.reloadNginx();
+            
+            if (reloadSuccess) {
+              Logger.info(`[SSL_QUEUE] Nginx reloaded successfully with SSL config for ${domainName}`);
+              await domainsService.updateDomainStatus(domainId, DomainStatus.ACTIVE);
+            } else {
+              Logger.error(`[SSL_QUEUE] Failed to reload Nginx with SSL config for ${domainName}`);
+              // Don't fail the job, certificate is still valid
+            }
+          } catch (configError) {
+            Logger.error(`[SSL_QUEUE] Error updating Nginx config with SSL for ${domainName}: ${configError instanceof Error ? configError.message : 'Unknown error'}`);
+            // Don't fail the job, certificate is still valid
           }
         }
         
         return { success: certificate.isValid, certificate };
       } catch (error) {
-        Logger.error(`Error in SSL generation job: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        Logger.error(`[SSL_QUEUE] Error in SSL generation job for ${job.data.domainName}: ${error instanceof Error ? error.message : 'Unknown error'}`);
         throw error;
       }
     });

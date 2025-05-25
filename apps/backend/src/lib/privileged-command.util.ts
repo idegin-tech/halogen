@@ -36,6 +36,15 @@ export class PrivilegedCommandUtil {  /**
     try {
       await fs.mkdir(NGINX_CONFIG_DIR, { recursive: true });
       Logger.info(`Initialized ${NGINX_CONFIG_DIR} directory`);
+      
+      // Also ensure webroot directory is set up during initialization
+      Logger.info('Setting up webroot directory during system initialization');
+      const webrootResult = await this.ensureWebrootDirectory();
+      if (webrootResult.success) {
+        Logger.info('Webroot directory initialized successfully');
+      } else {
+        Logger.warn(`Webroot directory setup warning: ${webrootResult.stderr}`);
+      }
     } catch (error) {
       Logger.error(`Failed to initialize directories: ${error}`);
       throw error;
@@ -282,6 +291,80 @@ fi
       return result;
     } catch (error: any) {
       Logger.error(`[SETUP_DOMAIN] Error setting up domain ${domain}: ${error.message}`);
+      return {
+        success: false,
+        stdout: '',
+        stderr: error.message,
+        error
+      };
+    }
+  }
+
+  /**
+   * Ensure the webroot directory exists and has proper permissions for Certbot challenges
+   * @returns Result of webroot directory setup
+   */
+  static async ensureWebrootDirectory(): Promise<CommandResult> {
+    try {
+      if (!isProd) {
+        Logger.info(`[WEBROOT_SETUP] Skipping webroot setup in non-production environment`);
+        return { success: true, stdout: '', stderr: '' };
+      }
+
+      const webrootScript = `#!/bin/bash
+echo "[WEBROOT_SETUP] Setting up webroot directory for Certbot challenges"
+
+# Create the webroot directory
+WEBROOT_DIR="/var/www/certbot"
+
+# Create directory if it doesn't exist
+if [ ! -d "\$WEBROOT_DIR" ]; then
+  echo "[WEBROOT_SETUP] Creating webroot directory: \$WEBROOT_DIR"
+  mkdir -p "\$WEBROOT_DIR"
+else
+  echo "[WEBROOT_SETUP] Webroot directory already exists: \$WEBROOT_DIR"
+fi
+
+# Create .well-known/acme-challenge directory
+ACME_CHALLENGE_DIR="\$WEBROOT_DIR/.well-known/acme-challenge"
+if [ ! -d "\$ACME_CHALLENGE_DIR" ]; then
+  echo "[WEBROOT_SETUP] Creating ACME challenge directory: \$ACME_CHALLENGE_DIR"
+  mkdir -p "\$ACME_CHALLENGE_DIR"
+else
+  echo "[WEBROOT_SETUP] ACME challenge directory already exists: \$ACME_CHALLENGE_DIR"
+fi
+
+# Set proper permissions
+echo "[WEBROOT_SETUP] Setting permissions on webroot directory"
+chown -R www-data:www-data "\$WEBROOT_DIR"
+chmod -R 755 "\$WEBROOT_DIR"
+
+# Verify setup
+if [ -d "\$WEBROOT_DIR" ] && [ -d "\$ACME_CHALLENGE_DIR" ]; then
+  echo "[WEBROOT_SETUP] Webroot directory setup completed successfully"
+  exit 0
+else
+  echo "[WEBROOT_SETUP] Webroot directory setup failed"
+  exit 1
+fi
+`;
+
+      Logger.info(`[WEBROOT_SETUP] Ensuring webroot directory exists and has proper permissions`);
+      
+      const result = await this.createAndExecuteScript(
+        `setup-webroot-${Date.now()}.sh`,
+        webrootScript
+      );
+      
+      if (result.success) {
+        Logger.info(`[WEBROOT_SETUP] Webroot directory setup completed successfully`);
+      } else {
+        Logger.error(`[WEBROOT_SETUP] Webroot directory setup failed: ${result.stderr}`);
+      }
+      
+      return result;
+    } catch (error: any) {
+      Logger.error(`[WEBROOT_SETUP] Error setting up webroot directory: ${error.message}`);
       return {
         success: false,
         stdout: '',
