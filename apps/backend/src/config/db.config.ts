@@ -21,7 +21,7 @@ class Database {
       heartbeatFrequencyMS: 10000,
       retryWrites: true,
       retryReads: true,
-      ssl: process.env.NODE_ENV === 'production',
+      // ssl: process.env.NODE_ENV === 'production',
       authSource: process.env.MONGODB_AUTH_SOURCE || 'admin',
     };
     
