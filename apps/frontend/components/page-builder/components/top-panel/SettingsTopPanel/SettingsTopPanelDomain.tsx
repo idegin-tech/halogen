@@ -240,7 +240,6 @@ export default function SettingsTopPanelDomain() {
                 ttl: '3600'
             });
             
-            // Option 2: Add as TXT record at subdomain (for providers that don't support @ records)
             if (domainData) {
                 const tokenValue = verificationToken.split('=')[1] || verificationToken;
                 records.push({
@@ -251,7 +250,6 @@ export default function SettingsTopPanelDomain() {
                 });
             }
         } else if (domainData && domainData.status !== DomainStatus.ACTIVE) {
-            // If we don't have the token but the domain is not active yet, show a placeholder
             records.push({
                 type: 'TXT',
                 host: '@',
@@ -359,7 +357,7 @@ export default function SettingsTopPanelDomain() {
     );
 
     return (
-        <div className="space-y-6 p-6 select-none">
+        <div className="space-y-6 p-6 select-none grid grid-cols-1">
             <div className="flex flex-col gap-6">
                 {/* Show domain creation UI only when there's no domain and no error */}
                 {status === 'initial' && !hasDomain && !hasError && (
@@ -495,20 +493,6 @@ export default function SettingsTopPanelDomain() {
                                     </div>
                                 </div>
 
-                                <div className="rounded-lg border p-4 bg-muted/20 space-y-2">
-                                    <h4 className="text-sm font-medium">Common DNS Providers</h4>
-                                    <div className="text-sm text-muted-foreground space-y-2">
-                                        <p className="flex flex-col">
-                                            <span>• <strong>Cloudflare:</strong> DNS → Records → Add record</span>
-                                        </p>
-                                        <p className="flex flex-col">
-                                            <span>• <strong>GoDaddy:</strong> DNS Management → Add → Record type</span>
-                                        </p>
-                                        <p className="flex flex-col">
-                                            <span>• <strong>Namecheap:</strong> Advanced DNS → Add New Record</span>
-                                        </p>
-                                    </div>
-                                </div>
                             </div>
                         </CardContent>
                         <CardFooter className="flex flex-col items-stretch gap-2 sm:flex-row sm:justify-between">
