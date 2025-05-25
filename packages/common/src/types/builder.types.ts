@@ -42,6 +42,9 @@ export type DomainData = {
     name: string;
     value: string;
   };
+  isActive: boolean;
+  lastVerificationAttempt?: string;
+  verificationFailReason?: string;
   createdAt: string;
   updatedAt: string;
 }
