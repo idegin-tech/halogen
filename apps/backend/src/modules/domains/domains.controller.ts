@@ -178,7 +178,7 @@ export class DomainsController {
     static async triggerSSLGeneration(req: Request, res: Response): Promise<void> {
         try {
             const { domainId } = req.body as SSLCertificateDTO;
-
+            console.log('TRIGGERING SSL GENERATION FOR DOMAIN ID:', domainId);
             const result = await DomainsService.triggerSSLGeneration(domainId);
             ResponseHelper.success(res, result, 'SSL certificate generation initiated successfully');
         } catch (error) {

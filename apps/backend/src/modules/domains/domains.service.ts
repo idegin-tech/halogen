@@ -15,6 +15,7 @@ const shouldRunProductionOperations = (): boolean => {
 export class DomainsService {
     static async addDomain(projectId: string, domainData: { name: string }): Promise<DomainData & { verificationToken?: string }> {
         try {
+            console.log('ADDING DOMAIN:::', {domainData, projectId});
             const domainName = domainData.name.toLowerCase();
 
             if (isDomainBlacklisted(domainName)) {
@@ -286,6 +287,8 @@ export class DomainsService {
             if (!domain) {
                 throw new Error('Domain not found');
             }
+
+            console.log('DOMAIN WAS FOUND:::', domain)
 
             if (domain.status !== DomainStatus.ACTIVE) {
                 throw new Error('Domain must be verified before SSL certificate can be generated');
