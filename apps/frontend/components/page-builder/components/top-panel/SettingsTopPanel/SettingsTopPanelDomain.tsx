@@ -21,6 +21,7 @@ interface DnsRecord {
     host: string;
     value: string;
     ttl: string;
+    note?: string;
 }
 
 export default function SettingsTopPanelDomain() {
@@ -230,7 +231,10 @@ export default function SettingsTopPanelDomain() {
             ttl: '3600'
         });        // Add the TXT record only if we have a real verification token
         if (verificationToken) {
-            // Option 1: Add as TXT record at root domain
+            // Only show one consistent method to add the verification token
+            // The backend supports verification in multiple locations
+            
+            // Primary method: Add TXT record at root domain (recommended)
             records.push({
                 type: 'TXT',
                 host: '@',
@@ -238,13 +242,16 @@ export default function SettingsTopPanelDomain() {
                 ttl: '3600'
             });
             
-            if (domainData) {
-                const tokenValue = verificationToken.split('=')[1] || verificationToken;
+            // Alternative method: Add subdomain record (for DNS providers that don't support @ records)
+            // In this case we must use just the value part after the equals sign
+            if (domainData && verificationToken.includes('=')) {
+                const tokenValue = verificationToken.split('=')[1];
                 records.push({
                     type: 'TXT',
                     host: 'halogen-domain-verification',
                     value: tokenValue,
-                    ttl: '3600'
+                    ttl: '3600',
+                    note: 'Alternative method if your DNS provider does not support @ records'
                 });
             }
         } else if (domainData && domainData.status !== DomainStatus.ACTIVE) {

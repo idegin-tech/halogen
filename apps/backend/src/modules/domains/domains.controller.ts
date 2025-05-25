@@ -134,7 +134,8 @@ export class DomainsController {
     static async triggerDomainVerification(req: Request, res: Response): Promise<void> {
         try {
             const { domainId } = req.body as DomainVerificationDTO;
-            Logger.info(`\n\n\nTriggering domain verification for domain ID: ${domainId}`);
+            console.log(`\n\n\n`)
+            Logger.info(`Triggering domain verification for domain ID: ${domainId}`);
             const result = await DomainsService.triggerDomainVerification(domainId);
             ResponseHelper.success(res, result, 'Domain verification initiated successfully');
         } catch (error) {

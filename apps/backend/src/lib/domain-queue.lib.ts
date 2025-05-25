@@ -48,12 +48,54 @@ export class DomainQueue {
         const status = await DomainLib.getDomainStatus(domainName, verificationToken);
         
         Logger.info(`[DOMAIN_QUEUE] Domain status: propagated=${status.propagated}, verified=${status.verified}, recommendedStatus=${status.recommendedStatus}`);
-        
-        if (status.verified) {
+          if (status.verified) {
           Logger.info(`[DOMAIN_QUEUE] Domain ${domainName} verification successful`);
-          await domainsService.updateDomainStatus(domainId, DomainStatus.ACTIVE);
           
+          // First generate Nginx config before marking domain as active
+          if (isProd) {
+            try {
+              const configOptions = {
+                domain: domainName,
+                projectId
+              };
+              
+              Logger.info(`[DOMAIN_QUEUE] Generating Nginx config for ${domainName} before updating status`);
+              await DomainLib.generateNginxConfig(configOptions);
+              Logger.info(`[DOMAIN_QUEUE] Initial Nginx config created for ${domainName}`);
+              
+              // Reload Nginx to apply the configuration
+              const reloadSuccess = await DomainLib.reloadNginx();
+              if (reloadSuccess) {
+                Logger.info(`[DOMAIN_QUEUE] Nginx reloaded successfully for ${domainName}`);
+              } else {
+                Logger.error(`[DOMAIN_QUEUE] Failed to reload Nginx for ${domainName}`);
+              }
+            } catch (configError) {
+              Logger.error(`[DOMAIN_QUEUE] Error creating Nginx config for ${domainName}: ${configError instanceof Error ? configError.message : 'Unknown error'}`);
+              // Continue with verification process even if config creation fails
+              // We'll retry config creation later
+            }
+          }
+          
+          // Now update domain status to active
+          await domainsService.updateDomainStatus(domainId, DomainStatus.ACTIVE);
           await domainsService.updateDomainVerificationAttempt(domainId, `Attempt ${retryCount + 1}: Verification successful!`);
+          
+          // Only add SSL generation job if we're in production and Nginx config was successful
+          if (isProd) {
+            try {
+              Logger.info(`[DOMAIN_QUEUE] Adding SSL generation job for ${domainName}`);
+              await this.addSSLGenerationJob({
+                _id: domainId,
+                name: domainName,
+                project: projectId
+              } as DomainData);
+              
+              Logger.info(`[DOMAIN_QUEUE] SSL generation job queued for ${domainName}`);
+            } catch (error) {
+              Logger.error(`[DOMAIN_QUEUE] Error creating SSL generation job for ${domainName}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            }
+          }
         } else if (status.propagated) {
           Logger.info(`[DOMAIN_QUEUE] Domain ${domainName} DNS propagated but not verified`);
           await domainsService.updateDomainStatus(domainId, DomainStatus.PROPAGATING);

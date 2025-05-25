@@ -87,10 +87,12 @@ export class DomainLib {  static async generateVerificationToken(domain: string,
     } catch (error) {
       return false;
     }
-  }
-  static async verifyDomainOwnership(domain: string, expectedToken: string): Promise<boolean> {
+  }  static async verifyDomainOwnership(domain: string, expectedToken: string): Promise<boolean> {
     try {
       Logger.info(`Verifying domain ownership for ${domain} with token: ${expectedToken}`);
+      
+      // Extract the token value for simplified matching
+      const tokenValue = expectedToken.includes('=') ? expectedToken.split('=')[1] : expectedToken;
       
       // Try checking the TXT record on the main domain
       try {
@@ -100,32 +102,15 @@ export class DomainLib {  static async generateVerificationToken(domain: string,
         for (const record of records) {
           for (const txt of record) {
             Logger.info(`Checking TXT record: "${txt}" against expected: "${expectedToken}"`);
-            if (txt === expectedToken) {
+            // Match against both full token or just the token value
+            if (txt === expectedToken || txt === tokenValue) {
+              Logger.info(`Match found! Root domain TXT record verified for ${domain}`);
               return true;
             }
           }
         }
       } catch (error) {
         Logger.warn(`Error checking TXT records for ${domain}: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      }
-      
-      // Try with _txt prefix (common pattern for some DNS providers)
-      try {
-        const txtPrefixDomain = `_txt.${domain}`;
-        Logger.info(`Trying alternative TXT location: ${txtPrefixDomain}`);
-        const txtPrefixRecords = await resolveTxt(txtPrefixDomain);
-        
-        for (const record of txtPrefixRecords) {
-          for (const txt of record) {
-            Logger.info(`Checking TXT record at _txt prefix: "${txt}"`);
-            if (txt === expectedToken) {
-              return true;
-            }
-          }
-        }
-      } catch (error) {
-        // Ignore errors for this secondary check
-        Logger.warn(`No TXT records found at _txt prefix for ${domain}`);
       }
       
       // Try with standard DNS service prefixes
@@ -138,7 +123,8 @@ export class DomainLib {  static async generateVerificationToken(domain: string,
           for (const txt of record) {
             // For service-specific subdomain, the value might just be the token part
             Logger.info(`Checking TXT record at service subdomain: "${txt}"`);
-            if (txt === expectedToken || txt === expectedToken.split('=')[1]) {
+            if (txt === expectedToken || txt === tokenValue) {
+              Logger.info(`Match found! Subdomain TXT record verified for ${domain}`);
               return true;
             }
           }
@@ -148,7 +134,27 @@ export class DomainLib {  static async generateVerificationToken(domain: string,
         Logger.warn(`No TXT records found at service subdomain for ${domain}`);
       }
       
-      Logger.warn(`No matching TXT record found for ${domain}. Expected: ${expectedToken}`);
+      // Try with _txt prefix (common pattern for some DNS providers)
+      try {
+        const txtPrefixDomain = `_txt.${domain}`;
+        Logger.info(`Trying alternative TXT location: ${txtPrefixDomain}`);
+        const txtPrefixRecords = await resolveTxt(txtPrefixDomain);
+        
+        for (const record of txtPrefixRecords) {
+          for (const txt of record) {
+            Logger.info(`Checking TXT record at _txt prefix: "${txt}"`);
+            if (txt === expectedToken || txt === tokenValue) {
+              Logger.info(`Match found! _txt prefix TXT record verified for ${domain}`);
+              return true;
+            }
+          }
+        }
+      } catch (error) {
+        // Ignore errors for this secondary check
+        Logger.warn(`No TXT records found at _txt prefix for ${domain}`);
+      }
+      
+      Logger.warn(`No matching TXT record found for ${domain}. Expected full token: ${expectedToken} or value: ${tokenValue}`);
       return false;
     } catch (error) {
       Logger.error(`Error verifying domain ownership for ${domain}: ${error instanceof Error ? error.message : 'Unknown error'}`);
