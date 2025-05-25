@@ -31,11 +31,11 @@ router.get(
     '/domain/:domainId',
     DomainsController.getDomainById
 );
-router.post(
-    '/check',
-    // RequestValidation.validateBody(domainCheckSchema),
-    DomainsController.triggerDomainVerification
-);
+// router.post(
+//     '/check',
+//     RequestValidation.validateBody(domainCheckSchema),
+//     DomainsController.triggerDomainVerification
+// );
 router.get(
     '/verify/:domainId',
     DomainsController.checkVerificationStatus

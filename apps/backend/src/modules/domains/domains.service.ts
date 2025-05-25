@@ -9,11 +9,17 @@ import { isDomainBlacklisted } from './domain-blacklist';
 import fs from 'fs-extra';
 import path from 'path';
 import PrivilegedCommandUtil from '../../lib/privileged-command.util';
+import { isProduction } from '../../config/env.config';
 
 // Get the Nginx configuration directory
 const NGINX_CONFIG_DIR = process.platform === 'win32'
   ? path.join(process.cwd(), 'nginx-configs')
   : '/home/msuser/nginx-configs';
+
+// Helper to determine if operations that modify the filesystem should run
+const shouldRunProductionOperations = (): boolean => {
+  return isProduction() && process.platform !== 'win32';
+};
 
 export class DomainsService {    static async addDomain(projectId: string, domainData: AddDomainDTO): Promise<DomainData & { verificationToken?: string }> {
         try {
@@ -52,8 +58,13 @@ export class DomainsService {    static async addDomain(projectId: string, domai
             savedDomain.status = DomainStatus.PENDING_DNS;
             await savedDomain.save();
             
-            // Queue verification job
-            await DomainQueue.addVerificationJob(savedDomain.toObject() as DomainData, verificationToken);
+            // Only queue verification job in production environment
+            if (shouldRunProductionOperations()) {
+                await DomainQueue.addVerificationJob(savedDomain.toObject() as DomainData, verificationToken);
+                Logger.info(`Domain verification job queued for ${domainName} in production environment`);
+            } else {
+                Logger.info(`Domain verification job skipped for ${domainName} - not in production environment`);
+            }
             
             const domainObj = savedDomain.toObject();
             return {
@@ -141,9 +152,7 @@ export class DomainsService {    static async addDomain(projectId: string, domai
             Logger.error(`Get domain by ID error: ${error instanceof Error ? error.message : 'Unknown error'}`);
             throw error;
         }
-    }
-
-    static async triggerDomainVerification(domainId: string): Promise<DomainData> {
+    }    static async triggerDomainVerification(domainId: string): Promise<DomainData> {
         try {
             const domain = await DomainModel.findById(domainId);
             if (!domain) {
@@ -157,27 +166,30 @@ export class DomainsService {    static async addDomain(projectId: string, domai
             domain.status = DomainStatus.PENDING_DNS;
             const updatedDomain = await domain.save();
             
-            await DomainQueue.addVerificationJob(updatedDomain.toObject() as DomainData, verificationToken);
-            
-            Logger.info(`Domain verification triggered for ${domain.name}`);
+            // Only queue verification job in production environment
+            if (shouldRunProductionOperations()) {
+                await DomainQueue.addVerificationJob(updatedDomain.toObject() as DomainData, verificationToken);
+                Logger.info(`Domain verification triggered for ${domain.name} in production environment`);
+            } else {
+                Logger.info(`Domain verification skipped for ${domain.name} - not in production environment`);
+            }
             
             const domainObj = updatedDomain.toObject();
             return {
                 ...domainObj,
                 _id: (domainObj._id as any).toString()
-            } as DomainData;        } catch (error) {
+            } as DomainData;} catch (error) {
             Logger.error(`Trigger domain verification error: ${error instanceof Error ? error.message : 'Unknown error'}`);
             throw error;
         }
-    }
-
-    static async checkVerificationStatus(domainId: string): Promise<{
+    }    static async checkVerificationStatus(domainId: string): Promise<{
         domainId: string;
         status: DomainStatus;
         isVerified: boolean;
         verificationToken?: string;
         verifiedAt?: string;
         jobStatus?: string;
+        isProduction?: boolean;
     }> {
         try {
             const domain = await DomainModel.findById(domainId);
@@ -185,59 +197,87 @@ export class DomainsService {    static async addDomain(projectId: string, domai
                 throw new Error('Domain not found');
             }
 
-            const jobStatus = await DomainQueue.getVerificationJobStatus(domainId);
-            const isVerified = domain.status === DomainStatus.ACTIVE;
-            
-            // If verification is still in progress
-            if (jobStatus.inProgress) {
+            // Only check actual verification in production
+            if (shouldRunProductionOperations()) {
+                const jobStatus = await DomainQueue.getVerificationJobStatus(domainId);
+                const isVerified = domain.status === DomainStatus.ACTIVE;
+                
+                // If verification is still in progress
+                if (jobStatus.inProgress) {
+                    return {
+                        domainId: (domain._id as any).toString(),
+                        status: domain.status,
+                        isVerified,
+                        verifiedAt: domain.verifiedAt,
+                        jobStatus: jobStatus.status,
+                        isProduction: true
+                    };
+                }
+                
+                // Manual verification check
+                if (domain.status === DomainStatus.PENDING_DNS) {
+                    const verificationToken = await DomainLib.generateVerificationToken(domain.name, domain.project);
+                    
+                    const status = await DomainLib.getDomainStatus(domain.name, verificationToken);
+                    
+                    if (status.recommendedStatus !== domain.status) {
+                        await this.updateDomainStatus(domainId, status.recommendedStatus);
+                        domain.status = status.recommendedStatus;
+                        
+                        if (status.recommendedStatus === DomainStatus.ACTIVE) {
+                            domain.verifiedAt = new Date().toISOString();
+                        }
+                    }
+                    
+                    return {
+                        domainId: (domain._id as any).toString(),
+                        status: domain.status,
+                        isVerified: domain.status === DomainStatus.ACTIVE,
+                        verificationToken,
+                        verifiedAt: domain.verifiedAt,
+                        isProduction: true
+                    };
+                }
+                
                 return {
                     domainId: (domain._id as any).toString(),
                     status: domain.status,
                     isVerified,
                     verifiedAt: domain.verifiedAt,
-                    jobStatus: jobStatus.status
+                    isProduction: true
                 };
-            }
-            
-            // Manual verification check
-            if (domain.status === DomainStatus.PENDING_DNS) {
-                const verificationToken = await DomainLib.generateVerificationToken(domain.name, domain.project);
+            } else {
+                // In development, simulate success for testing UI
+                Logger.info(`Domain verification check skipped for ${domain.name} - not in production environment`);
                 
-                const status = await DomainLib.getDomainStatus(domain.name, verificationToken);
-                
-                if (status.recommendedStatus !== domain.status) {
-                    await this.updateDomainStatus(domainId, status.recommendedStatus);
-                    domain.status = status.recommendedStatus;
-                    
-                    if (status.recommendedStatus === DomainStatus.ACTIVE) {
-                        domain.verifiedAt = new Date().toISOString();
-                    }
+                // For testing UI, automatically "verify" the domain in non-production
+                if (domain.status === DomainStatus.PENDING_DNS) {
+                    // Auto-verify domains in development for easy testing
+                    domain.status = DomainStatus.ACTIVE;
+                    domain.verifiedAt = new Date().toISOString();
+                    await domain.save();
                 }
+                
+                const verificationToken = await DomainLib.generateVerificationToken(domain.name, domain.project);
                 
                 return {
                     domainId: (domain._id as any).toString(),
                     status: domain.status,
                     isVerified: domain.status === DomainStatus.ACTIVE,
                     verificationToken,
-                    verifiedAt: domain.verifiedAt
+                    verifiedAt: domain.verifiedAt,
+                    isProduction: false
                 };
             }
-            
-            return {
-                domainId: (domain._id as any).toString(),
-                status: domain.status,
-                isVerified,
-                verifiedAt: domain.verifiedAt
-            };        } catch (error) {
+        } catch (error) {
             Logger.error(`Check verification status error: ${error instanceof Error ? error.message : 'Unknown error'}`);
             throw error;
         }
-    }
-
-    static async triggerSSLGeneration(domainId: string): Promise<{
+    }    static async triggerSSLGeneration(domainId: string): Promise<{
         domainId: string;
         sslStatus: string;
         message: string;
+        isProduction?: boolean;
     }> {
         try {
             const domain = await DomainModel.findById(domainId);
@@ -249,23 +289,37 @@ export class DomainsService {    static async addDomain(projectId: string, domai
                 throw new Error('Domain must be verified before SSL certificate can be generated');
             }
             
-            await DomainQueue.addSSLGenerationJob(domain.toObject() as DomainData);
-            
-            return {
-                domainId: (domain._id as any).toString(),
-                sslStatus: 'generating',
-                message: 'SSL certificate generation initiated'
-            };        } catch (error) {
+            if (shouldRunProductionOperations()) {
+                await DomainQueue.addSSLGenerationJob(domain.toObject() as DomainData);
+                Logger.info(`SSL generation job queued for ${domain.name} in production environment`);
+                
+                return {
+                    domainId: (domain._id as any).toString(),
+                    sslStatus: 'generating',
+                    message: 'SSL certificate generation initiated',
+                    isProduction: true
+                };
+            } else {
+                Logger.info(`SSL generation skipped for ${domain.name} - not in production environment`);
+                
+                // In development, simulate success
+                return {
+                    domainId: (domain._id as any).toString(),
+                    sslStatus: 'active',
+                    message: 'SSL certificate generation simulated in development environment',
+                    isProduction: false
+                };
+            }
+        } catch (error) {
             Logger.error(`Trigger SSL generation error: ${error instanceof Error ? error.message : 'Unknown error'}`);
             throw error;
         }
-    }
-
-    static async checkSSLStatus(domainId: string): Promise<{
+    }    static async checkSSLStatus(domainId: string): Promise<{
         domainId: string;
         sslStatus: string;
         isSSLActive: boolean;
         certificateExpiry?: string;
+        isProduction?: boolean;
     }> {
         try {
             const domain = await DomainModel.findById(domainId);
@@ -273,24 +327,43 @@ export class DomainsService {    static async addDomain(projectId: string, domai
                 throw new Error('Domain not found');
             }
 
-            const jobStatus = await DomainQueue.getSSLJobStatus(domainId);
-            
-            if (jobStatus.inProgress) {
+            if (shouldRunProductionOperations()) {
+                const jobStatus = await DomainQueue.getSSLJobStatus(domainId);
+                
+                if (jobStatus.inProgress) {
+                    return {
+                        domainId: (domain._id as any).toString(),
+                        sslStatus: 'generating',
+                        isSSLActive: false,
+                        isProduction: true
+                    };
+                }
+                
+                const certificate = await SSLManager.checkCertificate(domain.name);
+                
                 return {
                     domainId: (domain._id as any).toString(),
-                    sslStatus: 'generating',
-                    isSSLActive: false
+                    sslStatus: certificate.isValid ? 'active' : 'inactive',
+                    isSSLActive: certificate.isValid,
+                    certificateExpiry: certificate.expiryDate?.toISOString(),
+                    isProduction: true
+                };
+            } else {
+                Logger.info(`SSL status check skipped for ${domain.name} - not in production environment`);
+                
+                // In development, simulate a valid SSL certificate
+                const mockExpiryDate = new Date();
+                mockExpiryDate.setFullYear(mockExpiryDate.getFullYear() + 1); // Certificate valid for one year
+                
+                return {
+                    domainId: (domain._id as any).toString(),
+                    sslStatus: 'active',
+                    isSSLActive: true,
+                    certificateExpiry: mockExpiryDate.toISOString(),
+                    isProduction: false
                 };
             }
-            
-            const certificate = await SSLManager.checkCertificate(domain.name);
-            
-            return {
-                domainId: (domain._id as any).toString(),
-                sslStatus: certificate.isValid ? 'active' : 'inactive',
-                isSSLActive: certificate.isValid,
-                certificateExpiry: certificate.expiryDate?.toISOString()
-            };        } catch (error) {
+        } catch (error) {
             Logger.error(`Check SSL status error: ${error instanceof Error ? error.message : 'Unknown error'}`);
             throw error;
         }
@@ -301,14 +374,16 @@ export class DomainsService {    static async addDomain(projectId: string, domai
                 return false;
             }
             
-            // If the domain has SSL certificate, revoke it
-            const certificate = await SSLManager.checkCertificate(domain.name);
-            if (certificate.isValid) {
-                await SSLManager.revokeCertificate(domain.name);
-            }
-            
-            // In production, use a privileged script to remove Nginx configuration
-            if (process.env.NODE_ENV === 'production') {
+            if (shouldRunProductionOperations()) {
+                // Only in production and on Linux, revoke SSL and remove Nginx config
+                
+                // If the domain has SSL certificate, revoke it
+                const certificate = await SSLManager.checkCertificate(domain.name);
+                if (certificate.isValid) {
+                    await SSLManager.revokeCertificate(domain.name);
+                }
+                
+                // Use a privileged script to remove Nginx configuration
                 const removeConfigScript = `#!/bin/bash
 # Check if Nginx configuration exists
 if [ -f "/etc/nginx/sites-available/${domain.name}.conf" ]; then
@@ -316,7 +391,8 @@ if [ -f "/etc/nginx/sites-available/${domain.name}.conf" ]; then
   rm -f "/etc/nginx/sites-available/${domain.name}.conf"
   rm -f "/etc/nginx/sites-enabled/${domain.name}.conf"
   
-  # Remove local copy if it exists  if [ -f "/home/msuser/nginx-configs/${domain.name}.conf" ]; then
+  # Remove local copy if it exists
+  if [ -f "/home/msuser/nginx-configs/${domain.name}.conf" ]; then
     rm -f "/home/msuser/nginx-configs/${domain.name}.conf"
   fi
   
@@ -333,23 +409,29 @@ fi`;
                     `remove-nginx-${domain.name}.sh`,
                     removeConfigScript
                 );
+                
+                Logger.info(`Nginx configuration removal triggered for ${domain.name} in production environment`);
             } else {
-                // In development, just remove local files
+                // In development, just log what would happen in production
+                Logger.info(`Domain deletion simulated for ${domain.name} - not in production environment`);
+                Logger.info(`Would revoke SSL and remove Nginx config for ${domain.name} in production`);
+                
                 // Remove Nginx configuration from local directory if exists
                 const configPath = path.join(NGINX_CONFIG_DIR, `${domain.name}.conf`);
                 if (await fs.pathExists(configPath)) {
                     await fs.remove(configPath);
-                    await DomainLib.reloadNginx();
+                    Logger.info(`Removed local Nginx config file for ${domain.name}`);
                 }
             }
             
+            // Always delete the domain from the database
             await DomainModel.findByIdAndDelete(domainId);
             return true;
         } catch (error) {
             Logger.error(`Delete domain error: ${error instanceof Error ? error.message : 'Unknown error'}`);
             throw error;
         }
-    }static async updateDomainStatus(domainId: string, status: DomainStatus): Promise<DomainData> {
+    }    static async updateDomainStatus(domainId: string, status: DomainStatus): Promise<DomainData> {
         try {
             const domain = await DomainModel.findById(domainId);
             if (!domain) {
@@ -364,16 +446,21 @@ fi`;
             
             const updatedDomain = await domain.save();
             
-            // If domain becomes active, generate Nginx config
+            // If domain becomes active, generate Nginx config only in production
             if (status === DomainStatus.ACTIVE) {
-                try {
-                    await DomainLib.generateNginxConfig({
-                        domain: domain.name,
-                        projectId: domain.project
-                    });
-                    await DomainLib.reloadNginx();
-                } catch (configError) {
-                    Logger.error(`Failed to generate Nginx config: ${configError instanceof Error ? configError.message : 'Unknown error'}`);
+                if (shouldRunProductionOperations()) {
+                    try {
+                        await DomainLib.generateNginxConfig({
+                            domain: domain.name,
+                            projectId: domain.project
+                        });
+                        await DomainLib.reloadNginx();
+                        Logger.info(`Nginx configuration generated for ${domain.name} in production environment`);
+                    } catch (configError) {
+                        Logger.error(`Failed to generate Nginx config: ${configError instanceof Error ? configError.message : 'Unknown error'}`);
+                    }
+                } else {
+                    Logger.info(`Nginx configuration generation skipped for ${domain.name} - not in production environment`);
                 }
             }
             
