@@ -37,10 +37,19 @@ const ProjectSchema: Schema = new Schema<ProjectData>({
   description: {
     type: String,
     trim: true
-  },
-  tier: {
+  },  tier: {
     type: Number,
     default: 0
+  },
+  verificationToken: {
+    type: String,
+    default: null,
+    select: false
+  },
+  verificationTokenUpdatedAt: {
+    type: Date,
+    default: null,
+    select: false
   }
 }, {
   timestamps: true,

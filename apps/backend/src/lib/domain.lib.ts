@@ -43,11 +43,41 @@ export interface NginxConfigOptions {
   sslKeyPath?: string;
 }
 
-export class DomainLib {
-  static async generateVerificationToken(domain: string, projectId: string): Promise<string> {
-    const timestamp = Date.now();
-    const randomString = Math.random().toString(36).substring(2, 15);
-    return `${VERIFICATION_TXT_NAME}=${projectId}-${timestamp}-${randomString}`;
+export class DomainLib {  static async generateVerificationToken(domain: string, projectId: string): Promise<string> {
+    try {
+      // Import the model directly to avoid circular dependencies
+      const ProjectModel = require('../modules/projects/projects.model').default;
+      
+      // Always try to find the project first and get its verification token
+      const project = await ProjectModel.findById(projectId, { verificationToken: 1, verificationTokenUpdatedAt: 1 });
+      
+      // If project has a verification token, always use it
+      if (project && project.verificationToken) {
+        Logger.info(`Using existing verification token for project ${projectId}`);
+        return project.verificationToken;
+      }
+      
+      // Generate a new token if project doesn't have one
+      const timestamp = Date.now();
+      const randomString = Math.random().toString(36).substring(2, 15);
+      const token = `${VERIFICATION_TXT_NAME}=${projectId}-${timestamp}-${randomString}`;
+      
+      // Update the project with the new token
+      if (project) {
+        project.verificationToken = token;
+        project.verificationTokenUpdatedAt = new Date();
+        await project.save();
+        Logger.info(`Generated new verification token for project ${projectId}`);
+      }
+      
+      return token;
+    } catch (error) {
+      Logger.error(`Error generating verification token: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      // Fallback to a temporary token if there's an error, but this should be rare
+      const timestamp = Date.now();
+      const randomString = Math.random().toString(36).substring(2, 15);
+      return `${VERIFICATION_TXT_NAME}=${projectId}-${timestamp}-${randomString}`;
+    }
   }
 
   static async checkDNSPropagation(domain: string): Promise<boolean> {
@@ -128,20 +158,49 @@ export class DomainLib {
     try {
       // Skip file operations in non-production environments
       if (!isProd) {
-        Logger.info(`Skipping Nginx config generation for ${options.domain} in non-production environment`);
+        Logger.info(`[GENERATE_NGINX] Skipping Nginx config generation for ${options.domain} in non-production environment`);
         return `${options.domain}.conf`;
       }
       
+      Logger.info(`[GENERATE_NGINX] Starting Nginx config generation for domain: ${options.domain}, projectId: ${options.projectId}`);
+      Logger.info(`[GENERATE_NGINX] SSL paths provided: cert=${options.sslCertPath || 'none'}, key=${options.sslKeyPath || 'none'}`);
+      
+      // Ensure directories exist
       await fs.ensureDir(NGINX_TEMPLATES_DIR);
       await fs.ensureDir(NGINX_CONFIG_DIR);
       
-      const templatePath = path.join(NGINX_TEMPLATES_DIR, options.sslCertPath ? 'ssl-domain.conf.template' : 'domain.conf.template');
+      Logger.info(`[GENERATE_NGINX] Created directories if needed: ${NGINX_TEMPLATES_DIR}, ${NGINX_CONFIG_DIR}`);
       
-      if (!await fs.pathExists(templatePath)) {
-        await this.createDefaultTemplates();
+      const templatesExist = await fs.pathExists(NGINX_TEMPLATES_DIR);
+      const configsExist = await fs.pathExists(NGINX_CONFIG_DIR);
+      Logger.info(`[GENERATE_NGINX] Directory existence check: templates=${templatesExist}, configs=${configsExist}`);
+       
+      try {
+        const templateFiles = await fs.readdir(NGINX_TEMPLATES_DIR);
+        Logger.info(`[GENERATE_NGINX] Template directory contents: ${JSON.stringify(templateFiles)}`);
+      } catch (error) {
+        const err = error as Error;
+        Logger.error(`[GENERATE_NGINX] Error reading template directory: ${err.message}`);
       }
       
+      const templatePath = path.join(NGINX_TEMPLATES_DIR, options.sslCertPath ? 'ssl-domain.conf.template' : 'domain.conf.template');
+      Logger.info(`[GENERATE_NGINX] Using template at: ${templatePath}`);
+      
+      if (!await fs.pathExists(templatePath)) {
+        Logger.info(`[GENERATE_NGINX] Template not found, creating default templates`);
+        await this.createDefaultTemplates();
+        
+        // Verify templates were created
+        const templateExists = await fs.pathExists(templatePath);
+        Logger.info(`[GENERATE_NGINX] After createDefaultTemplates, template exists: ${templateExists}`);
+      }
+      
+      // Read the template file
       const template = await fs.readFile(templatePath, 'utf8');
+      Logger.info(`[GENERATE_NGINX] Template loaded, length: ${template.length} characters`);
+      Logger.debug(`[GENERATE_NGINX] Template content: ${template.substring(0, 100)}...`);
+      
+      // Render the template with the provided options
       const outputConfig = mustache.render(template, {
         domain: options.domain,
         projectId: options.projectId,
@@ -150,18 +209,41 @@ export class DomainLib {
         sslKeyPath: options.sslKeyPath || '/etc/letsencrypt/live/' + options.domain + '/privkey.pem'
       });
       
+      Logger.info(`[GENERATE_NGINX] Rendered config, length: ${outputConfig.length} characters`);
+      Logger.debug(`[GENERATE_NGINX] Config content: ${outputConfig.substring(0, 100)}...`);
+      
       // Save config locally for reference - only in production
       if (isProd) {
         const localOutputPath = path.join(NGINX_CONFIG_DIR, `${options.domain}.conf`);
+        Logger.info(`[GENERATE_NGINX] Saving local copy to: ${localOutputPath}`);
         await fs.writeFile(localOutputPath, outputConfig);
+          try {
+          const localFileExists = await fs.pathExists(localOutputPath);
+          const stats = await fs.stat(localOutputPath);
+          Logger.info(`[GENERATE_NGINX] Local file created successfully: ${localFileExists}, size: ${stats.size} bytes`);
+          
+          // Check permissions on the local file
+          Logger.info(`[GENERATE_NGINX] Local file permissions: ${stats.mode.toString(8)}`);
+        } catch (error) {
+          const err = error as Error;
+          Logger.error(`[GENERATE_NGINX] Error checking local file: ${err.message}`);
+        }
         
         // If in production, use privileged commands to create the actual Nginx config
-        return this.deployNginxConfig(options.domain, outputConfig);
+        Logger.info(`[GENERATE_NGINX] Deploying Nginx config to production servers`);
+        try {
+          const deployedPath = await this.deployNginxConfig(options.domain, outputConfig);
+          Logger.info(`[GENERATE_NGINX] Config deployed to: ${deployedPath}`);
+          return deployedPath;
+        } catch (deployError) {
+          Logger.error(`[GENERATE_NGINX] Deploy error: ${deployError instanceof Error ? deployError.message : 'Unknown error'}`);
+          throw deployError;
+        }
       }
       
       return `${options.domain}.conf`;
     } catch (error) {
-      Logger.error(`Error generating Nginx config: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      Logger.error(`[GENERATE_NGINX] Error generating Nginx config: ${error instanceof Error ? error.message : 'Unknown error'}`);
       throw new Error('Failed to generate Nginx configuration');
     }
   }
@@ -177,30 +259,76 @@ export class DomainLib {
       const configPath = path.join(NGINX_SITES_AVAILABLE, `${domain}.conf`);
       const enabledPath = path.join(NGINX_SITES_ENABLED, `${domain}.conf`);
       
+      Logger.info(`[DEPLOY_NGINX] Starting Nginx config deployment for domain: ${domain}`);
+      Logger.info(`[DEPLOY_NGINX] Config path: ${configPath}`);
+      Logger.info(`[DEPLOY_NGINX] Enabled path: ${enabledPath}`);
+      Logger.info(`[DEPLOY_NGINX] Config content length: ${configContent.length} characters`);
+      
       // Create a script to deploy the Nginx configuration
       const deployScript = `#!/bin/bash
+echo "[DEPLOY_NGINX_SCRIPT] Starting deployment for ${domain}"
+echo "[DEPLOY_NGINX_SCRIPT] Config path: ${configPath}"
+echo "[DEPLOY_NGINX_SCRIPT] Enabled path: ${enabledPath}"
+
+# Check for existing config files
+if [ -f "${configPath}" ]; then
+  echo "[DEPLOY_NGINX_SCRIPT] Existing config file found at ${configPath}, will be replaced"
+else
+  echo "[DEPLOY_NGINX_SCRIPT] No existing config file at ${configPath}"
+fi
+
+echo "[DEPLOY_NGINX_SCRIPT] Creating config file at ${configPath}"
+
 # Create the configuration file
 cat > "${configPath}" << 'EOL'
 ${configContent}
 EOL
 
+echo "[DEPLOY_NGINX_SCRIPT] Config file created: $(ls -la ${configPath})"
+
+# Verify the file was created
+if [ -f "${configPath}" ]; then
+  echo "[DEPLOY_NGINX_SCRIPT] Config file exists and has size: $(stat -c%s ${configPath}) bytes"
+else
+  echo "[DEPLOY_NGINX_SCRIPT] ERROR: Config file was not created at ${configPath}"
+  exit 1
+fi
+
 # Create symlink if it doesn't exist
 if [ ! -f "${enabledPath}" ]; then
+  echo "[DEPLOY_NGINX_SCRIPT] Creating symlink from ${configPath} to ${enabledPath}"
   ln -s "${configPath}" "${enabledPath}"
+  
+  # Verify symlink creation
+  if [ -L "${enabledPath}" ]; then
+    echo "[DEPLOY_NGINX_SCRIPT] Symlink created: $(ls -la ${enabledPath})"
+  else
+    echo "[DEPLOY_NGINX_SCRIPT] ERROR: Failed to create symlink at ${enabledPath}"
+    exit 1
+  fi
+else
+  echo "[DEPLOY_NGINX_SCRIPT] Symlink already exists: $(ls -la ${enabledPath})"
 fi
 
 # Test Nginx configuration
-nginx -t
+echo "[DEPLOY_NGINX_SCRIPT] Testing Nginx configuration"
+nginx -t 2>&1
 
 # If successful, reload Nginx
 if [ $? -eq 0 ]; then
+  echo "[DEPLOY_NGINX_SCRIPT] Nginx configuration is valid, reloading"
   nginx -s reload
-  echo "Nginx configuration for ${domain} deployed successfully"
+  echo "[DEPLOY_NGINX_SCRIPT] Nginx configuration for ${domain} deployed successfully"
+  exit 0
 else
-  echo "Nginx configuration test failed"
+  echo "[DEPLOY_NGINX_SCRIPT] ERROR: Nginx configuration test failed"
+  cat "${configPath}"
   exit 1
 fi
 `;
+      
+      Logger.info(`[DEPLOY_NGINX] Created deployment script for ${domain}`);
+      Logger.debug(`[DEPLOY_NGINX] Script content: ${deployScript}`);
       
       // Execute the deployment script with elevated privileges
       const result = await PrivilegedCommandUtil.createAndExecuteScript(
@@ -208,48 +336,117 @@ fi
         deployScript
       );
       
+      Logger.info(`[DEPLOY_NGINX] Script execution result: success=${result.success}`);
+      Logger.info(`[DEPLOY_NGINX] Script stdout: ${result.stdout}`);
+      
+      if (result.stderr) {
+        Logger.error(`[DEPLOY_NGINX] Script stderr: ${result.stderr}`);
+      }
+        // Verify the config file was created in sites-available
+      try {
+        const configFileExists = await fs.pathExists(configPath);
+        Logger.info(`[DEPLOY_NGINX] After script execution, config file exists in sites-available: ${configFileExists}`);
+      } catch (error) {
+        const err = error as Error;
+        Logger.error(`[DEPLOY_NGINX] Error checking if config file exists: ${err.message}`);
+      }
+      
+      // Verify the symlink was created in sites-enabled
+      try {
+        const symlinkExists = await fs.pathExists(enabledPath);
+        Logger.info(`[DEPLOY_NGINX] After script execution, symlink exists in sites-enabled: ${symlinkExists}`);
+      } catch (error) {
+        const err = error as Error;
+        Logger.error(`[DEPLOY_NGINX] Error checking if symlink exists: ${err.message}`);
+      }
+      
       if (!result.success) {
+        Logger.error(`[DEPLOY_NGINX] Failed to deploy Nginx configuration for ${domain}`);
         throw new Error(`Failed to deploy Nginx configuration: ${result.stderr}`);
       }
       
-      Logger.info(`Nginx configuration for ${domain} deployed successfully`);
+      Logger.info(`[DEPLOY_NGINX] Nginx configuration for ${domain} deployed successfully`);
       return configPath;
     } catch (error) {
-      Logger.error(`Error deploying Nginx config: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      Logger.error(`[DEPLOY_NGINX] Error deploying Nginx config for ${domain}: ${error instanceof Error ? error.message : 'Unknown error'}`);
       throw new Error('Failed to deploy Nginx configuration');
     }
   }  static async reloadNginx(): Promise<boolean> {
     try {
       if (isProd) {
+        Logger.info(`[RELOAD_NGINX] Starting Nginx reload process`);
+        
         // Use privileged command utility to reload Nginx
         const reloadScript = `#!/bin/bash
+echo "[RELOAD_NGINX_SCRIPT] Starting Nginx reload"
+
+# Check if Nginx is running
+if systemctl is-active --quiet nginx; then
+  echo "[RELOAD_NGINX_SCRIPT] Nginx is currently running"
+else
+  echo "[RELOAD_NGINX_SCRIPT] WARNING: Nginx is not running"
+  
+  # Start Nginx if it's not running
+  systemctl start nginx
+  
+  if [ $? -eq 0 ]; then
+    echo "[RELOAD_NGINX_SCRIPT] Started Nginx successfully"
+  else
+    echo "[RELOAD_NGINX_SCRIPT] Failed to start Nginx"
+    exit 1
+  fi
+fi
+
+# List the enabled sites
+echo "[RELOAD_NGINX_SCRIPT] Current enabled sites:"
+ls -la /etc/nginx/sites-enabled/
+
 # Test Nginx configuration
-nginx -t
+echo "[RELOAD_NGINX_SCRIPT] Testing Nginx configuration"
+nginx -t 2>&1
 
 # If successful, reload Nginx
 if [ $? -eq 0 ]; then
+  echo "[RELOAD_NGINX_SCRIPT] Nginx configuration test successful, reloading"
   nginx -s reload
-  echo "Nginx reloaded successfully"
-  exit 0
+  
+  # Verify reload was successful
+  if [ $? -eq 0 ]; then
+    echo "[RELOAD_NGINX_SCRIPT] Nginx reloaded successfully"
+    systemctl status nginx | grep "active"
+    exit 0
+  else
+    echo "[RELOAD_NGINX_SCRIPT] Failed to reload Nginx"
+    exit 1
+  fi
 else
-  echo "Nginx configuration test failed"
+  echo "[RELOAD_NGINX_SCRIPT] Nginx configuration test failed"
   exit 1
 fi
 `;
+        
+        Logger.info(`[RELOAD_NGINX] Created reload script`);
         
         const result = await PrivilegedCommandUtil.createAndExecuteScript(
           'reload-nginx.sh',
           reloadScript
         );
         
+        Logger.info(`[RELOAD_NGINX] Script execution result: success=${result.success}`);
+        Logger.info(`[RELOAD_NGINX] Script stdout: ${result.stdout}`);
+        
+        if (result.stderr) {
+          Logger.error(`[RELOAD_NGINX] Script stderr: ${result.stderr}`);
+        }
+        
         return result.success;
       } else {
         // Development mode - just log and return success
-        Logger.info('Skipping Nginx reload in non-production environment');
+        Logger.info('[RELOAD_NGINX] Skipping Nginx reload in non-production environment');
         return true;
       }
     } catch (error) {
-      Logger.error(`Error reloading Nginx: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      Logger.error(`[RELOAD_NGINX] Error reloading Nginx: ${error instanceof Error ? error.message : 'Unknown error'}`);
       return false;
     }
   }  static async createDefaultTemplates(): Promise<void> {
@@ -480,6 +677,71 @@ server {
       }
     } catch (error) {
       Logger.error(`Error setting up domain ${domain}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      return false;
+    }
+  }
+  
+  /**
+   * Remove Nginx configuration for a domain
+   * @param domain Domain name
+   * @returns True if successful
+   */
+  static async removeNginxConfig(domain: string): Promise<boolean> {
+    try {
+      // Skip file operations in non-production environments
+      if (!isProd) {
+        Logger.info(`Skipping Nginx config removal for ${domain} in non-production environment`);
+        return true;
+      }
+      
+      const configPath = path.join(NGINX_SITES_AVAILABLE, `${domain}.conf`);
+      const enabledPath = path.join(NGINX_SITES_ENABLED, `${domain}.conf`);
+      const localConfigPath = path.join(NGINX_CONFIG_DIR, `${domain}.conf`);
+      
+      // Create a script to remove the Nginx configuration
+      const removeScript = `#!/bin/bash
+# Remove symlink
+if [ -L "${enabledPath}" ]; then
+  rm "${enabledPath}"
+fi
+
+# Remove configuration file
+if [ -f "${configPath}" ]; then
+  rm "${configPath}"
+fi
+
+# Test Nginx configuration
+nginx -t
+
+# If successful, reload Nginx
+if [ $? -eq 0 ]; then
+  nginx -s reload
+  echo "Nginx configuration for ${domain} removed successfully"
+else
+  echo "Nginx configuration test failed after removal"
+  exit 1
+fi
+`;
+      
+      // Execute the removal script with elevated privileges
+      const result = await PrivilegedCommandUtil.createAndExecuteScript(
+        `remove-nginx-${domain}.sh`,
+        removeScript
+      );
+      
+      // Also remove local copy
+      if (await fs.pathExists(localConfigPath)) {
+        await fs.remove(localConfigPath);
+      }
+      
+      if (!result.success) {
+        throw new Error(`Failed to remove Nginx configuration: ${result.stderr}`);
+      }
+      
+      Logger.info(`Nginx configuration for ${domain} removed successfully`);
+      return true;
+    } catch (error) {
+      Logger.error(`Error removing Nginx config: ${error instanceof Error ? error.message : 'Unknown error'}`);
       return false;
     }
   }

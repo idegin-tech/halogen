@@ -5,13 +5,12 @@ import { DomainLib } from '../../lib/domain.lib';
 import { SSLManager } from '../../lib/ssl.lib';
 import { DomainQueue } from '../../lib/domain-queue.lib';
 import { isDomainBlacklisted } from './domain-blacklist';
-import PrivilegedCommandUtil from '../../lib/privileged-command.util';
 import { isProd } from '../../config/env.config';
 
 export class DomainsService {
     static async addDomain(projectId: string, domainData: { name: string }): Promise<DomainData & { verificationToken?: string }> {
         try {
-            console.log('ADDING DOMAIN:::', {domainData, projectId});
+            console.log('\n\n\nADDING DOMAIN:::', {domainData, projectId});
             const domainName = domainData.name.toLowerCase();
 
             if (isDomainBlacklisted(domainName)) {
@@ -40,14 +39,11 @@ export class DomainsService {
 
             const savedDomain = await newDomain.save();
 
-            // Generate verification token immediately
             const verificationToken = await DomainLib.generateVerificationToken(domainName, projectId);
 
-            // Update domain status to PENDING_DNS
             savedDomain.status = DomainStatus.PENDING_DNS;
             await savedDomain.save();
 
-            // Only queue verification job in production environment
             if (isProd) {
                 await DomainQueue.addVerificationJob(savedDomain.toObject() as DomainData, verificationToken);
                 Logger.info(`Domain verification job queued for ${domainName} in production environment`);
@@ -160,7 +156,6 @@ export class DomainsService {
             domain.status = DomainStatus.PENDING_DNS;
             const updatedDomain = await domain.save();
 
-            // Only queue verification job in production environment
             if (isProd) {
                 await DomainQueue.addVerificationJob(updatedDomain.toObject() as DomainData, verificationToken);
                 Logger.info(`Domain verification triggered for ${domain.name} in production environment`);
@@ -272,7 +267,12 @@ export class DomainsService {
             Logger.error(`Check verification status error: ${error instanceof Error ? error.message : 'Unknown error'}`);
             throw error;
         }
-    } static async triggerSSLGeneration(domainId: string): Promise<{
+    } 
+    
+    
+    
+    
+    static async triggerSSLGeneration(domainId: string): Promise<{
         domainId: string;
         sslStatus: string;
         message: string;
@@ -368,51 +368,47 @@ export class DomainsService {
             Logger.error(`Check SSL status error: ${error instanceof Error ? error.message : 'Unknown error'}`);
             throw error;
         }
-    } static async deleteDomain(domainId: string): Promise<boolean> {
+    } 
+    
+    
+    
+    
+    static async deleteDomain(domainId: string): Promise<boolean> {
         try {
             const domain = await DomainModel.findById(domainId);
             if (!domain) {
                 return false;
             }
 
+            // Clean up any queued jobs first
+            await DomainQueue.removeJobs(domainId);
+            Logger.info(`Removed jobs for domain ${domain.name}`);
+
             if (isProd) {
                 // Only in production and on Linux, revoke SSL and remove Nginx config
 
-                // If the domain has SSL certificate, revoke it
-                const certificate = await SSLManager.checkCertificate(domain.name);
-                if (certificate.isValid) {
-                    await SSLManager.revokeCertificate(domain.name);
+                // If the domain has SSL certificate, try to revoke it
+                try {
+                    const certificate = await SSLManager.checkCertificate(domain.name);
+                    if (certificate.isValid) {
+                        await SSLManager.revokeCertificate(domain.name);
+                        Logger.info(`SSL certificate revoked for ${domain.name}`);
+                    }
+                } catch (sslError) {
+                    Logger.error(`Error checking/revoking SSL certificate for ${domain.name}: ${sslError instanceof Error ? sslError.message : 'Unknown error'}`);
+                    // Continue with deletion even if SSL revocation fails
                 }
 
-                // Use a privileged script to remove Nginx configuration
-                const removeConfigScript = `#!/bin/bash
-# Check if Nginx configuration exists
-if [ -f "/etc/nginx/sites-available/${domain.name}.conf" ]; then
-  # Remove configuration file and symlink
-  rm -f "/etc/nginx/sites-available/${domain.name}.conf"
-  rm -f "/etc/nginx/sites-enabled/${domain.name}.conf"
-  
-  # Remove local copy if it exists
-  if [ -f "/home/msuser/nginx-configs/${domain.name}.conf" ]; then
-    rm -f "/home/msuser/nginx-configs/${domain.name}.conf"
-  fi
-  
-  # Reload Nginx if configuration was removed
-  nginx -t && nginx -s reload
-  echo "Nginx configuration for ${domain.name} removed successfully"
-  exit 0
-else
-  echo "No Nginx configuration found for ${domain.name}"
-  exit 0
-fi`;
-
-                await PrivilegedCommandUtil.createAndExecuteScript(
-                    `remove-nginx-${domain.name}.sh`,
-                    removeConfigScript
-                );
-
-                Logger.info(`Nginx configuration removal triggered for ${domain.name} in production environment`);
-            } else {                // In development, just log what would happen in production
+                // Remove Nginx configuration
+                try {
+                    await DomainLib.removeNginxConfig(domain.name);
+                    Logger.info(`Nginx configuration removed for ${domain.name}`);
+                } catch (nginxError) {
+                    Logger.error(`Error removing Nginx config for ${domain.name}: ${nginxError instanceof Error ? nginxError.message : 'Unknown error'}`);
+                    // Continue with deletion even if Nginx config removal fails
+                }
+            } else {                
+                // In development, just log what would happen in production
                 Logger.info(`Domain deletion simulated for ${domain.name} - not in production environment`);
                 Logger.info(`Would revoke SSL and remove Nginx config for ${domain.name} in production`);
             }
@@ -424,7 +420,10 @@ fi`;
             Logger.error(`Delete domain error: ${error instanceof Error ? error.message : 'Unknown error'}`);
             throw error;
         }
-    } static async updateDomainStatus(domainId: string, status: DomainStatus): Promise<DomainData> {
+    } 
+    
+    
+    static async updateDomainStatus(domainId: string, status: DomainStatus): Promise<DomainData> {
         try {
             const domain = await DomainModel.findById(domainId);
             if (!domain) {
@@ -439,7 +438,6 @@ fi`;
 
             const updatedDomain = await domain.save();
 
-            // If domain becomes active, generate Nginx config only in production
             if (status === DomainStatus.ACTIVE) {
                 if (isProd) {
                     try {
@@ -457,7 +455,6 @@ fi`;
                 }
             }
 
-            // Notify webhook subscribers about domain status change
             this.notifyWebhooks(domain.project, {
                 event: 'domain.status_changed',
                 data: {
@@ -483,8 +480,6 @@ fi`;
 
     private static async notifyWebhooks(projectId: string, payload: any): Promise<void> {
         try {
-            // This is a placeholder - in a real implementation, you would fetch webhook endpoints from the database
-            // and call them with the payload
             Logger.info(`Notifying webhooks for project ${projectId}: ${JSON.stringify(payload)}`);
         } catch (error) {
             Logger.error(`Webhook notification error: ${error instanceof Error ? error.message : 'Unknown error'}`);

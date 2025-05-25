@@ -134,7 +134,7 @@ export class DomainsController {
     static async triggerDomainVerification(req: Request, res: Response): Promise<void> {
         try {
             const { domainId } = req.body as DomainVerificationDTO;
-            Logger.info(`Triggering domain verification for domain ID: ${domainId}`);
+            Logger.info(`\n\n\nTriggering domain verification for domain ID: ${domainId}`);
             const result = await DomainsService.triggerDomainVerification(domainId);
             ResponseHelper.success(res, result, 'Domain verification initiated successfully');
         } catch (error) {
@@ -216,8 +216,6 @@ export class DomainsController {
             );
         }
     }
-
-
     static async deleteDomain(req: Request, res: Response): Promise<void> {
         try {
             const { domainId } = req.params;
@@ -227,14 +225,24 @@ export class DomainsController {
                 return;
             }
 
-            const deleted = await DomainsService.deleteDomain(domainId);
-
-            if (!deleted) {
+            // First check if the domain exists
+            const domain = await DomainsService.getDomainById(domainId);
+            if (!domain) {
                 ResponseHelper.notFound(res, 'Domain');
                 return;
             }
 
-            ResponseHelper.success(res, { id: domainId }, 'Domain deleted successfully');
+            // Log the domain being deleted for debugging purposes
+            Logger.info(`Deleting domain: ${domain.name} (ID: ${domainId}, Status: ${domain.status})`);
+            
+            const deleted = await DomainsService.deleteDomain(domainId);
+
+            if (!deleted) {
+                ResponseHelper.error(res, 'Failed to delete domain', 500);
+                return;
+            }
+
+            ResponseHelper.success(res, { id: domainId, name: domain.name }, 'Domain deleted successfully');
         } catch (error) {
             Logger.error(`Delete domain error: ${error instanceof Error ? error.message : 'Unknown error'}`);
             ResponseHelper.error(

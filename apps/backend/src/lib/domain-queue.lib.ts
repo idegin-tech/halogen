@@ -1,4 +1,3 @@
-
 import Queue from 'bull';
 import { DomainData, DomainStatus } from '@halogen/common';
 import { DomainLib } from './domain.lib';
@@ -28,70 +27,76 @@ export class DomainQueue {
   public static verificationQueue = new Queue<DomainVerificationJob>('domain-verification', REDIS_URL);
   public static sslQueue = new Queue<SSLGenerationJob>('ssl-generation', REDIS_URL);  private static initialized = false;
   
-  static initialize(domainsService: any): void {    if (this.initialized) return;
-    
-    // Skip queue processing in non-production environments
-    if (!isProd) {
-      Logger.info('Skipping domain queue initialization in non-production environment');
-      this.initialized = true;
+  static initialize(domainsService: any): void {
+    if (this.initialized) {
       return;
     }
     
+    Logger.info('[DOMAIN_QUEUE] Initializing domain queue system');
+    
+    // Configure verification queue processor
     this.verificationQueue.process(async (job) => {
       try {
-        Logger.info(`Processing domain verification job for ${job.data.domainName}`);
+        Logger.info(`[DOMAIN_QUEUE] Processing verification job for ${job.data.domainName}`);
         const { domainId, domainName, projectId, verificationToken } = job.data;
+        const retryCount = job.attemptsMade;
         
-        // Get domain status (checks DNS propagation and verification)
+        Logger.info(`[DOMAIN_QUEUE] Verification attempt ${retryCount + 1} for ${domainName}`);
+        Logger.info(`[DOMAIN_QUEUE] Verification token: ${verificationToken}`);
+        
+        // Check domain verification status
         const status = await DomainLib.getDomainStatus(domainName, verificationToken);
         
-        // Update domain status in the database
-        await domainsService.updateDomainStatus(domainId, status.recommendedStatus);
+        Logger.info(`[DOMAIN_QUEUE] Domain status: propagated=${status.propagated}, verified=${status.verified}, recommendedStatus=${status.recommendedStatus}`);
         
-        if (status.recommendedStatus !== DomainStatus.ACTIVE) {
-          const retryCount = job.attemptsMade;
+        if (status.verified) {
+          Logger.info(`[DOMAIN_QUEUE] Domain ${domainName} verification successful`);
+          await domainsService.updateDomainStatus(domainId, DomainStatus.ACTIVE);
+          
+          await domainsService.updateDomainVerificationAttempt(domainId, `Attempt ${retryCount + 1}: Verification successful!`);
+        } else if (status.propagated) {
+          Logger.info(`[DOMAIN_QUEUE] Domain ${domainName} DNS propagated but not verified`);
+          await domainsService.updateDomainStatus(domainId, DomainStatus.PROPAGATING);
           
           if (retryCount < 5) {
-            // Log the verification attempt
-            Logger.info(`Domain verification attempt ${retryCount + 1} for ${domainName}`);
-            await domainsService.updateDomainVerificationAttempt(domainId, `Attempt ${retryCount + 1}: ${status.propagated ? 'DNS propagated' : 'DNS not propagated'}, ${status.verified ? 'Ownership verified' : 'Ownership not verified'}`);
+            Logger.info(`[DOMAIN_QUEUE] Will retry verification for ${domainName} (attempt ${retryCount + 1}/5)`);
+            await domainsService.updateDomainVerificationAttempt(domainId, `Attempt ${retryCount + 1}: DNS propagated, waiting for verification record`);
             
             throw new Error('Domain not yet verified, will retry');
           } else {
-            Logger.warn(`Domain verification failed after ${retryCount} attempts for ${domainName}`);
+            Logger.warn(`[DOMAIN_QUEUE] Domain verification failed after ${retryCount} attempts for ${domainName}`);
             await domainsService.updateDomainStatus(domainId, DomainStatus.FAILED);
           }
         } else {
-          Logger.info(`Domain ${domainName} verified successfully`);
-            // If the domain is verified and we're in production, create initial Nginx config
+          Logger.info(`[DOMAIN_QUEUE] Domain ${domainName} verified successfully`);
           if (isProd) {
             try {
-              // Create initial Nginx config without SSL
               const configOptions = {
                 domain: domainName,
                 projectId
               };
               
+              Logger.info(`[DOMAIN_QUEUE] Generating Nginx config for ${domainName}`);
               await DomainLib.generateNginxConfig(configOptions);
-              Logger.info(`Initial Nginx config created for ${domainName}`);
+              Logger.info(`[DOMAIN_QUEUE] Initial Nginx config created for ${domainName}`);
               
-              // Queue SSL certificate generation automatically
+              Logger.info(`[DOMAIN_QUEUE] Adding SSL generation job for ${domainName}`);
               await this.addSSLGenerationJob({
                 _id: domainId,
                 name: domainName,
                 project: projectId
               } as DomainData);
               
-              Logger.info(`SSL generation job queued for ${domainName}`);
+              Logger.info(`[DOMAIN_QUEUE] SSL generation job queued for ${domainName}`);
             } catch (error) {
-              Logger.error(`Error creating initial Nginx config for ${domainName}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+              Logger.error(`[DOMAIN_QUEUE] Error creating initial Nginx config for ${domainName}: ${error instanceof Error ? error.message : 'Unknown error'}`);
             }
           }
         }
         
         return { success: status.recommendedStatus === DomainStatus.ACTIVE };
       } catch (error) {
-        Logger.error(`Error in domain verification job: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        Logger.error(`[DOMAIN_QUEUE] Error in domain verification job: ${error instanceof Error ? error.message : 'Unknown error'}`);
         console.log(error)
         throw error;
       }
@@ -156,8 +161,18 @@ export class DomainQueue {
     this.initialized = true;
     Logger.info('Domain queue initialized');
   }
-
   static async addVerificationJob(domain: DomainData, verificationToken: string): Promise<void> {
+    // Make sure we have a clean job queue for this domain
+    const existingJobs = await this.verificationQueue.getJobs(['active', 'waiting', 'delayed']);
+    const domainJobs = existingJobs.filter(j => j.data.domainId === domain._id);
+    
+    // Remove any existing jobs for this domain
+    for (const job of domainJobs) {
+      await job.remove();
+      Logger.info(`Removed existing verification job for domain ${domain.name}`);
+    }
+    
+    // Add the new job with the verification token
     await this.verificationQueue.add({
       domainId: domain._id as string,
       domainName: domain.name,
@@ -172,9 +187,21 @@ export class DomainQueue {
       removeOnComplete: true,
       removeOnFail: false
     });
+    
+    Logger.info(`Added new verification job for domain ${domain.name}`);
   }
-
   static async addSSLGenerationJob(domain: DomainData): Promise<void> {
+    // Make sure we have a clean job queue for this domain
+    const existingJobs = await this.sslQueue.getJobs(['active', 'waiting', 'delayed']);
+    const domainJobs = existingJobs.filter(j => j.data.domainId === domain._id);
+    
+    // Remove any existing jobs for this domain
+    for (const job of domainJobs) {
+      await job.remove();
+      Logger.info(`Removed existing SSL job for domain ${domain.name}`);
+    }
+    
+    // Add the new job
     await this.sslQueue.add({
       domainId: domain._id as string,
       domainName: domain.name,
@@ -188,6 +215,8 @@ export class DomainQueue {
       removeOnComplete: true,
       removeOnFail: false
     });
+    
+    Logger.info(`Added new SSL job for domain ${domain.name}`);
   }
   static async getVerificationJobStatus(domainId: string): Promise<{
     inProgress: boolean;
@@ -235,5 +264,28 @@ export class DomainQueue {
       attempts: job.attemptsMade,
       status: state
     };
+  }  static async removeJobs(domainId: string): Promise<void> {
+    try {
+      // Clean up verification jobs
+      const verificationJobs = await this.verificationQueue.getJobs(['active', 'waiting', 'delayed']);
+      const domainVerificationJobs = verificationJobs.filter(j => j.data.domainId === domainId);
+      
+      for (const job of domainVerificationJobs) {
+        await job.remove();
+        Logger.info(`Removed verification job for domain ID ${domainId}`);
+      }
+      
+      // Clean up SSL jobs
+      const sslJobs = await this.sslQueue.getJobs(['active', 'waiting', 'delayed']);
+      const domainSslJobs = sslJobs.filter(j => j.data.domainId === domainId);
+      
+      for (const job of domainSslJobs) {
+        await job.remove();
+        Logger.info(`Removed SSL job for domain ID ${domainId}`);
+      }
+    } catch (error) {
+      Logger.error(`Error removing jobs for domain ${domainId}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      // Continue with deletion even if job cleanup fails
+    }
   }
 }

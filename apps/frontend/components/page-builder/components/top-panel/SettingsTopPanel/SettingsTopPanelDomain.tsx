@@ -228,9 +228,7 @@ export default function SettingsTopPanelDomain() {
             host: 'www',
             value: ip,
             ttl: '3600'
-        });
-
-        // Always add the TXT record if we have a verification token, regardless of domain state
+        });        // Add the TXT record only if we have a real verification token
         if (verificationToken) {
             // Option 1: Add as TXT record at root domain
             records.push({
@@ -250,12 +248,8 @@ export default function SettingsTopPanelDomain() {
                 });
             }
         } else if (domainData && domainData.status !== DomainStatus.ACTIVE) {
-            records.push({
-                type: 'TXT',
-                host: '@',
-                value: 'halogen-domain-verification=loading-verification-token',
-                ttl: '3600'
-            });
+            // If verification token is not yet available, just show info message elsewhere in UI
+            // instead of adding a placeholder token that could confuse users
         }
 
         return records;
@@ -435,17 +429,28 @@ export default function SettingsTopPanelDomain() {
                                 </p>
                             </div>
                             
-                            <Button 
-                                onClick={handleDnsVerification}
-                                className="mt-4"
-                            >
-                                {verifyMutation.isLoading ? (
+                            {!verificationToken ? (
+                                <Button 
+                                    variant="outline"
+                                    disabled
+                                    className="mt-4"
+                                >
                                     <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                ) : (
-                                    <Check className="h-4 w-4 mr-2" />
-                                )}
-                                Verify DNS Settings
-                            </Button>
+                                    Loading Verification Token...
+                                </Button>
+                            ) : (
+                                <Button 
+                                    onClick={handleDnsVerification}
+                                    className="mt-4"
+                                >
+                                    {verifyMutation.isLoading ? (
+                                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                    ) : (
+                                        <Check className="h-4 w-4 mr-2" />
+                                    )}
+                                    Verify DNS Settings
+                                </Button>
+                            )}
                         </CardContent>
                     </Card>
                 )}
@@ -479,7 +484,16 @@ export default function SettingsTopPanelDomain() {
                                 </AlertDescription>
                             </Alert>
 
-                            {renderDnsRecordsTable()}
+                            {!verificationToken ? (
+                                <div className="flex items-center justify-center p-8 border rounded-lg bg-muted/10">
+                                    <div className="text-center">
+                                        <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-primary" />
+                                        <p className="text-sm text-muted-foreground">Loading verification token...</p>
+                                    </div>
+                                </div>
+                            ) : (
+                                renderDnsRecordsTable()
+                            )}
                             
                             <div className="grid md:grid-cols-2 gap-4">
                                 <div className="rounded-lg border p-4 bg-muted/20 space-y-2">

@@ -11,6 +11,8 @@ export type ProjectData = {
   tier?: number;
   createdAt: string;
   updatedAt: string;
+  verificationToken?: string;
+  verificationTokenUpdatedAt?: string;
   settings?: {
     headingFont: string;
     bodyFont: string;
