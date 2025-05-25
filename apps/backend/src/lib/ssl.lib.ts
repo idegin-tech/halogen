@@ -237,37 +237,26 @@ export class SSLManager {
       const certPath = path.join('/etc/letsencrypt/live', domain, 'fullchain.pem');
       const keyPath = path.join('/etc/letsencrypt/live', domain, 'privkey.pem');
 
-      let notAfterMatch: RegExpMatchArray | null = null; let notBeforeMatch: RegExpMatchArray | null = null;
-
-      // In production, we need to use sudo to check certificate files
+      let notAfterMatch: RegExpMatchArray | null = null; let notBeforeMatch: RegExpMatchArray | null = null;      // In production, we need to use sudo to check certificate files
       if (isProd) {
-        // Use privileged command to check if certificate exists
-        const checkCertScript = `#!/bin/bash
-if [ -f "${certPath}" ] && [ -f "${keyPath}" ]; then
-  # Extract certificate dates using openssl
-  openssl x509 -in "${certPath}" -noout -dates
-  exit $?
-else
-  echo "Certificate files not found"
-  exit 1
-fi`;
-
-        const result = await PrivilegedCommandUtil.createAndExecuteScript(
-          `check-cert-${domain}.sh`,
-          checkCertScript
-        );
-
-        if (!result.success) {
+        // Use privileged commands to check if certificate exists and get dates
+        try {
+          // Check if certificate files exist
+          await PrivilegedCommandUtil.executeCommand(`sudo test -f "${certPath}" && sudo test -f "${keyPath}"`);
+          
+          // Extract certificate dates using openssl
+          const result = await PrivilegedCommandUtil.executeCommand(`sudo openssl x509 -in "${certPath}" -noout -dates`);
+          
+          // Parse dates from output
+          notAfterMatch = result.stdout.match(/notAfter=(.+)/);
+          notBeforeMatch = result.stdout.match(/notBefore=(.+)/);
+        } catch (error) {
+          Logger.warn(`Certificate files not found for ${domain}: ${error}`);
           return {
             domain,
             isValid: false
           };
         }
-
-        // Parse dates from output
-        notAfterMatch = result.stdout.match(/notAfter=(.+)/);
-        notBeforeMatch = result.stdout.match(/notBefore=(.+)/);
-      } else {
         // In development, try direct file access
         const certExists = await fs.pathExists(certPath);
         const keyExists = await fs.pathExists(keyPath);
@@ -313,32 +302,26 @@ fi`;
   }
   static async revokeCertificate(domain: string): Promise<boolean> {
     try {
-      const certPath = path.join('/etc/letsencrypt/live', domain, 'fullchain.pem');
-
-      if (isProd) {
-        const revokeScript = `#!/bin/bash
-# Check if certificate exists
-if [ -d "/etc/letsencrypt/live/${domain}" ]; then
-  # Revoke the certificate using Certbot
-  certbot revoke --cert-path "${certPath}" --non-interactive --reason keycompromise
-  
-  # Delete the certificate
-  certbot delete --cert-name "${domain}" --non-interactive
-  
-  echo "Certificate for ${domain} revoked successfully"
-  exit 0
-else
-  echo "No certificate found for ${domain}"
-  exit 0
-fi
-`;
-
-        const result = await PrivilegedCommandUtil.createAndExecuteScript(
-          `revoke-cert-${domain}.sh`,
-          revokeScript
-        );
-
-        return result.success;
+      const certPath = path.join('/etc/letsencrypt/live', domain, 'fullchain.pem');      if (isProd) {
+        try {
+          // Check if certificate directory exists
+          await PrivilegedCommandUtil.executeCommand(`sudo test -d "/etc/letsencrypt/live/${domain}"`);
+          
+          // Revoke the certificate using Certbot
+          await PrivilegedCommandUtil.executeCommand(`sudo certbot revoke --cert-path "${certPath}" --non-interactive --reason keycompromise`);
+          
+          // Delete the certificate
+          await PrivilegedCommandUtil.executeCommand(`sudo certbot delete --cert-name "${domain}" --non-interactive`);
+          
+          Logger.info(`Certificate for ${domain} revoked successfully`);
+          return true;
+        } catch (error) {
+          if (error instanceof Error && error.message.includes('test -d')) {
+            Logger.info(`No certificate found for ${domain}`);
+            return true;
+          }
+          throw error;
+        }
       }
 
       // For development or if Certbot isn't being used
@@ -390,39 +373,31 @@ fi
       try {
         const testUrl = `http://${domain}/.well-known/acme-challenge/test`;
         Logger.info(`[SSL_VALIDATION] Testing HTTP accessibility for ${domain}`);
-        
-        // Create a test file in the webroot
+          // Create a test file in the webroot
         const testFilePath = '/var/www/certbot/.well-known/acme-challenge/test';
         const testContent = 'test-challenge-response';
         
-        const testScript = `#!/bin/bash
-echo "Creating test challenge file"
-mkdir -p /var/www/certbot/.well-known/acme-challenge
-echo "${testContent}" > "${testFilePath}"
-chmod 644 "${testFilePath}"
-echo "Test file created successfully"
-`;
-
-        const createResult = await PrivilegedCommandUtil.createAndExecuteScript(
-          `create-test-challenge-${domain}-${Date.now()}.sh`,
-          testScript
-        );
-
-        if (!createResult.success) {
-          Logger.error(`[SSL_VALIDATION] Failed to create test challenge file: ${createResult.stderr}`);
+        try {
+          Logger.info(`[SSL_VALIDATION] Creating test challenge file`);
+          
+          // Create directory and test file using individual commands
+          await PrivilegedCommandUtil.executeCommand('sudo mkdir -p /var/www/certbot/.well-known/acme-challenge');
+          await PrivilegedCommandUtil.executeCommand(`echo "${testContent}" | sudo tee "${testFilePath}" > /dev/null`);
+          await PrivilegedCommandUtil.executeCommand(`sudo chmod 644 "${testFilePath}"`);
+          
+          Logger.info(`[SSL_VALIDATION] Test file created successfully`);
+        } catch (createError) {
+          Logger.error(`[SSL_VALIDATION] Failed to create test challenge file: ${createError}`);
           return false;
         }
 
         // Clean up test file
-        const cleanupScript = `#!/bin/bash
-rm -f "${testFilePath}"
-echo "Test file cleaned up"
-`;
-
-        await PrivilegedCommandUtil.createAndExecuteScript(
-          `cleanup-test-challenge-${domain}-${Date.now()}.sh`,
-          cleanupScript
-        );
+        try {
+          await PrivilegedCommandUtil.executeCommand(`sudo rm -f "${testFilePath}"`);
+          Logger.info(`[SSL_VALIDATION] Test file cleaned up`);
+        } catch (cleanupError) {
+          Logger.warn(`[SSL_VALIDATION] Failed to clean up test file: ${cleanupError}`);
+        }
 
         return true;
       } catch (httpError) {

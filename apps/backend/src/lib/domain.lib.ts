@@ -247,70 +247,59 @@ export class DomainLib {  static async generateVerificationToken(domain: string,
       if (isProd) {
         Logger.info(`[RELOAD_NGINX] Starting Nginx reload process`);
         
-        // Use privileged command utility to reload Nginx
-        const reloadScript = `#!/bin/bash
-echo "[RELOAD_NGINX_SCRIPT] Starting Nginx reload"
-
-# Check if Nginx is running
-if systemctl is-active --quiet nginx; then
-  echo "[RELOAD_NGINX_SCRIPT] Nginx is currently running"
-else
-  echo "[RELOAD_NGINX_SCRIPT] WARNING: Nginx is not running"
-  
-  # Start Nginx if it's not running
-  systemctl start nginx
-  
-  if [ $? -eq 0 ]; then
-    echo "[RELOAD_NGINX_SCRIPT] Started Nginx successfully"
-  else
-    echo "[RELOAD_NGINX_SCRIPT] Failed to start Nginx"
-    exit 1
-  fi
-fi
-
-# List the enabled sites
-echo "[RELOAD_NGINX_SCRIPT] Current enabled sites:"
-ls -la /etc/nginx/sites-enabled/
-
-# Test Nginx configuration
-echo "[RELOAD_NGINX_SCRIPT] Testing Nginx configuration"
-nginx -t 2>&1
-
-# If successful, reload Nginx
-if [ $? -eq 0 ]; then
-  echo "[RELOAD_NGINX_SCRIPT] Nginx configuration test successful, reloading"
-  nginx -s reload
-  
-  # Verify reload was successful
-  if [ $? -eq 0 ]; then
-    echo "[RELOAD_NGINX_SCRIPT] Nginx reloaded successfully"
-    systemctl status nginx | grep "active"
-    exit 0
-  else
-    echo "[RELOAD_NGINX_SCRIPT] Failed to reload Nginx"
-    exit 1
-  fi
-else
-  echo "[RELOAD_NGINX_SCRIPT] Nginx configuration test failed"
-  exit 1
-fi
-`;
-        
-        Logger.info(`[RELOAD_NGINX] Created reload script`);
-        
-        const result = await PrivilegedCommandUtil.createAndExecuteScript(
-          'reload-nginx.sh',
-          reloadScript
-        );
-        
-        Logger.info(`[RELOAD_NGINX] Script execution result: success=${result.success}`);
-        Logger.info(`[RELOAD_NGINX] Script stdout: ${result.stdout}`);
-        
-        if (result.stderr) {
-          Logger.error(`[RELOAD_NGINX] Script stderr: ${result.stderr}`);
+        // Check if Nginx is running
+        try {
+          const isActiveResult = await PrivilegedCommandUtil.executeCommand('systemctl is-active --quiet nginx');
+          Logger.info(`[RELOAD_NGINX] Nginx is currently running`);
+        } catch (error) {
+          Logger.warn(`[RELOAD_NGINX] WARNING: Nginx is not running, attempting to start`);
+          
+          // Start Nginx if it's not running
+          try {
+            await PrivilegedCommandUtil.executeCommand('sudo systemctl start nginx');
+            Logger.info(`[RELOAD_NGINX] Started Nginx successfully`);
+          } catch (startError) {
+            Logger.error(`[RELOAD_NGINX] Failed to start Nginx: ${startError}`);
+            return false;
+          }
         }
-        
-        return result.success;
+
+        // List the enabled sites
+        try {
+          const sitesResult = await PrivilegedCommandUtil.executeCommand('ls -la /etc/nginx/sites-enabled/');
+          Logger.info(`[RELOAD_NGINX] Current enabled sites:\n${sitesResult.stdout}`);
+        } catch (error) {
+          Logger.warn(`[RELOAD_NGINX] Could not list enabled sites: ${error}`);
+        }
+
+        // Test Nginx configuration
+        Logger.info(`[RELOAD_NGINX] Testing Nginx configuration`);
+        try {
+          const testResult = await PrivilegedCommandUtil.executeCommand('sudo nginx -t');
+          Logger.info(`[RELOAD_NGINX] Nginx configuration test successful`);
+          
+          // If successful, reload Nginx
+          Logger.info(`[RELOAD_NGINX] Reloading Nginx`);
+          await PrivilegedCommandUtil.executeCommand('sudo nginx -s reload');
+          
+          // Verify reload was successful
+          try {
+            const statusResult = await PrivilegedCommandUtil.executeCommand('systemctl status nginx');
+            if (statusResult.stdout.includes('active')) {
+              Logger.info(`[RELOAD_NGINX] Nginx reloaded successfully`);
+              return true;
+            } else {
+              Logger.error(`[RELOAD_NGINX] Nginx reload verification failed`);
+              return false;
+            }
+          } catch (verifyError) {
+            Logger.warn(`[RELOAD_NGINX] Could not verify nginx status, assuming success: ${verifyError}`);
+            return true;
+          }
+        } catch (testError) {
+          Logger.error(`[RELOAD_NGINX] Nginx configuration test failed: ${testError}`);
+          return false;
+        }
       } else {
         // Development mode - just log and return success
         Logger.info('[RELOAD_NGINX] Skipping Nginx reload in non-production environment');
@@ -568,47 +557,50 @@ server {
       const configPath = path.join(NGINX_SITES_AVAILABLE, `${domain}.conf`);
       const enabledPath = path.join(NGINX_SITES_ENABLED, `${domain}.conf`);
       const localConfigPath = path.join(NGINX_CONFIG_DIR, `${domain}.conf`);
-      
-      // Create a script to remove the Nginx configuration
-      const removeScript = `#!/bin/bash
-# Remove symlink
-if [ -L "${enabledPath}" ]; then
-  rm "${enabledPath}"
-fi
+        // Create commands to remove the Nginx configuration
+      try {
+        // Remove symlink if it exists
+        try {
+          const enabledExists = await fs.pathExists(enabledPath);
+          if (enabledExists) {
+            await PrivilegedCommandUtil.executeCommand(`sudo rm "${enabledPath}"`);
+            Logger.info(`Removed Nginx symlink: ${enabledPath}`);
+          }
+        } catch (error) {
+          Logger.warn(`Could not remove symlink ${enabledPath}: ${error}`);
+        }
 
-# Remove configuration file
-if [ -f "${configPath}" ]; then
-  rm "${configPath}"
-fi
+        // Remove configuration file if it exists
+        try {
+          const configExists = await fs.pathExists(configPath);
+          if (configExists) {
+            await PrivilegedCommandUtil.executeCommand(`sudo rm "${configPath}"`);
+            Logger.info(`Removed Nginx config file: ${configPath}`);
+          }
+        } catch (error) {
+          Logger.warn(`Could not remove config file ${configPath}: ${error}`);
+        }
 
-# Test Nginx configuration
-nginx -t
-
-# If successful, reload Nginx
-if [ $? -eq 0 ]; then
-  nginx -s reload
-  echo "Nginx configuration for ${domain} removed successfully"
-else
-  echo "Nginx configuration test failed after removal"
-  exit 1
-fi
-`;
-      
-      // Execute the removal script with elevated privileges
-      const result = await PrivilegedCommandUtil.createAndExecuteScript(
-        `remove-nginx-${domain}.sh`,
-        removeScript
-      );
-      
+        // Test Nginx configuration
+        try {
+          await PrivilegedCommandUtil.executeCommand('sudo nginx -t');
+          Logger.info('Nginx configuration test successful after removal');
+          
+          // If successful, reload Nginx
+          await PrivilegedCommandUtil.executeCommand('sudo nginx -s reload');
+          Logger.info(`Nginx configuration for ${domain} removed and reloaded successfully`);
+        } catch (testError) {
+          Logger.error(`Nginx configuration test failed after removal: ${testError}`);
+          throw new Error(`Nginx configuration test failed after removal: ${testError}`);
+        }
+      } catch (removalError) {
+        throw new Error(`Failed to remove Nginx configuration: ${removalError}`);
+      }      
       // Also remove local copy
       if (await fs.pathExists(localConfigPath)) {
         await fs.remove(localConfigPath);
       }
-      
-      if (!result.success) {
-        throw new Error(`Failed to remove Nginx configuration: ${result.stderr}`);
-      }
-      
+
       Logger.info(`Nginx configuration for ${domain} removed successfully`);
       return true;
     } catch (error) {

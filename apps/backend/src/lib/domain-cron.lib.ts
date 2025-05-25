@@ -105,32 +105,48 @@ export class DomainCronJobs {
         if (!activeDomains.length) {
             Logger.info('No active domains found for SSL renewal check');
             return;
-        }        Logger.info(`Checking ${activeDomains.length} domains for SSL renewal`);
-
-        // In production, use Certbot for renewal
+        }        Logger.info(`Checking ${activeDomains.length} domains for SSL renewal`);        // In production, use Certbot for renewal
         if (isProd) {
             try {
-                // Create and execute a script to renew all certificates using Certbot
-                const renewScript = `#!/bin/bash
-# Run Certbot renewal for all certificates
-certbot renew --non-interactive --quiet
-
-# Check the exit code
-if [ $? -eq 0 ]; then
-  echo "Certificates renewed successfully"
-  
-  # Reload Nginx to apply changes
-  nginx -t && nginx -s reload
-else
-  echo "Certificate renewal failed"
-  exit 1
-fi
-`;
+                // Use Node.js direct commands instead of shell scripts
+                Logger.info('[RENEW_CERTS] Running Certbot renewal with direct commands');
                 
-                const result = await PrivilegedCommandUtil.createAndExecuteScript(
-                    'renew-certificates.sh',
-                    renewScript
-                );
+                // Run Certbot renewal
+                const renewResult = await PrivilegedCommandUtil.executeCommand('certbot', ['renew', '--non-interactive', '--quiet']);
+                
+                let result: { success: boolean; stdout: string; stderr: string } = {
+                    success: false,
+                    stdout: '',
+                    stderr: ''
+                };
+                
+                if (renewResult.success) {
+                    // Test Nginx configuration
+                    const testResult = await PrivilegedCommandUtil.executeCommand('nginx', ['-t']);
+                    
+                    if (testResult.success) {
+                        // Reload Nginx
+                        const reloadResult = await PrivilegedCommandUtil.executeCommand('nginx', ['-s', 'reload']);
+                        
+                        result = {
+                            success: reloadResult.success,
+                            stdout: 'Certificates renewed successfully',
+                            stderr: reloadResult.stderr
+                        };
+                    } else {
+                        result = {
+                            success: false,
+                            stdout: renewResult.stdout,
+                            stderr: `Nginx config test failed: ${testResult.stderr}`
+                        };
+                    }
+                } else {
+                    result = {
+                        success: false,
+                        stdout: renewResult.stdout,
+                        stderr: `Certificate renewal failed: ${renewResult.stderr}`
+                    };
+                }
                 
                 if (result.success) {
                     Logger.info('Certificates renewed successfully using Certbot');
