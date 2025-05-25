@@ -92,6 +92,7 @@ export class DomainQueue {
         return { success: status.recommendedStatus === DomainStatus.ACTIVE };
       } catch (error) {
         Logger.error(`Error in domain verification job: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        console.log(error)
         throw error;
       }
     });
@@ -101,7 +102,6 @@ export class DomainQueue {
         Logger.info(`Processing SSL generation job for ${job.data.domainName}`);
         const { domainId, domainName, projectId } = job.data;
         
-        // Request certificate using Certbot in production or ACME client in development
         const certificate = await SSLManager.requestCertificate(domainName, projectId);
         
         if (!certificate.isValid) {
@@ -117,14 +117,12 @@ export class DomainQueue {
         } else {
           Logger.info(`SSL certificate for ${domainName} generated successfully`);
           
-          // Update domain with SSL certificate information
           await domainsService.updateDomainSSLStatus(
             domainId, 
             'ACTIVE', 
             certificate.expiryDate
           );
           
-          // Generate Nginx config with SSL
           const configOptions = {
             domain: domainName,
             projectId,
@@ -138,7 +136,6 @@ export class DomainQueue {
           if (reloadSuccess) {
             Logger.info(`Nginx reloaded successfully with SSL config for ${domainName}`);
             
-            // Update domain status to ACTIVE
             await domainsService.updateDomainStatus(domainId, DomainStatus.ACTIVE);
           } else {
             Logger.error(`Failed to reload Nginx with SSL config for ${domainName}`);
@@ -152,7 +149,6 @@ export class DomainQueue {
       }
     });
     
-    // Initialize required utilities
     PrivilegedCommandUtil.initialize().catch(error => {
       Logger.error(`Failed to initialize privileged command utility: ${error instanceof Error ? error.message : 'Unknown error'}`);
     });

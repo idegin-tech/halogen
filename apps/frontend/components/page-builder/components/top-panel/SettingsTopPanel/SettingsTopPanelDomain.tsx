@@ -16,8 +16,6 @@ import { DomainData, DomainStatus, appConfig } from '@halogen/common';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import axios from 'axios';
 
-
-
 interface DnsRecord {
     type: string;
     host: string;
@@ -32,8 +30,12 @@ export default function SettingsTopPanelDomain() {
         headers: {
             'Content-Type': 'application/json',
         }
-    });
-
+    });    const { state: { project } } = useProjectContext();
+    const projectId = project?._id;
+    const [domain, setDomain] = useState('');
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+    const [verificationToken, setVerificationToken] = useState<string | null>(null); 
+    const [serverIP, setServerIP] = useState<string>(appConfig.ServerIPAddress);
 
     const getDomainUiStatus = (domainData?: DomainData | null): 'initial' | 'pending-dns' | 'propagating' | 'connected' | 'failed' => {
         if (!domainData) return 'initial';
@@ -54,14 +56,7 @@ export default function SettingsTopPanelDomain() {
             default:
                 return 'initial';
         }
-    };
-    const { state: { project } } = useProjectContext();
-    const projectId = project?._id;
-
-    const [domain, setDomain] = useState('');
-    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-    const [verificationToken, setVerificationToken] = useState<string | null>(null); const [serverIP, setServerIP] = useState<string>(appConfig.ServerIPAddress);
-    const fetchDomainVerificationToken = async (domainId: string) => {
+    };    const fetchDomainVerificationToken = async (domainId: string) => {
         if (!domainId) return null;
 
         try {
@@ -78,9 +73,7 @@ export default function SettingsTopPanelDomain() {
             toast.error(errorMessage);
             return null;
         }
-    };
-
-    const domainQuery = useQuery<DomainData | null>(
+    };const domainQuery = useQuery<DomainData | null>(
         projectId ? `/domains/primary/${projectId}` : '',
         {},
         [projectId],
@@ -95,10 +88,12 @@ export default function SettingsTopPanelDomain() {
     const status = getDomainUiStatus(domainData);
     const needsSSL = status === 'connected' && !domainData?.sslIssuedAt;
     const hasDomain = !!domainData;
+    const hasError = !!domainQuery.error;
 
     useEffect(() => {
         let interval: NodeJS.Timeout;
-
+        
+        // For all pending domains, automatically fetch the verification token if we don't have it
         if (domainData && !verificationToken && (
             domainData.status === DomainStatus.PENDING || 
             domainData.status === DomainStatus.PENDING_DNS || 
@@ -123,7 +118,7 @@ export default function SettingsTopPanelDomain() {
         return () => {
             if (interval) clearInterval(interval);
         };
-    }, [domainData]);const handleDomainSubmit = async () => {
+    }, [domainData]);    const handleDomainSubmit = async () => {
         if (!domain || !projectId) return;
 
         try {
@@ -142,7 +137,7 @@ export default function SettingsTopPanelDomain() {
             const errorMessage = error instanceof Error ? error.message : 'Failed to add domain';
             toast.error(errorMessage);
         }
-    }; const checkVerificationStatus = async (domainId: string) => {
+    };    const checkVerificationStatus = async (domainId: string) => {
         try {
             if (!verificationToken) {
                 const token = await fetchDomainVerificationToken(domainId);
@@ -168,7 +163,7 @@ export default function SettingsTopPanelDomain() {
             const errorMessage = error instanceof Error ? error.message : 'Failed to check verification status';
             toast.error(errorMessage);
         }
-    }; const handleDnsVerification = async () => {
+    };    const handleDnsVerification = async () => {
         if (!domainData?._id) return;
 
         try {
@@ -189,7 +184,7 @@ export default function SettingsTopPanelDomain() {
             console.error('Domain verification error:', error);
             toast.error(errorMessage);
         }
-    }; const handleRequestSSL = async () => {
+    };    const handleRequestSSL = async () => {
         if (!domainData?._id) return;
 
         try {
@@ -201,7 +196,7 @@ export default function SettingsTopPanelDomain() {
             console.error('SSL generation error:', error);
             toast.error(errorMessage);
         }
-    }; const handleDelete = async () => {
+    };    const handleDelete = async () => {
         if (!domainData?._id) return;
 
         try {
@@ -273,11 +268,42 @@ export default function SettingsTopPanelDomain() {
         toast.success('Copied to clipboard');
     };
 
+    // Loading state
     if (domainQuery.isLoading) {
         return (
             <div className="flex items-center justify-center p-10">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
+        );
+    }    // Error state
+    if (hasError) {
+        return (
+            <Card className="m-6">
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-destructive">
+                        <AlertCircle className="h-5 w-5" />
+                        Error Loading Domain Information
+                    </CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <Alert variant="destructive" className="mb-4">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertTitle>Something went wrong</AlertTitle>
+                        <AlertDescription>
+                            {typeof domainQuery.error === 'string' ? domainQuery.error : "We couldn't load your domain information. Please try again later."}
+                        </AlertDescription>
+                    </Alert>
+                </CardContent>
+                <CardFooter>
+                    <Button 
+                        onClick={() => domainQuery.refetch()}
+                        className="w-full"
+                    >
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Refresh
+                    </Button>
+                </CardFooter>
+            </Card>
         );
     }
 
@@ -335,7 +361,8 @@ export default function SettingsTopPanelDomain() {
     return (
         <div className="space-y-6 p-6 select-none">
             <div className="flex flex-col gap-6">
-                {status === 'initial' && !hasDomain && (
+                {/* Show domain creation UI only when there's no domain and no error */}
+                {status === 'initial' && !hasDomain && !hasError && (
                     <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
@@ -752,9 +779,7 @@ export default function SettingsTopPanelDomain() {
                             </Button>
                         </CardFooter>
                     </Card>
-                )}
-
-                {status === 'initial' && !hasDomain && (
+                )}                {status === 'initial' && !hasDomain && !hasError && (
                     <Card className="bg-muted/20">
                         <CardContent className="pt-6">
                             <div className="flex flex-col items-center text-center space-y-3">
