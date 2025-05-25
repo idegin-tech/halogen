@@ -9,7 +9,9 @@ import PrivilegedCommandUtil from './privileged-command.util';
 
 const env = validateEnv();
 const REDIS_URL = env.REDIS_URL || 'redis://localhost:6379';
-const IS_PRODUCTION = env.NODE_ENV === 'production';
+
+// Import environment check utilities
+import { isProduction, shouldRunProductionOperations } from '../config/env.config';
 
 interface DomainVerificationJob {
   domainId: string;
@@ -28,11 +30,10 @@ export class DomainQueue {
   public static verificationQueue = new Queue<DomainVerificationJob>('domain-verification', REDIS_URL);
   public static sslQueue = new Queue<SSLGenerationJob>('ssl-generation', REDIS_URL);  private static initialized = false;
   
-  static initialize(domainsService: any): void {
-    if (this.initialized) return;return;
+  static initialize(domainsService: any): void {    if (this.initialized) return;
     
     // Skip queue processing in non-production environments
-    if (!IS_PRODUCTION) {
+    if (!isProduction()) {
       Logger.info('Skipping domain queue initialization in non-production environment');
       this.initialized = true;
       return;
@@ -64,9 +65,8 @@ export class DomainQueue {
           }
         } else {
           Logger.info(`Domain ${domainName} verified successfully`);
-          
-          // If the domain is verified and we're in production, create initial Nginx config
-          if (IS_PRODUCTION) {
+            // If the domain is verified and we're in production, create initial Nginx config
+          if (shouldRunProductionOperations()) {
             try {
               // Create initial Nginx config without SSL
               const configOptions = {

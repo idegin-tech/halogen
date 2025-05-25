@@ -15,6 +15,9 @@ const lookup = promisify(dns.lookup);
 const resolveTxt = promisify(dns.resolveTxt);
 const execAsync = promisify(exec);
 
+// Import environment check utilities
+import { isProduction, shouldRunProductionOperations } from '../config/env.config';
+
 // Template and config directories - use home directory for better permissions
 const NGINX_TEMPLATES_DIR = process.platform === 'win32'
   ? path.join(process.cwd(), 'nginx-templates')
@@ -29,7 +32,6 @@ const NGINX_SITES_ENABLED = '/etc/nginx/sites-enabled';
 
 // Verification constants
 const VERIFICATION_TXT_NAME = 'halogen-domain-verification';
-const IS_PRODUCTION = env.NODE_ENV === 'production';
 
 export interface DomainInfo {
   name: string;
@@ -79,9 +81,14 @@ export class DomainLib {
       Logger.error(`Error verifying domain ownership for ${domain}: ${error instanceof Error ? error.message : 'Unknown error'}`);
       return false;
     }
-  }
-  static async generateNginxConfig(options: NginxConfigOptions): Promise<string> {
+  }  static async generateNginxConfig(options: NginxConfigOptions): Promise<string> {
     try {
+      // Skip file operations in non-production environments
+      if (!shouldRunProductionOperations()) {
+        Logger.info(`Skipping Nginx config generation for ${options.domain} in non-production environment`);
+        return `${options.domain}.conf`;
+      }
+      
       await fs.ensureDir(NGINX_TEMPLATES_DIR);
       await fs.ensureDir(NGINX_CONFIG_DIR);
       
@@ -100,16 +107,16 @@ export class DomainLib {
         sslKeyPath: options.sslKeyPath || '/etc/letsencrypt/live/' + options.domain + '/privkey.pem'
       });
       
-      // Save config locally for reference
-      const localOutputPath = path.join(NGINX_CONFIG_DIR, `${options.domain}.conf`);
-      await fs.writeFile(localOutputPath, outputConfig);
-      
-      // If in production, use privileged commands to create the actual Nginx config
-      if (IS_PRODUCTION) {
+      // Save config locally for reference - only in production
+      if (shouldRunProductionOperations()) {
+        const localOutputPath = path.join(NGINX_CONFIG_DIR, `${options.domain}.conf`);
+        await fs.writeFile(localOutputPath, outputConfig);
+        
+        // If in production, use privileged commands to create the actual Nginx config
         return this.deployNginxConfig(options.domain, outputConfig);
       }
       
-      return localOutputPath;
+      return `${options.domain}.conf`;
     } catch (error) {
       Logger.error(`Error generating Nginx config: ${error instanceof Error ? error.message : 'Unknown error'}`);
       throw new Error('Failed to generate Nginx configuration');
@@ -168,10 +175,9 @@ fi
       Logger.error(`Error deploying Nginx config: ${error instanceof Error ? error.message : 'Unknown error'}`);
       throw new Error('Failed to deploy Nginx configuration');
     }
-  }
-  static async reloadNginx(): Promise<boolean> {
+  }  static async reloadNginx(): Promise<boolean> {
     try {
-      if (IS_PRODUCTION) {
+      if (shouldRunProductionOperations()) {
         // Use privileged command utility to reload Nginx
         const reloadScript = `#!/bin/bash
 # Test Nginx configuration
@@ -195,23 +201,21 @@ fi
         
         return result.success;
       } else {
-        // Development mode - simulate reload or use local Nginx if available
-        const { stdout, stderr } = await execAsync('nginx -t');
-        
-        if (stderr && !stderr.includes('syntax is ok')) {
-          Logger.error(`Nginx config test failed: ${stderr}`);
-          return false;
-        }
-        
-        await execAsync('nginx -s reload');
+        // Development mode - just log and return success
+        Logger.info('Skipping Nginx reload in non-production environment');
         return true;
       }
     } catch (error) {
       Logger.error(`Error reloading Nginx: ${error instanceof Error ? error.message : 'Unknown error'}`);
       return false;
     }
-  }
-  static async createDefaultTemplates(): Promise<void> {
+  }  static async createDefaultTemplates(): Promise<void> {
+    // Only create templates in production
+    if (!shouldRunProductionOperations()) {
+      Logger.info('Skipping template creation in non-production environment');
+      return;
+    }
+
     await fs.ensureDir(NGINX_TEMPLATES_DIR);
     
     const httpTemplate = `server {
@@ -340,12 +344,16 @@ server {
 }`;
     
     await fs.writeFile(path.join(NGINX_TEMPLATES_DIR, 'wildcard.conf.template'), wildcardTemplate);
-  }
-  /**
+  }  /**
    * Initialize domain management system
    * Creates necessary directories and templates
-   */
-  static async initialize(): Promise<void> {
+   */  static async initialize(): Promise<void> {
+    // Skip initialization in non-production environments
+    if (!shouldRunProductionOperations()) {
+      Logger.info('Skipping domain management system initialization in non-production environment');
+      return;
+    }
+
     try {
       // Ensure directories exist
       await fs.ensureDir(NGINX_TEMPLATES_DIR);
@@ -355,14 +363,12 @@ server {
       await this.createDefaultTemplates();
       
       // Set proper permissions for the directories in production
-      if (IS_PRODUCTION && process.platform !== 'win32') {
-        try {
-          await PrivilegedCommandUtil.executeCommand('chmod', ['-R', '755', NGINX_TEMPLATES_DIR]);
-          await PrivilegedCommandUtil.executeCommand('chmod', ['-R', '755', NGINX_CONFIG_DIR]);
-          Logger.info('Set permissions on Nginx configuration directories');
-        } catch (error) {
-          Logger.warn(`Failed to set permissions on Nginx directories: ${error instanceof Error ? error.message : 'Unknown error'}`);
-        }
+      try {
+        await PrivilegedCommandUtil.executeCommand('chmod', ['-R', '755', NGINX_TEMPLATES_DIR]);
+        await PrivilegedCommandUtil.executeCommand('chmod', ['-R', '755', NGINX_CONFIG_DIR]);
+        Logger.info('Set permissions on Nginx configuration directories');
+      } catch (error) {
+        Logger.warn(`Failed to set permissions on Nginx directories: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
       
       Logger.info('Domain management system initialized successfully');
@@ -408,13 +414,12 @@ server {
    * @param projectId Project ID
    * @param generateSSL Whether to generate SSL certificate
    * @returns Result of domain setup
-   */
-  static async setupDomain(domain: string, projectId: string, generateSSL: boolean = true): Promise<boolean> {
+   */  static async setupDomain(domain: string, projectId: string, generateSSL: boolean = true): Promise<boolean> {
     try {
       Logger.info(`Setting up domain ${domain} for project ${projectId}`);
       
       // In production, use privileged command utility
-      if (IS_PRODUCTION) {
+      if (shouldRunProductionOperations()) {
         const result = await PrivilegedCommandUtil.setupDomain(domain, projectId, {
           configureOnly: !generateSSL
         });
@@ -427,32 +432,8 @@ server {
         Logger.info(`Domain ${domain} set up successfully`);
         return true;
       } else {
-        // In development, use local methods
-        // Generate Nginx config
-        await this.generateNginxConfig({
-          domain,
-          projectId
-        });
-        
-        // Generate SSL if requested
-        if (generateSSL) {
-          const certificate = await SSLManager.requestCertificate(domain, projectId);
-          
-          if (!certificate.isValid) {
-            Logger.error(`Failed to generate SSL certificate for ${domain}`);
-            return false;
-          }
-          
-          // Update Nginx config with SSL
-          await this.generateNginxConfig({
-            domain,
-            projectId,
-            sslCertPath: certificate.certPath,
-            sslKeyPath: certificate.keyPath
-          });
-        }
-        
-        await this.reloadNginx();
+        // In development, skip all file operations and return success
+        Logger.info(`Skipping domain setup for ${domain} in non-production environment`);
         return true;
       }
     } catch (error) {

@@ -6,10 +6,9 @@ import { DomainQueue } from './domain-queue.lib';
 import { DomainLib } from './domain.lib';
 import Logger from '../config/logger.config';
 import PrivilegedCommandUtil from './privileged-command.util';
-import { validateEnv } from '../config/env.config';
+import { validateEnv, isProduction, shouldRunProductionOperations } from '../config/env.config';
 
 const env = validateEnv();
-const IS_PRODUCTION = env.NODE_ENV === 'production';
 
 export class DomainCronJobs {
     private static renewalJob: CronJob;
@@ -18,10 +17,8 @@ export class DomainCronJobs {
     private static initialized = false;
     
     static initialize(): void {
-        if (this.initialized) return;
-
-        // Skip cron jobs in non-production environments
-        if (!IS_PRODUCTION) {
+        if (this.initialized) return;        // Skip cron jobs in non-production environments
+        if (!isProduction()) {
             Logger.info('Skipping domain cron jobs initialization in non-production environment');
             this.initialized = true;
             return;
@@ -63,15 +60,8 @@ export class DomainCronJobs {
         this.initialized = true;
 
         Logger.info('Domain cron jobs initialized');
-    }
-
-    /**
-     * Creates a new file with improved renewal functionality
-     */
-    private static async checkAndRenewCertificates(): Promise<void> {
+    }    private static async checkAndRenewCertificates(): Promise<void> {
         const DomainModel = require('../modules/domains/domains.model').default;
-        const env = require('../config/env.config').validateEnv();
-        const IS_PRODUCTION = env.NODE_ENV === 'production';
 
         // Find domains with active status
         const activeDomains = await DomainModel.find({
@@ -82,12 +72,10 @@ export class DomainCronJobs {
         if (!activeDomains.length) {
             Logger.info('No active domains found for SSL renewal check');
             return;
-        }
-
-        Logger.info(`Checking ${activeDomains.length} domains for SSL renewal`);
+        }        Logger.info(`Checking ${activeDomains.length} domains for SSL renewal`);
 
         // In production, use Certbot for renewal
-        if (IS_PRODUCTION) {
+        if (shouldRunProductionOperations()) {
             try {
                 // Create and execute a script to renew all certificates using Certbot
                 const renewScript = `#!/bin/bash

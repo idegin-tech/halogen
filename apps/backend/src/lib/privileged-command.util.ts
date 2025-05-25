@@ -3,14 +3,13 @@ import { promisify } from 'util';
 import fs from 'fs-extra';
 import path from 'path';
 import Logger from '../config/logger.config';
-import { validateEnv } from '../config/env.config';
+import { validateEnv, isProduction, shouldRunProductionOperations } from '../config/env.config';
 
 const execAsync = promisify(exec);
 const env = validateEnv();
 
 // Directory for privileged command scripts - use home directory for user permissions
 const SCRIPTS_DIR = '/home/msuser/halogen-scripts';
-const IS_PRODUCTION = env.NODE_ENV === 'production';
 
 export interface CommandResult {
   success: boolean;
@@ -25,10 +24,9 @@ export interface CommandResult {
  */
 export class PrivilegedCommandUtil {  /**
    * Initialize the script directory and ensure it exists
-   */
-  static async initialize(): Promise<void> {
+   */  static async initialize(): Promise<void> {
     // Skip initialization in non-production environments
-    if (!IS_PRODUCTION) {
+    if (!shouldRunProductionOperations()) {
       Logger.info('Skipping privileged command scripts initialization in non-production environment');
       return;
     }
@@ -49,7 +47,7 @@ export class PrivilegedCommandUtil {  /**
    * @returns Path to the created script
    */  static async createScript(scriptName: string, scriptContent: string): Promise<string> {
     // Skip script creation in non-production environments
-    if (!IS_PRODUCTION) {
+    if (!shouldRunProductionOperations()) {
       Logger.info(`Skipping script creation in non-production environment: ${scriptName}`);
       return `${SCRIPTS_DIR}/${scriptName}`;
     }
@@ -75,7 +73,7 @@ export class PrivilegedCommandUtil {  /**
    * @returns Result of command execution
    */  static async executeCommand(command: string, args: string[] = []): Promise<CommandResult> {
     // Skip execution in non-production environments
-    if (!IS_PRODUCTION) {
+    if (!shouldRunProductionOperations()) {
       Logger.info(`Skipping command execution in non-production environment: ${command} ${args.join(' ')}`);
       return {
         success: true,

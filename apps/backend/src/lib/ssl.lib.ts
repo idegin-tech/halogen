@@ -10,17 +10,18 @@ import PrivilegedCommandUtil from './privileged-command.util';
 const execAsync = promisify(exec);
 const env = validateEnv();
 
+// Import environment check utilities
+import { isProduction, shouldRunProductionOperations } from '../config/env.config';
+
 // Store certificates in user-accessible directories
 const CERTS_DIR = '/etc/letsencrypt/live';
   
-
 const ACME_DIR = '/home/msuser/.letsencrypt';
 const ACCOUNT_KEY_PATH = path.join(ACME_DIR, 'account.key');
 const CHALLENGES_DIR = '/var/www/certbot';
 
 // Certbot configuration
-const IS_PRODUCTION = env.NODE_ENV === 'production';
-const USE_CERTBOT = process.platform !== 'win32' && env.NODE_ENV === 'production';
+const USE_CERTBOT = process.platform !== 'win32' && isProduction();
 const CERTBOT_EMAIL = env.ADMIN_EMAIL || 'admin@example.com';
 
 export interface CertificateInfo {
@@ -34,19 +35,16 @@ export interface CertificateInfo {
 
 export class SSLManager {
   private static acme: AcmeClient.Client;
-  private static initialized = false;
-    static async initializeClient(): Promise<void> {
+  private static initialized = false;    static async initializeClient(): Promise<void> {
     if (this.initialized) return;
 
-
-    if (!IS_PRODUCTION) {
+    if (!shouldRunProductionOperations()) {
       Logger.info('Skipping SSL manager initialization in non-production environment');
       this.initialized = true;
       return;
     }
 
     try {
-
       await fs.ensureDir(CERTS_DIR);
       await fs.ensureDir(ACME_DIR);
       
@@ -292,11 +290,10 @@ fi
       const certPath = path.join('/etc/letsencrypt/live', domain, 'fullchain.pem');
       const keyPath = path.join('/etc/letsencrypt/live', domain, 'privkey.pem');
       
-      let notAfterMatch: RegExpMatchArray | null = null;
-      let notBeforeMatch: RegExpMatchArray | null = null;
+      let notAfterMatch: RegExpMatchArray | null = null;      let notBeforeMatch: RegExpMatchArray | null = null;
       
       // In production, we need to use sudo to check certificate files
-      if (env.NODE_ENV === 'production') {
+      if (isProduction()) {
         // Use privileged command to check if certificate exists
         const checkCertScript = `#!/bin/bash
 if [ -f "${certPath}" ] && [ -f "${keyPath}" ]; then
@@ -368,11 +365,10 @@ fi`;
     }
   }
   static async revokeCertificate(domain: string): Promise<boolean> {
-    try {
-      const certPath = path.join('/etc/letsencrypt/live', domain, 'fullchain.pem');
+    try {      const certPath = path.join('/etc/letsencrypt/live', domain, 'fullchain.pem');
       
       // In production, use Certbot for certificate revocation
-      if (env.NODE_ENV === 'production') {
+      if (isProduction()) {
         const revokeScript = `#!/bin/bash
 # Check if certificate exists
 if [ -d "/etc/letsencrypt/live/${domain}" ]; then

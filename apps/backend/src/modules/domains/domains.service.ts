@@ -411,17 +411,9 @@ fi`;
                 );
                 
                 Logger.info(`Nginx configuration removal triggered for ${domain.name} in production environment`);
-            } else {
-                // In development, just log what would happen in production
+            } else {                // In development, just log what would happen in production
                 Logger.info(`Domain deletion simulated for ${domain.name} - not in production environment`);
                 Logger.info(`Would revoke SSL and remove Nginx config for ${domain.name} in production`);
-                
-                // Remove Nginx configuration from local directory if exists
-                const configPath = path.join(NGINX_CONFIG_DIR, `${domain.name}.conf`);
-                if (await fs.pathExists(configPath)) {
-                    await fs.remove(configPath);
-                    Logger.info(`Removed local Nginx config file for ${domain.name}`);
-                }
             }
             
             // Always delete the domain from the database
