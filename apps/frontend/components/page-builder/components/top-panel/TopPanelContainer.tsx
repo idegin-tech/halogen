@@ -42,6 +42,7 @@ type Props = {
     breadcrumbs?: BreadcrumbItem[];
     withoutFirstColumn?: boolean;
     secondColumnHeaderContent?: React.ReactNode;
+    size?: 'default' | 'lg' | 'xl';
 };
 export default function TopPanelContainer(
     {
@@ -57,7 +58,8 @@ export default function TopPanelContainer(
         subPageDescription,
         breadcrumbs = [], 
         withoutFirstColumn = false,
-        secondColumnHeaderContent
+        secondColumnHeaderContent,
+        size = 'default'
     }: Props
 ) {
     const [isAddingNew, setIsAddingNew] = useState(false);
@@ -134,17 +136,19 @@ export default function TopPanelContainer(
 
     return (
         <>
-            {show && <div className='fixed left-0 right-0 bg-black/10 z-40 cursor-pointer h-[var(--body-height)] bottom-0' onClick={onClose} />}
-            <div
-                className={cn('h-[calc(var(--body-height)-3rem)] bg-background max-w-[1200px] min-w-[900px] shadow-md top-[calc(var(--header-height)+10px)] z-50 left-1/2 transform -translate-x-2/4 absolute border rounded-xl overflow-hidden flex flex-col transition-all duration-200', {
+            {show && <div className='fixed left-0 right-0 bg-black/10 z-40 cursor-pointer h-[var(--body-height)] bottom-0' onClick={onClose} />}            <div
+                className={cn('h-[calc(var(--body-height)-3rem)] bg-background shadow-md top-[calc(var(--header-height)+10px)] z-50 left-1/2 transform -translate-x-2/4 absolute border rounded-xl overflow-hidden flex flex-col transition-all duration-200', {
                     '-top-[95vh]': !show,
+                    'max-w-[1200px] min-w-[900px]': size === 'default',
+                    'max-w-[1800px] min-w-[1400px]': size === 'xl',
+                    'max-w-[1600px] min-w-[1200px]': size === 'lg'
                 })}
             >
                 {
                     show && <>
                     <div className='flex-1 bg-background flex'>
                     {!withoutFirstColumn && (
-                        <div className='min-w-[35%] max-w-[35%] h-full border-r border-border select-none bg-sidebar'>
+                        <div className='min-w-[300px] max-w-[300px] h-full border-r border-border select-none bg-sidebar'>
                             <header className='h-[var(--header-height)] border-b border-border flex justify-between items-center px-2 select-none'>
                                 <p className='font-bold text-xl text-muted-foreground'>{heading}</p>
                                 <Button variant='ghost' size='sm' className="h-8 w-8 p-0" onClick={handleAddClick}>

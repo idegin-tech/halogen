@@ -25,13 +25,12 @@ export default function SettingsTopPanel({ show, onHide }: Props) {
                         activeSection === 'users' ? 'Users' :
                             activeSection === 'billing' ? 'Billing' : 'Advanced'
         }
-    ];
-
-    return (
+    ];    return (
         <TopPanelContainer
             heading="Settings"
             onClose={onHide}
             show={show}
+            size={'lg'}
             setList={[
                 {
                     id: 'project',

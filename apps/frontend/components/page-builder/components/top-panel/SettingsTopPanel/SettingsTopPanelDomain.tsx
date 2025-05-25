@@ -357,9 +357,8 @@ export default function SettingsTopPanelDomain() {
     );
 
     return (
-        <div className="space-y-6 p-6 select-none grid grid-cols-1">
+        <div className="space-y-6 select-none grid grid-cols-1">
             <div className="flex flex-col gap-6">
-                {/* Show domain creation UI only when there's no domain and no error */}
                 {status === 'initial' && !hasDomain && !hasError && (
                     <Card>
                         <CardHeader>
