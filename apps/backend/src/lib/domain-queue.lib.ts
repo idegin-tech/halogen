@@ -4,14 +4,12 @@ import { DomainData, DomainStatus } from '@halogen/common';
 import { DomainLib } from './domain.lib';
 import { SSLManager } from './ssl.lib';
 import Logger from '../config/logger.config';
-import { validateEnv } from '../config/env.config';
+import { isProd, validateEnv } from '../config/env.config';
 import PrivilegedCommandUtil from './privileged-command.util';
 
 const env = validateEnv();
 const REDIS_URL = env.REDIS_URL || 'redis://localhost:6379';
 
-// Import environment check utilities
-import { isProduction, shouldRunProductionOperations } from '../config/env.config';
 
 interface DomainVerificationJob {
   domainId: string;
@@ -33,7 +31,7 @@ export class DomainQueue {
   static initialize(domainsService: any): void {    if (this.initialized) return;
     
     // Skip queue processing in non-production environments
-    if (!isProduction()) {
+    if (!isProd) {
       Logger.info('Skipping domain queue initialization in non-production environment');
       this.initialized = true;
       return;
@@ -66,7 +64,7 @@ export class DomainQueue {
         } else {
           Logger.info(`Domain ${domainName} verified successfully`);
             // If the domain is verified and we're in production, create initial Nginx config
-          if (shouldRunProductionOperations()) {
+          if (isProd) {
             try {
               // Create initial Nginx config without SSL
               const configOptions = {

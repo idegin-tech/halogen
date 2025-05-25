@@ -6,7 +6,7 @@ import { DomainQueue } from './domain-queue.lib';
 import { DomainLib } from './domain.lib';
 import Logger from '../config/logger.config';
 import PrivilegedCommandUtil from './privileged-command.util';
-import { validateEnv, isProduction, shouldRunProductionOperations } from '../config/env.config';
+import { isProd, validateEnv } from '../config/env.config';
 
 const env = validateEnv();
 
@@ -18,7 +18,7 @@ export class DomainCronJobs {
     
     static initialize(): void {
         if (this.initialized) return;        // Skip cron jobs in non-production environments
-        if (!isProduction()) {
+        if (!isProd) {
             Logger.info('Skipping domain cron jobs initialization in non-production environment');
             this.initialized = true;
             return;
@@ -75,7 +75,7 @@ export class DomainCronJobs {
         }        Logger.info(`Checking ${activeDomains.length} domains for SSL renewal`);
 
         // In production, use Certbot for renewal
-        if (shouldRunProductionOperations()) {
+        if (isProd) {
             try {
                 // Create and execute a script to renew all certificates using Certbot
                 const renewScript = `#!/bin/bash

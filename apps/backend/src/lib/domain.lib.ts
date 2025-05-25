@@ -1,4 +1,4 @@
-import { validateEnv } from '../config/env.config';
+import { isProd, validateEnv } from '../config/env.config';
 import dns from 'dns';
 import { promisify } from 'util';
 import fs from 'fs-extra';
@@ -15,10 +15,6 @@ const lookup = promisify(dns.lookup);
 const resolveTxt = promisify(dns.resolveTxt);
 const execAsync = promisify(exec);
 
-// Import environment check utilities
-import { isProduction, shouldRunProductionOperations } from '../config/env.config';
-
-// Template and config directories - use home directory for better permissions
 const NGINX_TEMPLATES_DIR = process.platform === 'win32'
   ? path.join(process.cwd(), 'nginx-templates')
   : '/home/msuser/nginx-templates';
@@ -26,7 +22,6 @@ const NGINX_CONFIG_DIR = process.platform === 'win32'
   ? path.join(process.cwd(), 'nginx-configs')
   : '/home/msuser/nginx-configs';
 
-// Production Nginx directories
 const NGINX_SITES_AVAILABLE = '/etc/nginx/sites-available';
 const NGINX_SITES_ENABLED = '/etc/nginx/sites-enabled';
 
@@ -84,7 +79,7 @@ export class DomainLib {
   }  static async generateNginxConfig(options: NginxConfigOptions): Promise<string> {
     try {
       // Skip file operations in non-production environments
-      if (!shouldRunProductionOperations()) {
+      if (!isProd) {
         Logger.info(`Skipping Nginx config generation for ${options.domain} in non-production environment`);
         return `${options.domain}.conf`;
       }
@@ -108,7 +103,7 @@ export class DomainLib {
       });
       
       // Save config locally for reference - only in production
-      if (shouldRunProductionOperations()) {
+      if (isProd) {
         const localOutputPath = path.join(NGINX_CONFIG_DIR, `${options.domain}.conf`);
         await fs.writeFile(localOutputPath, outputConfig);
         
@@ -177,7 +172,7 @@ fi
     }
   }  static async reloadNginx(): Promise<boolean> {
     try {
-      if (shouldRunProductionOperations()) {
+      if (isProd) {
         // Use privileged command utility to reload Nginx
         const reloadScript = `#!/bin/bash
 # Test Nginx configuration
@@ -211,7 +206,7 @@ fi
     }
   }  static async createDefaultTemplates(): Promise<void> {
     // Only create templates in production
-    if (!shouldRunProductionOperations()) {
+    if (!isProd) {
       Logger.info('Skipping template creation in non-production environment');
       return;
     }
@@ -349,7 +344,7 @@ server {
    * Creates necessary directories and templates
    */  static async initialize(): Promise<void> {
     // Skip initialization in non-production environments
-    if (!shouldRunProductionOperations()) {
+    if (!isProd) {
       Logger.info('Skipping domain management system initialization in non-production environment');
       return;
     }
@@ -419,7 +414,7 @@ server {
       Logger.info(`Setting up domain ${domain} for project ${projectId}`);
       
       // In production, use privileged command utility
-      if (shouldRunProductionOperations()) {
+      if (isProd) {
         const result = await PrivilegedCommandUtil.setupDomain(domain, projectId, {
           configureOnly: !generateSSL
         });
