@@ -113,7 +113,7 @@ export class DomainsController {
                 return;
             }
 
-            const project = await ProjectModel.findById(domain.project, 'name verificationToken');
+            const project = await ProjectModel.findById(domain.project, '+verificationToken name');
             
             ResponseHelper.success(res, {
                 ...domain.toObject(),
