@@ -166,55 +166,6 @@ export class PrivilegedCommandUtil {  /**
       };
     }
   }
-
-  /**
-   * Create and execute a shell script with elevated privileges
-   * @param scriptName Name of the script file
-   * @param scriptContent Content of the script
-   * @returns Result of script execution
-   */
-  static async createAndExecuteScript(scriptName: string, scriptContent: string): Promise<CommandResult> {
-    try {
-      if (!isProd) {
-        Logger.info(`[PRIVILEGED_SCRIPT] Skipping script execution in non-production environment: ${scriptName}`);
-        return { success: true, stdout: '', stderr: '' };
-      }
-
-      // Create a temporary script file
-      const tempDir = '/tmp';
-      const scriptPath = path.join(tempDir, scriptName);
-      
-      // Write script content to file
-      await fs.writeFile(scriptPath, scriptContent, { mode: 0o755 });
-      
-      Logger.info(`[PRIVILEGED_SCRIPT] Created script: ${scriptPath}`);
-      
-      // Execute the script with sudo
-      const { stdout, stderr } = await execAsync(`sudo bash "${scriptPath}"`);
-      
-      // Clean up the script file
-      try {
-        await fs.unlink(scriptPath);
-      } catch (cleanupError) {
-        Logger.warn(`[PRIVILEGED_SCRIPT] Failed to cleanup script ${scriptPath}: ${cleanupError}`);
-      }
-      
-      return {
-        success: true,
-        stdout: stdout.trim(),
-        stderr: stderr.trim()
-      };
-    } catch (error: any) {
-      Logger.error(`[PRIVILEGED_SCRIPT] Error executing script ${scriptName}: ${error.message}`);
-      return {
-        success: false,
-        stdout: '',
-        stderr: error.message,
-        error
-      };
-    }
-  }
-
   /**
    * Set up a domain with Nginx configuration and optional SSL certificate
    * @param domain Domain name
@@ -231,64 +182,32 @@ export class PrivilegedCommandUtil {  /**
 
       const configureOnly = options?.configureOnly || false;
       
-      // Construct the setup script that calls the existing setup-domain.sh script
-      const setupScript = `#!/bin/bash
-echo "[SETUP_DOMAIN_SCRIPT] Setting up domain: ${domain}"
-echo "[SETUP_DOMAIN_SCRIPT] Project ID: ${projectId}"
-echo "[SETUP_DOMAIN_SCRIPT] Configure only: ${configureOnly}"
-
-# Path to the setup-domain.sh script
-SETUP_SCRIPT="/usr/local/bin/halogen-scripts/setup-domain.sh"
-
-# Check if the setup script exists
-if [ ! -f "\$SETUP_SCRIPT" ]; then
-  # Try alternative location in the backend scripts directory
-  SETUP_SCRIPT="${process.cwd()}/scripts/setup-domain.sh"
-  if [ ! -f "\$SETUP_SCRIPT" ]; then
-    echo "[SETUP_DOMAIN_SCRIPT] Error: setup-domain.sh script not found"
-    exit 1
-  fi
-fi
-
-# Make sure the script is executable
-chmod +x "\$SETUP_SCRIPT"
-
-# Build command arguments
-ARGS="-d ${domain} -p ${projectId}"
-if [ "${configureOnly}" = "true" ]; then
-  ARGS="\$ARGS -c"
-fi
-
-echo "[SETUP_DOMAIN_SCRIPT] Executing: \$SETUP_SCRIPT \$ARGS"
-
-# Execute the domain setup script
-"\$SETUP_SCRIPT" \$ARGS
-
-# Check the exit code
-if [ \$? -eq 0 ]; then
-  echo "[SETUP_DOMAIN_SCRIPT] Domain setup completed successfully for ${domain}"
-  exit 0
-else
-  echo "[SETUP_DOMAIN_SCRIPT] Domain setup failed for ${domain}"
-  exit 1
-fi
-`;
-
       Logger.info(`[SETUP_DOMAIN] Setting up domain ${domain} for project ${projectId} (configureOnly: ${configureOnly})`);
       
-      // Execute the setup script
-      const result = await this.createAndExecuteScript(
-        `setup-domain-${domain}-${Date.now()}.sh`,
-        setupScript
-      );
-      
-      if (result.success) {
+      // Use direct command execution instead of shell scripts
+      try {
+        // Execute the setup-domain.sh script directly
+        const setupScriptPath = path.join(process.cwd(), 'scripts', 'setup-domain.sh');
+        const args = `-d ${domain} -p ${projectId}${configureOnly ? ' -c' : ''}`;
+        
+        const { stdout, stderr } = await execAsync(`bash "${setupScriptPath}" ${args}`);
+        
         Logger.info(`[SETUP_DOMAIN] Domain ${domain} setup completed successfully`);
-      } else {
-        Logger.error(`[SETUP_DOMAIN] Domain ${domain} setup failed: ${result.stderr}`);
+        
+        return {
+          success: true,
+          stdout: stdout.trim(),
+          stderr: stderr.trim()
+        };
+      } catch (error: any) {
+        Logger.error(`[SETUP_DOMAIN] Domain ${domain} setup failed: ${error.message}`);
+        return {
+          success: false,
+          stdout: '',
+          stderr: error.message,
+          error
+        };
       }
-      
-      return result;
     } catch (error: any) {
       Logger.error(`[SETUP_DOMAIN] Error setting up domain ${domain}: ${error.message}`);
       return {
@@ -299,7 +218,6 @@ fi
       };
     }
   }
-
   /**
    * Ensure the webroot directory exists and has proper permissions for Certbot challenges
    * @returns Result of webroot directory setup
@@ -311,58 +229,50 @@ fi
         return { success: true, stdout: '', stderr: '' };
       }
 
-      const webrootScript = `#!/bin/bash
-echo "[WEBROOT_SETUP] Setting up webroot directory for Certbot challenges"
-
-# Create the webroot directory
-WEBROOT_DIR="/var/www/certbot"
-
-# Create directory if it doesn't exist
-if [ ! -d "\$WEBROOT_DIR" ]; then
-  echo "[WEBROOT_SETUP] Creating webroot directory: \$WEBROOT_DIR"
-  mkdir -p "\$WEBROOT_DIR"
-else
-  echo "[WEBROOT_SETUP] Webroot directory already exists: \$WEBROOT_DIR"
-fi
-
-# Create .well-known/acme-challenge directory
-ACME_CHALLENGE_DIR="\$WEBROOT_DIR/.well-known/acme-challenge"
-if [ ! -d "\$ACME_CHALLENGE_DIR" ]; then
-  echo "[WEBROOT_SETUP] Creating ACME challenge directory: \$ACME_CHALLENGE_DIR"
-  mkdir -p "\$ACME_CHALLENGE_DIR"
-else
-  echo "[WEBROOT_SETUP] ACME challenge directory already exists: \$ACME_CHALLENGE_DIR"
-fi
-
-# Set proper permissions
-echo "[WEBROOT_SETUP] Setting permissions on webroot directory"
-chown -R www-data:www-data "\$WEBROOT_DIR"
-chmod -R 755 "\$WEBROOT_DIR"
-
-# Verify setup
-if [ -d "\$WEBROOT_DIR" ] && [ -d "\$ACME_CHALLENGE_DIR" ]; then
-  echo "[WEBROOT_SETUP] Webroot directory setup completed successfully"
-  exit 0
-else
-  echo "[WEBROOT_SETUP] Webroot directory setup failed"
-  exit 1
-fi
-`;
-
       Logger.info(`[WEBROOT_SETUP] Ensuring webroot directory exists and has proper permissions`);
-      
-      const result = await this.createAndExecuteScript(
-        `setup-webroot-${Date.now()}.sh`,
-        webrootScript
-      );
-      
-      if (result.success) {
+
+      // Create directories using Node.js fs instead of shell scripts
+      try {
+        // Create the main webroot directory
+        await fs.mkdir('/var/www/certbot', { recursive: true });
+        Logger.info(`[WEBROOT_SETUP] Created/verified webroot directory: /var/www/certbot`);
+
+        // Create .well-known/acme-challenge directory
+        await fs.mkdir('/var/www/certbot/.well-known/acme-challenge', { recursive: true });
+        Logger.info(`[WEBROOT_SETUP] Created/verified ACME challenge directory: /var/www/certbot/.well-known/acme-challenge`);
+
+        // Set proper ownership and permissions using individual commands
+        const chownResult = await execAsync('sudo chown -R www-data:www-data /var/www/certbot');
+        if (chownResult.stderr) {
+          Logger.warn(`[WEBROOT_SETUP] chown warning: ${chownResult.stderr}`);
+        }
+
+        const chmodResult = await execAsync('sudo chmod -R 755 /var/www/certbot');
+        if (chmodResult.stderr) {
+          Logger.warn(`[WEBROOT_SETUP] chmod warning: ${chmodResult.stderr}`);
+        }
+
         Logger.info(`[WEBROOT_SETUP] Webroot directory setup completed successfully`);
-      } else {
-        Logger.error(`[WEBROOT_SETUP] Webroot directory setup failed: ${result.stderr}`);
+        
+        return {
+          success: true,
+          stdout: 'Webroot directory setup completed successfully',
+          stderr: ''
+        };
+      } catch (fsError: any) {
+        // If Node.js mkdir fails due to permissions, fall back to direct commands
+        Logger.warn(`[WEBROOT_SETUP] Node.js mkdir failed, using sudo commands: ${fsError.message}`);
+        
+        const mkdirResult = await execAsync('sudo mkdir -p /var/www/certbot/.well-known/acme-challenge');
+        const chownResult = await execAsync('sudo chown -R www-data:www-data /var/www/certbot');
+        const chmodResult = await execAsync('sudo chmod -R 755 /var/www/certbot');
+
+        return {
+          success: true,
+          stdout: 'Webroot directory setup completed successfully (using sudo)',
+          stderr: mkdirResult.stderr + chownResult.stderr + chmodResult.stderr
+        };
       }
-      
-      return result;
     } catch (error: any) {
       Logger.error(`[WEBROOT_SETUP] Error setting up webroot directory: ${error.message}`);
       return {
