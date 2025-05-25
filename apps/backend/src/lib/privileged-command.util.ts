@@ -51,7 +51,6 @@ export class PrivilegedCommandUtil {  /**
       throw error;
     }
   }
-
   /**
    * Execute a privileged command using sudo if on Linux/Unix
    * @param command Command to execute
@@ -65,32 +64,51 @@ export class PrivilegedCommandUtil {  /**
         return { success: true, stdout: '', stderr: '' };
       }
 
-      // Paths from sudoers NOPASSWD config
-      const ALLOWED_NOPASSWD_COMMANDS = {
-        cp: '/bin/cp',
-        ln: '/bin/ln -s',
-        rm: '/bin/rm',
-        'nginx-test': '/usr/sbin/nginx -t',
-        'nginx-reload': '/usr/sbin/nginx -s reload',
-        certbot: '/usr/bin/certbot'
-      };
-
       // Check if this is an allowed NOPASSWD command
       let cmdToExecute = '';
-      if (command === 'cp' && args[0].startsWith(NGINX_CONFIG_DIR)) {
-        cmdToExecute = `sudo ${ALLOWED_NOPASSWD_COMMANDS.cp} ${args.join(' ')}`;
+      
+      if (command === 'cp' && args[0]?.startsWith(NGINX_CONFIG_DIR)) {
+        cmdToExecute = `sudo /bin/cp ${args.join(' ')}`;
       } else if (command === 'ln' && args.includes('-s') && args.some(arg => arg.startsWith(NGINX_SITES_AVAILABLE))) {
-        cmdToExecute = `sudo ${ALLOWED_NOPASSWD_COMMANDS.ln} ${args.join(' ')}`;
+        // Remove duplicate -s if present
+        const filteredArgs = args.filter((arg, index) => !(arg === '-s' && index > 0 && args[index - 1] === '-s'));
+        cmdToExecute = `sudo /bin/ln ${filteredArgs.join(' ')}`;
       } else if (command === 'rm' && args.some(arg => arg.startsWith(NGINX_SITES_ENABLED))) {
-        cmdToExecute = `sudo ${ALLOWED_NOPASSWD_COMMANDS.rm} ${args.join(' ')}`;
+        cmdToExecute = `sudo /bin/rm ${args.join(' ')}`;
       } else if (command === 'nginx') {
         if (args.includes('-t')) {
-          cmdToExecute = `sudo ${ALLOWED_NOPASSWD_COMMANDS['nginx-test']}`;
+          cmdToExecute = `sudo /usr/sbin/nginx -t`;
         } else if (args.includes('-s') && args.includes('reload')) {
-          cmdToExecute = `sudo ${ALLOWED_NOPASSWD_COMMANDS['nginx-reload']}`;
+          cmdToExecute = `sudo /usr/sbin/nginx -s reload`;
         }
       } else if (command === 'certbot') {
-        cmdToExecute = `sudo ${ALLOWED_NOPASSWD_COMMANDS.certbot} ${args.join(' ')}`;
+        cmdToExecute = `sudo /usr/bin/certbot ${args.join(' ')}`;
+      } else if (command === 'systemctl') {
+        if (args.includes('is-active') && args.includes('nginx')) {
+          cmdToExecute = `sudo /bin/systemctl is-active --quiet nginx`;
+        } else if (args.includes('status') && args.includes('nginx')) {
+          cmdToExecute = `sudo /bin/systemctl status nginx`;
+        }
+      } else if (command === 'ls' && args.includes('/etc/nginx/sites-enabled/')) {
+        cmdToExecute = `sudo /bin/ls -la /etc/nginx/sites-enabled/`;
+      } else if (command === 'mkdir' && args.some(arg => arg.includes('/var/www/certbot'))) {
+        cmdToExecute = `sudo /bin/mkdir ${args.join(' ')}`;
+      } else if (command === 'chmod' && args.some(arg => arg.includes('/var/www/certbot'))) {
+        cmdToExecute = `sudo /bin/chmod ${args.join(' ')}`;
+      } else if (command === 'chown' && args.some(arg => arg.includes('/var/www/certbot'))) {
+        cmdToExecute = `sudo /bin/chown ${args.join(' ')}`;
+      } else if (command === 'echo' && args.some(arg => arg.includes('/var/www/certbot'))) {
+        cmdToExecute = `sudo /bin/echo ${args.join(' ')}`;
+      } else if (command === 'tee' && args.some(arg => arg.includes('/var/www/certbot'))) {
+        cmdToExecute = `sudo /usr/bin/tee ${args.join(' ')}`;
+      } else if (command.startsWith('sudo mkdir -p /var/www/certbot')) {
+        cmdToExecute = command; // Already has sudo prefix
+      } else if (command.startsWith('sudo chmod') && command.includes('/var/www/certbot')) {
+        cmdToExecute = command; // Already has sudo prefix
+      } else if (command.startsWith('sudo rm -f') && command.includes('/var/www/certbot')) {
+        cmdToExecute = command; // Already has sudo prefix
+      } else if (command.startsWith('echo') && command.includes('sudo tee')) {
+        cmdToExecute = command; // Complex command with pipe
       }
 
       if (!cmdToExecute) {
