@@ -1,0 +1,20 @@
+[Unit]
+Description=Halogen Sudo API
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/path/to/halogen/sudo-apis
+Environment=PATH=/path/to/halogen/sudo-apis/venv/bin
+ExecStart=/path/to/halogen/sudo-apis/venv/bin/uvicorn main:app --host 0.0.0.0 --port 8082 --workers 2
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=halogen-sudo-api
+
+[Install]
+WantedBy=multi-user.target
