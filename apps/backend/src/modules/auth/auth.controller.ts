@@ -18,8 +18,7 @@ export class AuthController {
         400
       );
     }
-  }
-    static async login(req: Request, res: Response): Promise<void> {
+  }    static async login(req: Request, res: Response): Promise<void> {
     try {
       const loginData = req.body as LoginDTO;
       
@@ -49,24 +48,31 @@ export class AuthController {
           userId: req.session.userId,
           cookie: req.session.cookie
         })}`);
+
+        // Save session before sending response
+        await new Promise<void>((resolve, reject) => {
           req.session.save((err) => {
-          if (err) {
-            Logger.error(`Session save error: ${err.message}`);
-          } else {
-            Logger.info(`Session saved successfully for user: ${user._id}`);
-            Logger.info(`Session cookie after save: ${JSON.stringify(req.session?.cookie)}`);
-            Logger.info(`Response Set-Cookie header after session save: ${res.getHeader('Set-Cookie')}`);
-            console.log(`\n\n\n`)
-          }
+            if (err) {
+              Logger.error(`Session save error: ${err.message}`);
+              reject(err);
+            } else {
+              Logger.info(`Session saved successfully for user: ${user._id}`);
+              Logger.info(`Session cookie after save: ${JSON.stringify(req.session?.cookie)}`);
+              Logger.info(`Response Set-Cookie header after session save: ${res.getHeader('Set-Cookie')}`);
+              resolve();
+            }
+          });
         });
       }
-        res.on('finish', () => {
+
+      res.on('finish', () => {
         Logger.info(`Response sent for login - Status: ${res.statusCode}`);
         Logger.info(`Response headers: ${JSON.stringify(res.getHeaders())}`);
         Logger.info(`Set-Cookie header present: ${!!res.getHeader('Set-Cookie')}`);
         if (res.getHeader('Set-Cookie')) {
           Logger.info(`Set-Cookie value: ${res.getHeader('Set-Cookie')}`);
         }
+        console.log(`\n\n\n`)
       });
       
       ResponseHelper.success(res, user, 'Login successful');
