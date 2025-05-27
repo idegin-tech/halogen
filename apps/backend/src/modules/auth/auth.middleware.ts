@@ -3,6 +3,7 @@ import session from 'express-session';
 import { createErrorResponse } from '../../types/api.types';
 import { ProjectUserStatus } from '@halogen/common';
 import { ProjectUserModel } from '../project-users';
+import Logger from '../../config/logger.config';
 
 declare module 'express' {
   interface Request {
@@ -16,12 +17,19 @@ declare module 'express' {
   }
 }
 
-export class AuthMiddleware {
-  static requireAuth(req: Request, res: Response, next: NextFunction): void {
+export class AuthMiddleware {  static requireAuth(req: Request, res: Response, next: NextFunction): void {
+    Logger.debug(`AuthMiddleware: requireAuth called for ${req.method} ${req.url}`);
+    Logger.debug(`AuthMiddleware: Session exists: ${!!req.session}`);
+    Logger.debug(`AuthMiddleware: Session ID: ${req.session?.id}`);
+    Logger.debug(`AuthMiddleware: User ID in session: ${req.session?.userId}`);
+    
     if (!req.session || !req.session.userId) {
+      Logger.warn(`AuthMiddleware: Authentication required but no valid session found`);
       res.status(401).json(createErrorResponse('Authentication required'));
       return;
     }
+    
+    Logger.info(`AuthMiddleware: User authenticated - ID: ${req.session.userId}`);
     
     req.user = {
       id: req.session.userId

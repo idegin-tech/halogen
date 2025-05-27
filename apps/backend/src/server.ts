@@ -106,14 +106,24 @@ class App {
         this.app.use(express.urlencoded({ extended: true, limit: '20mb' }));
         this.app.use(cookieParser());
         this.app.use(compression());
-        SessionConfig.configure(this.app);
-
-        this.app.use((req: Request, res: Response, next: NextFunction) => {
+        SessionConfig.configure(this.app);        this.app.use((req: Request, res: Response, next: NextFunction) => {
             req.requestTime = new Date().toISOString();
 
             if (!req.url.includes('/health')) {
                 Logger.http(`${req.method} ${req.url}`);
+                Logger.debug(`Session debug - URL: ${req.url}, SessionID: ${req.session?.id}, UserID: ${req.session?.userId}`);
+                Logger.debug(`Cookies received: ${JSON.stringify(req.cookies)}`);
+                Logger.debug(`Request origin: ${req.headers.origin}`);
             }
+            next();
+        });
+        
+        this.app.use((req: Request, res: Response, next: NextFunction) => {
+            res.on('finish', () => {
+                if (!req.url.includes('/health')) {
+                    Logger.debug(`Response finished - Status: ${res.statusCode}, Set-Cookie: ${res.getHeaders()['set-cookie']}`);
+                }
+            });
             next();
         });
     } private configureRoutes(): void {

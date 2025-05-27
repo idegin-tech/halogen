@@ -9,8 +9,7 @@ export class SessionConfig {
     try {
       const env = validateEnv();
       const MongoDBStore = connectMongoDBSession(session);
-      
-      const store = new MongoDBStore({
+        const store = new MongoDBStore({
         uri: env.MONGODB_URI,
         collection: 'sessions',
         expires: 1000 * 60 * 60 * 24 * 2
@@ -20,23 +19,39 @@ export class SessionConfig {
         Logger.error(`MongoDB session store error: ${error}`);
       });
       
-      app.use(
-        session({
-          secret: env.SESSION_SECRET,
-          cookie: {
-            maxAge: 1000 * 60 * 60 * 24 * 2,
-            httpOnly: true,
-            secure: env.COOKIE_SECURE,
-            sameSite: 'lax',
-            // domain: env.COOKIE_DOMAIN || undefined
-          },
-          store: store,
-          resave: false,
-          saveUninitialized: false,
-          name: 'halogen.sid',
-          rolling: true
-        })
-      );
+      store.on('connected', () => {
+        Logger.info('MongoDB session store connected successfully');
+      });
+      
+      store.on('disconnected', () => {
+        Logger.warn('MongoDB session store disconnected');
+      });
+        const sessionConfig = {
+        secret: env.SESSION_SECRET,
+        cookie: {
+          maxAge: 1000 * 60 * 60 * 24 * 2,
+          httpOnly: true,
+          secure: env.COOKIE_SECURE,
+          sameSite: 'lax' as const,
+          domain: env.COOKIE_DOMAIN || undefined
+        },
+        store: store,
+        resave: false,
+        saveUninitialized: false,
+        name: 'halogen.sid',
+        rolling: true
+      };
+
+      Logger.info(`Session config: ${JSON.stringify({
+        cookieDomain: sessionConfig.cookie.domain,
+        cookieSecure: sessionConfig.cookie.secure,
+        cookieSameSite: sessionConfig.cookie.sameSite,
+        cookieHttpOnly: sessionConfig.cookie.httpOnly,
+        cookieMaxAge: sessionConfig.cookie.maxAge,
+        sessionName: sessionConfig.name
+      })}`);
+
+      app.use(session(sessionConfig));
       
       Logger.info('Session middleware configured successfully');
     } catch (error) {

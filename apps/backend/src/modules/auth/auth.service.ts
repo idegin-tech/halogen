@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
-import { User } from '@halogen/common';
+import { appConfig, User } from '@halogen/common';
 import UserModel from '../users/users.model';
 import UserSecretModel from '../users/user-secret.model';
 import { LoginDTO, RegisterDTO, ResetPasswordDTO, ResetPasswordRequestDTO, ChangePasswordDTO } from './auth.dtos';
@@ -21,7 +21,7 @@ export class AuthService {
       .map(word => word.charAt(0).toUpperCase() + word.slice(1))
       .join(' ');
     
-    return displayName || 'Halogen User';
+    return displayName || `${appConfig.name} User`;
   }
   
   static async register(userData: RegisterDTO): Promise<User> {
@@ -65,38 +65,50 @@ export class AuthService {
       throw error;
     }
   }
-  
-  static async login(loginData: LoginDTO): Promise<{user: User, isNewSession: boolean}> {
+    static async login(loginData: LoginDTO): Promise<{user: User, isNewSession: boolean}> {
     try {
       const email = loginData.email.trim().toLowerCase();
       
+      Logger.info(`AuthService: Attempting login for email: ${email}`);
+      
       const user = await UserModel.findOne({ email });
       if (!user) {
+        Logger.warn(`AuthService: User not found for email: ${email}`);
         throw new Error('Invalid email or password');
       }
       
+      Logger.info(`AuthService: User found - ID: ${user._id}, Active: ${user.isActive}`);
+      
       if (!user.isActive) {
+        Logger.warn(`AuthService: Inactive user attempted login: ${user._id}`);
         throw new Error('Account is disabled. Please contact support');
       }
       
       const userSecret = await UserSecretModel.findOne({ user: user._id });
       if (!userSecret) {
+        Logger.error(`AuthService: User secret not found for user: ${user._id}`);
         throw new Error('User authentication data not found');
       }
       
       const isPasswordValid = await bcrypt.compare(loginData.password, userSecret.passwordHash);
       if (!isPasswordValid) {
+        Logger.warn(`AuthService: Invalid password for user: ${user._id}`);
         throw new Error('Invalid email or password');
       }
       
-      user.lastLogin = new Date();
+      Logger.info(`AuthService: Password validation successful for user: ${user._id}`);
+        user.lastLogin = new Date();
       await user.save();
+      
+      Logger.info(`AuthService: User lastLogin updated for: ${user._id}`);
       
       const userObj = user.toObject();
       const userToReturn: User = {
         ...userObj,
         _id: userObj._id as any
       };
+      
+      Logger.info(`AuthService: Login process completed for user: ${user._id}`);
       
       return {
         user: userToReturn,

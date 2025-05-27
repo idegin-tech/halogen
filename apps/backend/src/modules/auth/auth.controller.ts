@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { LoginDTO, RegisterDTO, ResetPasswordDTO, ResetPasswordRequestDTO, ChangePasswordDTO } from './auth.dtos';
 import { ResponseHelper } from '../../lib/response.helper';
+import Logger from '../../config/logger.config';
 
 export class AuthController {
   static async register(req: Request, res: Response): Promise<void> {
@@ -18,23 +19,53 @@ export class AuthController {
       );
     }
   }
-  
-  static async login(req: Request, res: Response): Promise<void> {
+    static async login(req: Request, res: Response): Promise<void> {
     try {
       const loginData = req.body as LoginDTO;
+      
+      Logger.info(`Login attempt for email: ${loginData.email}`);
+      Logger.info(`Request headers: ${JSON.stringify({
+        origin: req.headers.origin,
+        host: req.headers.host,
+        userAgent: req.headers['user-agent'],
+        cookie: req.headers.cookie
+      })}`);
+      
       const { user, isNewSession } = await AuthService.login(loginData);
       
-      console.log('LOGIN SESSION::', {
-        session: req.session,
+      Logger.info(`Login successful for user: ${user._id}`);
+      Logger.info(`Session before setting userId: ${JSON.stringify({
+        sessionId: req.session?.id,
+        sessionExists: !!req.session,
         isNewSession
-      })
+      })}`);
 
       if (req.session && isNewSession) {
         req.session.userId = String(user._id);
+        
+        Logger.info(`Session after setting userId: ${JSON.stringify({
+          sessionId: req.session.id,
+          userId: req.session.userId,
+          cookie: req.session.cookie
+        })}`);
+        
+        req.session.save((err) => {
+          if (err) {
+            Logger.error(`Session save error: ${err.message}`);
+          } else {
+            Logger.info(`Session saved successfully for user: ${user._id}`);
+          }
+        });
       }
+      
+      res.on('finish', () => {
+        Logger.info(`Response sent for login - Status: ${res.statusCode}`);
+        Logger.info(`Response headers: ${JSON.stringify(res.getHeaders())}`);
+      });
       
       ResponseHelper.success(res, user, 'Login successful');
     } catch (error) {
+      Logger.error(`Login error: ${error instanceof Error ? error.message : 'Unknown error'}`);
       ResponseHelper.error(
         res, 
         error instanceof Error ? error.message : 'Authentication failed', 
@@ -42,18 +73,26 @@ export class AuthController {
       );
     }
   }
-  
-  static async logout(req: Request, res: Response): Promise<void> {
+    static async logout(req: Request, res: Response): Promise<void> {
+    Logger.info(`Logout attempt - Session exists: ${!!req.session}, UserID: ${req.session?.userId}`);
+    
     if (req.session) {
+      const sessionId = req.session.id;
+      const userId = req.session.userId;
+      
       req.session.destroy((err: Error | null) => {
         if (err) {
+          Logger.error(`Session destruction failed - SessionID: ${sessionId}, Error: ${err.message}`);
           ResponseHelper.error(res, 'Failed to logout', 500);
         } else {
+          Logger.info(`Session destroyed successfully - SessionID: ${sessionId}, UserID: ${userId}`);
           res.clearCookie('halogen.sid');
+          Logger.info(`Cookie cleared for logout - SessionID: ${sessionId}`);
           ResponseHelper.success(res, null, 'Logged out successfully');
         }
       });
     } else {
+      Logger.info(`Logout called but no session exists`);
       ResponseHelper.success(res, null, 'Already logged out');
     }
   }
