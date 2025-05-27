@@ -9,7 +9,7 @@
     "check-types": "turbo run check-types",
     "pm2:start": "turbo run pm2:start && cd sudo-apis && pm2 start ecosystem.config.js --env production",
     "setup": "turbo run setup && cd sudo-apis && bash setup.sh && npm run pm2:start",
-    "redeploy": "git pull && npm install && turbo run redeploy && npm run restart-services",
+    "redeploy": "git pull && npm install && cd sudo-apis && pip install -r requirements.txt && cd .. && turbo run redeploy && npm run restart-services",
     "restart-services": "pm2 stop all || true && pm2 delete all || true && npm run pm2:start"
   },
   "devDependencies": {
