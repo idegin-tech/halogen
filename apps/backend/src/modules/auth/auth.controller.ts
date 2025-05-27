@@ -40,6 +40,7 @@ export class AuthController {
         isNewSession
       })}`);      if (req.session && isNewSession) {
         req.session.userId = String(user._id);
+        req.session.touch(); // Force session to be marked as modified
         
         Logger.info(`Session after setting userId: ${JSON.stringify({
           sessionId: req.session.id,
@@ -47,7 +48,7 @@ export class AuthController {
           cookie: req.session.cookie
         })}`);
         
-        Logger.info(`Session will be automatically saved by express-session middleware`);
+        Logger.info(`Session marked as modified and will be saved by express-session middleware`);
       }
 
       res.on('finish', () => {
