@@ -1,4 +1,4 @@
-import express, {Application, Request, Response, NextFunction} from 'express';
+import express, { Application, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
@@ -10,21 +10,21 @@ import xss from 'xss-clean';
 import hpp from 'hpp';
 import Logger from './config/logger.config';
 import Database from './config/db.config';
-import {validateEnv} from './config/env.config';
-import {SessionConfig} from './config/session.config';
-import {ErrorHandlerMiddleware} from './middleware/error.middleware';
-import {projectUsersRoutes} from './modules/project-users';
-import {projectMetadataRoutes} from './modules/project-metadata';
-import {pagesRoutes, variablesRoutes, blockInstancesRoutes} from './modules/artifacts';
-import {previewRoutes} from './modules/www';
+import { validateEnv } from './config/env.config';
+import { SessionConfig } from './config/session.config';
+import { ErrorHandlerMiddleware } from './middleware/error.middleware';
+import { projectUsersRoutes } from './modules/project-users';
+import { projectMetadataRoutes } from './modules/project-metadata';
+import { pagesRoutes, variablesRoutes, blockInstancesRoutes } from './modules/artifacts';
+import { previewRoutes } from './modules/www';
 import authRoutes from './modules/auth/auth.routes';
-import {projectsRoutes} from './modules/projects';
-import {projectSettingsRoutes} from './modules/project-settings';
-import {filesRoutes} from './modules/files';
-import {collectionsRoutes, schemaRoutes} from './modules/cms';
+import { projectsRoutes } from './modules/projects';
+import { projectSettingsRoutes } from './modules/project-settings';
+import { filesRoutes } from './modules/files';
+import { collectionsRoutes, schemaRoutes } from './modules/cms';
 import { uploadsRoutes } from './modules/uploads/uploadds.routes';
 import { systemRoutes } from './modules/system';
-import {domainsRoutes} from './modules/domains';
+import { domainsRoutes } from './modules/domains';
 import { DomainsService } from './modules/domains/domains.service';
 
 declare module 'express' {
@@ -51,7 +51,9 @@ class App {
         this.app.use(helmet());
         const corsOrigins = env.CORS_ORIGIN.split(',');
         this.app.use(cors({
-            origin: (origin, callback) => {                if (!origin) return callback(null, true);
+            origin: (origin, callback) => {
+
+                if (!origin) return callback(null, true);
                 if (env.NODE_ENV === 'development') return callback(null, true);
 
                 Logger.debug(`CORS: Checking origin: ${origin} against allowed origins: ${corsOrigins.join(', ')}`);
@@ -70,7 +72,7 @@ class App {
                     }
 
                     return false;
-                });                if (isAllowed) {
+                }); if (isAllowed) {
                     callback(null, true);
                 } else {
                     Logger.warn(`CORS: Origin rejected: ${origin}`);
@@ -100,8 +102,8 @@ class App {
     }
 
     private configureStandardMiddleware(): void {
-        this.app.use(express.json({limit: '20mb'}));
-        this.app.use(express.urlencoded({extended: true, limit: '20mb'}));
+        this.app.use(express.json({ limit: '20mb' }));
+        this.app.use(express.urlencoded({ extended: true, limit: '20mb' }));
         this.app.use(cookieParser());
         this.app.use(compression());
         SessionConfig.configure(this.app);
@@ -109,12 +111,12 @@ class App {
         this.app.use((req: Request, res: Response, next: NextFunction) => {
             req.requestTime = new Date().toISOString();
 
-            if (!req.url.includes('/health')) { 
+            if (!req.url.includes('/health')) {
                 Logger.http(`${req.method} ${req.url}`);
             }
             next();
         });
-    }    private configureRoutes(): void {
+    } private configureRoutes(): void {
         this.app.get('/health', (req: Request, res: Response) => {
             const dbStatus = Database.getInstance().getStatus();
 
@@ -145,8 +147,10 @@ class App {
         this.app.use(`${apiPrefix}/pages`, pagesRoutes);
         this.app.use(`${apiPrefix}/variables`, variablesRoutes);
         this.app.use(`${apiPrefix}/block-instances`, blockInstancesRoutes);
-        this.app.use(`${apiPrefix}/preview`, previewRoutes);          this.app.use(`${apiPrefix}/uploads`, uploadsRoutes);
-        this.app.use(`${apiPrefix}/files`, filesRoutes);        this.app.use(`${apiPrefix}/collections`, collectionsRoutes);
+        this.app.use(`${apiPrefix}/preview`, previewRoutes); 
+        this.app.use(`${apiPrefix}/uploads`, uploadsRoutes);
+        this.app.use(`${apiPrefix}/files`, filesRoutes); 
+        this.app.use(`${apiPrefix}/collections`, collectionsRoutes);
         this.app.use(`${apiPrefix}/schemas`, schemaRoutes);
         this.app.use(`${apiPrefix}/domains`, domainsRoutes);
         this.app.use(`${apiPrefix}/system`, systemRoutes);

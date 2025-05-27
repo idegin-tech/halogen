@@ -24,6 +24,11 @@ export class AuthController {
       const loginData = req.body as LoginDTO;
       const { user, isNewSession } = await AuthService.login(loginData);
       
+      console.log('LOGIN SESSION::', {
+        session: req.session,
+        isNewSession
+      })
+
       if (req.session && isNewSession) {
         req.session.userId = String(user._id);
       }

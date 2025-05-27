@@ -4,7 +4,6 @@ import Logger from './config/logger.config';
 import { validateEnv } from './config/env.config';
 import fs from 'fs';
 import path from 'path';
-import { FileSystemUtil } from './lib/fs.util';
 import { DomainLib } from './lib/domain.lib';
 import { SSLManager } from './lib/ssl-manager.lib';
 import { DomainQueue } from './lib/domain-queue.lib';

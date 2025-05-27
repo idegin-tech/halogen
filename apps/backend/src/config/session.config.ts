@@ -28,7 +28,7 @@ export class SessionConfig {
             httpOnly: true,
             secure: env.COOKIE_SECURE,
             sameSite: 'lax',
-            domain: env.COOKIE_DOMAIN || undefined
+            // domain: env.COOKIE_DOMAIN || undefined
           },
           store: store,
           resave: false,

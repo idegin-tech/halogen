@@ -11,20 +11,16 @@ export class AuthService {
   private static readonly SALT_ROUNDS = 10;
   
   private static generateDisplayName(email: string): string {
-    // Extract username from email (part before @)
     const username = email.split('@')[0];
     
-    // Clean up username (remove special chars, replace with spaces)
     const cleanName = username.replace(/[^a-zA-Z0-9]/g, ' ');
     
-    // Capitalize words
     const displayName = cleanName
       .split(' ')
       .filter(word => word.length > 0)
       .map(word => word.charAt(0).toUpperCase() + word.slice(1))
       .join(' ');
     
-    // If empty after processing, use a default
     return displayName || 'Halogen User';
   }
   
