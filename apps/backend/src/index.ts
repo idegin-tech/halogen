@@ -6,7 +6,7 @@ import fs from 'fs';
 import path from 'path';
 import { FileSystemUtil } from './lib/fs.util';
 import { DomainLib } from './lib/domain.lib';
-import { SSLManager } from './lib/ssl.lib';
+import { SSLManager } from './lib/ssl-manager.lib';
 import { DomainQueue } from './lib/domain-queue.lib';
 import { DomainCronJobs } from './lib/domain-cron.lib';
 import { DomainsService } from './modules/domains/domains.service';

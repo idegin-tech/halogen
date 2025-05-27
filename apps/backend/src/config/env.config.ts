@@ -13,9 +13,9 @@ export function validateEnv() {try {
     const env = cleanEnv(process.env, {
       NODE_ENV: str({ choices: ['development', 'production', 'test'], default: 'development' }),
       PORT: port({ default: 8081 }),
-      API_ENDPOINT: str(),
-      REDIS_URL: str(),
+      API_ENDPOINT: str(),      REDIS_URL: str(),
       SERVER_IP: str({ default: '165.227.89.156' }),
+      SUDO_API_BASE_URL: str({ default: 'http://localhost:8082' }),
 
       ADMIN_EMAIL: str(),
 

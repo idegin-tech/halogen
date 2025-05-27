@@ -529,6 +529,104 @@ async def setup_domain(request: DomainSetupRequest) -> ApiResponse:
         logger.error(f"Error setting up domain: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/domain/complete-setup")
+async def complete_domain_setup(request: DomainSetupRequest) -> ApiResponse:
+    try:
+        domain = request.domain.lower().strip()
+        project_id = request.project_id
+        ssl_enabled = request.ssl_enabled
+        email = request.email
+        
+        result_data = {
+            "domain": domain,
+            "project_id": project_id,
+            "ssl_enabled": ssl_enabled,
+            "nginx_deployed": False,
+            "ssl_generated": False,
+            "ssl_nginx_updated": False
+        }
+        
+        nginx_request = NginxConfigRequest(
+            domain=domain,
+            project_id=project_id,
+            ssl_enabled=False
+        )
+        
+        nginx_response = await deploy_nginx_config(nginx_request)
+        if nginx_response.success:
+            result_data["nginx_deployed"] = True
+            logger.info(f"Initial Nginx config deployed for {domain}")
+        else:
+            raise HTTPException(status_code=500, detail="Failed to deploy initial Nginx configuration")
+        
+        if ssl_enabled:
+            ssl_request = SSLCertificateRequest(
+                domain=domain,
+                project_id=project_id,
+                email=email
+            )
+            
+            ssl_response = await generate_ssl_certificate(ssl_request)
+            if ssl_response.success:
+                result_data["ssl_generated"] = True
+                logger.info(f"SSL certificate generated for {domain}")
+                
+                nginx_ssl_request = NginxConfigRequest(
+                    domain=domain,
+                    project_id=project_id,
+                    ssl_enabled=True
+                )
+                
+                nginx_ssl_response = await deploy_nginx_config(nginx_ssl_request)
+                if nginx_ssl_response.success:
+                    result_data["ssl_nginx_updated"] = True
+                    logger.info(f"Nginx config updated with SSL for {domain}")
+                else:
+                    raise HTTPException(status_code=500, detail="SSL generated but failed to update Nginx configuration")
+            else:
+                logger.warning(f"SSL generation failed for {domain}, continuing with HTTP only")
+        
+        return ApiResponse(
+            success=True,
+            message=f"Domain setup completed for {domain}",
+            data=result_data
+        )
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in complete domain setup: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/domain/cleanup")
+async def cleanup_domain(request: DomainRequest) -> ApiResponse:
+    try:
+        domain = request.domain.lower().strip()
+        
+        result_data = {
+            "domain": domain,
+            "nginx_removed": False,
+            "ssl_removed": False
+        }
+        
+        nginx_remove_response = await remove_nginx_config(request)
+        if nginx_remove_response.success:
+            result_data["nginx_removed"] = True
+        
+        ssl_remove_response = await remove_ssl_certificate(request)
+        if ssl_remove_response.success:
+            result_data["ssl_removed"] = True
+        
+        return ApiResponse(
+            success=True,
+            message=f"Domain cleanup completed for {domain}",
+            data=result_data
+        )
+    
+    except Exception as e:
+        logger.error(f"Error cleaning up domain: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 if __name__ == "__main__":
     config.ensure_directories()
     uvicorn.run(

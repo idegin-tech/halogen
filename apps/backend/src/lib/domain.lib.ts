@@ -1,18 +1,11 @@
 import { isProd, validateEnv } from '../config/env.config';
-import dns from 'dns';
-import { promisify } from 'util';
 import fs from 'fs-extra';
 import path from 'path';
-import { exec } from 'child_process';
-import mustache from 'mustache';
 import Logger from '../config/logger.config';
 import { DomainStatus } from '@halogen/common';
-import { PrivilegedCommandUtil } from './privileged-command.util';
+import { SudoApiClient } from './sudo-api.client';
 
 const env = validateEnv();
-const lookup = promisify(dns.lookup);
-const resolveTxt = promisify(dns.resolveTxt);
-const execAsync = promisify(exec);
 
 const NGINX_TEMPLATES_DIR = process.platform === 'win32'
   ? path.join(process.cwd(), 'nginx-templates')
@@ -21,10 +14,6 @@ const NGINX_CONFIG_DIR = process.platform === 'win32'
   ? path.join(process.cwd(), 'nginx-configs')
   : '/home/msuser/nginx-configs';
 
-const NGINX_SITES_AVAILABLE = '/etc/nginx/sites-available';
-const NGINX_SITES_ENABLED = '/etc/nginx/sites-enabled';
-
-// Verification constants
 const VERIFICATION_TXT_NAME = 'halogen-domain-verification';
 
 export interface DomainInfo {
@@ -42,26 +31,55 @@ export interface NginxConfigOptions {
   sslKeyPath?: string;
 }
 
-export class DomainLib {  static async generateVerificationToken(domain: string, projectId: string): Promise<string> {
+export class DomainLib {  /**
+   * Initialize the domain library
+   * Creates necessary directories and checks API health
+   */
+  static async initialize(): Promise<void> {
     try {
-      // Import the model directly to avoid circular dependencies
+      if (!isProd) {
+        Logger.info('Skipping domain library initialization in non-production environment');
+        return;
+      }
+
+      Logger.info('Initializing domain library');
+      
+      // Ensure Nginx templates directory exists
+      await fs.ensureDir(NGINX_TEMPLATES_DIR);
+      Logger.info(`Ensured ${NGINX_TEMPLATES_DIR} directory exists`);
+      
+      // Ensure Nginx configs directory exists
+      await fs.ensureDir(NGINX_CONFIG_DIR);
+      Logger.info(`Ensured ${NGINX_CONFIG_DIR} directory exists`);
+      
+      // Check if Python API is healthy
+      const healthCheck = await SudoApiClient.healthCheck();
+      
+      if (!healthCheck.success) {
+        Logger.warn('Domain library initialization - Python API health check failed');
+      } else {
+        Logger.info('Domain library initialized - Python API is healthy');
+      }
+    } catch (error) {
+      Logger.error(`Error initializing domain library: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  static async generateVerificationToken(domain: string, projectId: string): Promise<string> {
+    try {
       const ProjectModel = require('../modules/projects/projects.model').default;
       
-      // Always try to find the project first and get its verification token
       const project = await ProjectModel.findById(projectId, { verificationToken: 1, verificationTokenUpdatedAt: 1 });
       
-      // If project has a verification token, always use it
       if (project && project.verificationToken) {
         Logger.info(`Using existing verification token for project ${projectId}`);
         return project.verificationToken;
       }
       
-      // Generate a new token if project doesn't have one
       const timestamp = Date.now();
       const randomString = Math.random().toString(36).substring(2, 15);
       const token = `${VERIFICATION_TXT_NAME}=${projectId}-${timestamp}-${randomString}`;
       
-      // Update the project with the new token
       if (project) {
         project.verificationToken = token;
         project.verificationTokenUpdatedAt = new Date();
@@ -72,7 +90,6 @@ export class DomainLib {  static async generateVerificationToken(domain: string,
       return token;
     } catch (error) {
       Logger.error(`Error generating verification token: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      // Fallback to a temporary token if there's an error, but this should be rare
       const timestamp = Date.now();
       const randomString = Math.random().toString(36).substring(2, 15);
       return `${VERIFICATION_TXT_NAME}=${projectId}-${timestamp}-${randomString}`;
@@ -81,399 +98,96 @@ export class DomainLib {  static async generateVerificationToken(domain: string,
 
   static async checkDNSPropagation(domain: string): Promise<boolean> {
     try {
-      await lookup(domain);
+      const response = await SudoApiClient.getDomainStatus(domain);
+      
+      if (response.success && response.data) {
+        return response.data.propagated || false;
+      }
+      
+      return false;
+    } catch (error) {
+      Logger.error(`Error checking DNS propagation: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      return false;
+    }
+  }
+
+  static async verifyDomainOwnership(domain: string, expectedToken: string): Promise<boolean> {
+    try {
+      Logger.info(`Verifying domain ownership for ${domain} via Sudo API`);
+      
+      const result = await SudoApiClient.verifyDomainOwnership(domain, expectedToken);
+      
+      if (!result.success) {
+        Logger.info(`Domain ownership verification failed for ${domain}: ${result.message}`);
+        return false;
+      }
+      
+      Logger.info(`Domain ownership verified for ${domain}`);
       return true;
     } catch (error) {
+      Logger.error(`Error verifying domain ownership: ${error instanceof Error ? error.message : 'Unknown error'}`);
       return false;
     }
-  }  static async verifyDomainOwnership(domain: string, expectedToken: string): Promise<boolean> {
+  }
+
+  static async generateNginxConfig(options: NginxConfigOptions): Promise<string> {
     try {
-      Logger.info(`Verifying domain ownership for ${domain} with token: ${expectedToken}`);
+      Logger.info(`Generating Nginx config for ${options.domain} via Sudo API`);
       
-      // Extract the token value for simplified matching
-      const tokenValue = expectedToken.includes('=') ? expectedToken.split('=')[1] : expectedToken;
+      const result = await SudoApiClient.deployNginxConfig({
+        domain: options.domain,
+        project_id: options.projectId,
+        ssl_enabled: !!options.sslCertPath && !!options.sslKeyPath
+      });
       
-      // Try checking the TXT record on the main domain
-      try {
-        const records = await resolveTxt(domain);
-        Logger.info(`Found ${records.length} TXT records for ${domain}`);
-        
-        for (const record of records) {
-          for (const txt of record) {
-            Logger.info(`Checking TXT record: "${txt}" against expected: "${expectedToken}"`);
-            // Match against both full token or just the token value
-            if (txt === expectedToken || txt === tokenValue) {
-              Logger.info(`Match found! Root domain TXT record verified for ${domain}`);
-              return true;
-            }
-          }
-        }
-      } catch (error) {
-        Logger.warn(`Error checking TXT records for ${domain}: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      }
-      
-      // Try with standard DNS service prefixes
-      try {
-        const txtServiceDomain = `${VERIFICATION_TXT_NAME}.${domain}`;
-        Logger.info(`Trying service-specific TXT location: ${txtServiceDomain}`);
-        const txtServiceRecords = await resolveTxt(txtServiceDomain);
-        
-        for (const record of txtServiceRecords) {
-          for (const txt of record) {
-            // For service-specific subdomain, the value might just be the token part
-            Logger.info(`Checking TXT record at service subdomain: "${txt}"`);
-            if (txt === expectedToken || txt === tokenValue) {
-              Logger.info(`Match found! Subdomain TXT record verified for ${domain}`);
-              return true;
-            }
-          }
-        }
-      } catch (error) {
-        // Ignore errors for this secondary check
-        Logger.warn(`No TXT records found at service subdomain for ${domain}`);
-      }
-      
-      // Try with _txt prefix (common pattern for some DNS providers)
-      try {
-        const txtPrefixDomain = `_txt.${domain}`;
-        Logger.info(`Trying alternative TXT location: ${txtPrefixDomain}`);
-        const txtPrefixRecords = await resolveTxt(txtPrefixDomain);
-        
-        for (const record of txtPrefixRecords) {
-          for (const txt of record) {
-            Logger.info(`Checking TXT record at _txt prefix: "${txt}"`);
-            if (txt === expectedToken || txt === tokenValue) {
-              Logger.info(`Match found! _txt prefix TXT record verified for ${domain}`);
-              return true;
-            }
-          }
-        }
-      } catch (error) {
-        // Ignore errors for this secondary check
-        Logger.warn(`No TXT records found at _txt prefix for ${domain}`);
-      }
-      
-      Logger.warn(`No matching TXT record found for ${domain}. Expected full token: ${expectedToken} or value: ${tokenValue}`);
-      return false;
-    } catch (error) {
-      Logger.error(`Error verifying domain ownership for ${domain}: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      return false;
-    }
-  }static async generateNginxConfig(options: NginxConfigOptions): Promise<string> {
-    const { domain, projectId, sslCertPath, sslKeyPath } = options;
-    const templatePath = path.join(
-      NGINX_TEMPLATES_DIR,
-      sslCertPath ? 'ssl-domain.conf.template' : 'domain.conf.template'
-    );
-
-    try {
-      // Read the template
-      const template = await fs.readFile(templatePath, 'utf8');
-      
-      // Replace variables
-      const config = template
-        .replace(/\$\{DOMAIN\}/g, domain)
-        .replace(/\$\{PROJECT_ID\}/g, projectId)
-        .replace(/\$\{SSL_CERT_PATH\}/g, sslCertPath || '')
-        .replace(/\$\{SSL_KEY_PATH\}/g, sslKeyPath || '');
-
-      // Save local copy
-      const localPath = path.join(NGINX_CONFIG_DIR, `${domain}.conf`);
-      await fs.writeFile(localPath, config);
-
-      // Deploy using PrivilegedCommandUtil
-      const result = await PrivilegedCommandUtil.deployNginxConfig(domain, config);
       if (!result.success) {
-        throw new Error(`Failed to deploy Nginx config: ${result.stderr}`);
+        throw new Error(`Failed to generate Nginx config: ${result.message}`);
       }
-
-      return config;
+      
+      Logger.info(`Nginx config generated successfully for ${options.domain}`);
+      return options.domain;
     } catch (error) {
-      Logger.error(`Error generating Nginx config: ${error}`);
+      Logger.error(`Error generating Nginx config: ${error instanceof Error ? error.message : 'Unknown error'}`);
       throw error;
     }
   }
   
-  /**
-   * Deploy Nginx configuration file to production server
-   * @param domain Domain name
-   * @param configContent Nginx configuration content
-   * @returns Path to the deployed configuration file
-   */
-  static async deployNginxConfig(domain: string, configContent: string): Promise<string> {
+  static async removeNginxConfig(domain: string): Promise<boolean> {
     try {
-      const configPath = path.join(NGINX_SITES_AVAILABLE, `${domain}.conf`);
-      const enabledPath = path.join(NGINX_SITES_ENABLED, `${domain}.conf`);
-      const localConfigPath = path.join(NGINX_CONFIG_DIR, `${domain}.conf`);
-
-      // Save local copy
-      await fs.writeFile(localConfigPath, configContent);
-
-      // Copy to sites-available using privileged command
-      const copyResult = await PrivilegedCommandUtil.executeCommand('cp', [localConfigPath, configPath]);
-      if (!copyResult.success) {
-        throw new Error(`Failed to copy config: ${copyResult.stderr}`);
+      Logger.info(`Removing Nginx config for ${domain} via Sudo API`);
+      
+      const result = await SudoApiClient.removeNginxConfig({
+        domain,
+        project_id: 'cleanup' 
+      });
+      
+      if (!result.success) {
+        throw new Error(`Failed to remove Nginx config: ${result.message}`);
       }
-
-      // Check if symlink exists using stat instead of pathExists
-      try {
-        await fs.stat(enabledPath);
-      } catch (error) {
-        // If file doesn't exist, create symlink
-        const linkResult = await PrivilegedCommandUtil.executeCommand('ln', ['-s', configPath, enabledPath]);
-        if (!linkResult.success) {
-          throw new Error(`Failed to create symlink: ${linkResult.stderr}`);
-        }
-      }
-
-      // Test and reload nginx
-      const testResult = await PrivilegedCommandUtil.executeCommand('nginx', ['-t']);
-      if (!testResult.success) {
-        throw new Error(`Nginx config test failed: ${testResult.stderr}`);
-      }
-
-      const reloadResult = await PrivilegedCommandUtil.executeCommand('nginx', ['-s', 'reload']);
-      if (!reloadResult.success) {
-        throw new Error(`Nginx reload failed: ${reloadResult.stderr}`);
-      }
-
-      return configPath;
+      
+      Logger.info(`Nginx config removed successfully for ${domain}`);
+      return true;
     } catch (error) {
-      Logger.error(`Error deploying Nginx config: ${error}`);
-      throw error;
-    }
-  }  static async reloadNginx(): Promise<boolean> {
-    try {
-      if (isProd) {
-        Logger.info(`[RELOAD_NGINX] Starting Nginx reload process`);
-        
-        // Check if Nginx is running
-        try {
-          const isActiveResult = await PrivilegedCommandUtil.executeCommand('systemctl is-active --quiet nginx');
-          Logger.info(`[RELOAD_NGINX] Nginx is currently running`);
-        } catch (error) {
-          Logger.warn(`[RELOAD_NGINX] WARNING: Nginx is not running, attempting to start`);
-          
-          // Start Nginx if it's not running
-          try {
-            await PrivilegedCommandUtil.executeCommand('sudo systemctl start nginx');
-            Logger.info(`[RELOAD_NGINX] Started Nginx successfully`);
-          } catch (startError) {
-            Logger.error(`[RELOAD_NGINX] Failed to start Nginx: ${startError}`);
-            return false;
-          }
-        }
-
-        // List the enabled sites
-        try {
-          const sitesResult = await PrivilegedCommandUtil.executeCommand('ls -la /etc/nginx/sites-enabled/');
-          Logger.info(`[RELOAD_NGINX] Current enabled sites:\n${sitesResult.stdout}`);
-        } catch (error) {
-          Logger.warn(`[RELOAD_NGINX] Could not list enabled sites: ${error}`);
-        }
-
-        // Test Nginx configuration
-        Logger.info(`[RELOAD_NGINX] Testing Nginx configuration`);
-        try {
-          const testResult = await PrivilegedCommandUtil.executeCommand('sudo nginx -t');
-          Logger.info(`[RELOAD_NGINX] Nginx configuration test successful`);
-          
-          // If successful, reload Nginx
-          Logger.info(`[RELOAD_NGINX] Reloading Nginx`);
-          await PrivilegedCommandUtil.executeCommand('sudo nginx -s reload');
-          
-          // Verify reload was successful
-          try {
-            const statusResult = await PrivilegedCommandUtil.executeCommand('systemctl status nginx');
-            if (statusResult.stdout.includes('active')) {
-              Logger.info(`[RELOAD_NGINX] Nginx reloaded successfully`);
-              return true;
-            } else {
-              Logger.error(`[RELOAD_NGINX] Nginx reload verification failed`);
-              return false;
-            }
-          } catch (verifyError) {
-            Logger.warn(`[RELOAD_NGINX] Could not verify nginx status, assuming success: ${verifyError}`);
-            return true;
-          }
-        } catch (testError) {
-          Logger.error(`[RELOAD_NGINX] Nginx configuration test failed: ${testError}`);
-          return false;
-        }
-      } else {
-        // Development mode - just log and return success
-        Logger.info('[RELOAD_NGINX] Skipping Nginx reload in non-production environment');
-        return true;
-      }
-    } catch (error) {
-      Logger.error(`[RELOAD_NGINX] Error reloading Nginx: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      Logger.error(`Error removing Nginx config: ${error instanceof Error ? error.message : 'Unknown error'}`);
       return false;
     }
-  }  static async createDefaultTemplates(): Promise<void> {
-    // Only create templates in production
-    if (!isProd) {
-      Logger.info('Skipping template creation in non-production environment');
-      return;
-    }
-
-    await fs.ensureDir(NGINX_TEMPLATES_DIR);
-    
-    const httpTemplate = `server {
-    listen 80;
-    server_name {{domain}};
-
-    location / {
-        proxy_pass http://localhost:3001;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_cache_bypass $http_upgrade;
-        proxy_set_header X-Project-ID {{projectId}};
-    }
-
-    location /.well-known/acme-challenge/ {
-        root /var/www/certbot;
-    }
-}`;
-
-    const httpsTemplate = `server {
-    listen 80;
-    server_name {{domain}};
-    
-    location /.well-known/acme-challenge/ {
-        root /var/www/certbot;
-    }
-    
-    location / {
-        return 301 https://$host$request_uri;
-    }
-}
-
-server {
-    listen 443 ssl http2;
-    server_name {{domain}};
-    
-    ssl_certificate {{sslCertPath}};
-    ssl_certificate_key {{sslKeyPath}};
-    include /etc/letsencrypt/options-ssl-nginx.conf;
-    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
-    
-    # Security headers
-    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
-    add_header X-Frame-Options "SAMEORIGIN" always;
-    add_header X-Content-Type-Options "nosniff" always;
-    add_header X-XSS-Protection "1; mode=block" always;
-    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
-    
-    # Proxy to application
-    location / {
-        proxy_pass http://localhost:3001;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_cache_bypass $http_upgrade;
-        proxy_set_header X-Project-ID {{projectId}};
-        
-        # Timeout settings
-        proxy_connect_timeout 60s;
-        proxy_send_timeout 60s;
-        proxy_read_timeout 60s;
-    }
-    
-    # Deny access to hidden files
-    location ~ /\\. {
-        deny all;
-        access_log off;
-        log_not_found off;
-    }
-}`;
-
-    await fs.writeFile(path.join(NGINX_TEMPLATES_DIR, 'domain.conf.template'), httpTemplate);
-    await fs.writeFile(path.join(NGINX_TEMPLATES_DIR, 'ssl-domain.conf.template'), httpsTemplate);
-    
-    // Create additional templates for specific use cases if needed
-    const wildcardTemplate = `server {
-    listen 80;
-    server_name *.{{domain}};
-    
-    location /.well-known/acme-challenge/ {
-        root /var/www/certbot;
-    }
-    
-    location / {
-        return 301 https://$host$request_uri;
-    }
-}
-
-server {
-    listen 443 ssl http2;
-    server_name *.{{domain}};
-    
-    ssl_certificate {{sslCertPath}};
-    ssl_certificate_key {{sslKeyPath}};
-    include /etc/letsencrypt/options-ssl-nginx.conf;
-    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
-    
-    # Security headers
-    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
-    add_header X-Frame-Options "SAMEORIGIN" always;
-    add_header X-Content-Type-Options "nosniff" always;
-    add_header X-XSS-Protection "1; mode=block" always;
-    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
-    
-    location / {
-        proxy_pass http://localhost:3001;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_cache_bypass $http_upgrade;
-        proxy_set_header X-Project-ID {{projectId}};
-    }
-}`;
-    
-    await fs.writeFile(path.join(NGINX_TEMPLATES_DIR, 'wildcard.conf.template'), wildcardTemplate);
-  }  /**
-   * Initialize domain management system
-   * Creates necessary directories and templates
-   */  static async initialize(): Promise<void> {
-    // Skip initialization in non-production environments
-    if (!isProd) {
-      Logger.info('Skipping domain management system initialization in non-production environment');
-      return;
-    }
-
+  }
+  
+  static async reloadNginx(): Promise<boolean> {
     try {
-      // Ensure directories exist
-      await fs.ensureDir(NGINX_TEMPLATES_DIR);
-      await fs.ensureDir(NGINX_CONFIG_DIR);
+      Logger.info('Reloading Nginx via Sudo API');
       
-      await this.createDefaultTemplates();
+      const result = await SudoApiClient.reloadNginx();
       
-      try {
-        //todo: check if this is still needed
-        // await PrivilegedCommandUtil.executeCommand('chmod', ['-R', '755', NGINX_TEMPLATES_DIR]);
-        // await PrivilegedCommandUtil.executeCommand('chmod', ['-R', '755', NGINX_CONFIG_DIR]);
-        Logger.info('Set permissions on Nginx configuration directories');
-      } catch (error) {
-        Logger.warn(`Failed to set permissions on Nginx directories: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      if (!result.success) {
+        throw new Error(`Failed to reload Nginx: ${result.message}`);
       }
       
-      Logger.info('Domain management system initialized successfully');
+      Logger.info('Nginx reloaded successfully');
+      return true;
     } catch (error) {
-      Logger.error(`Failed to initialize domain management system: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      throw error;
+      Logger.error(`Error reloading Nginx: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      return false;
     }
   }
 
@@ -482,138 +196,101 @@ server {
     verified: boolean;
     recommendedStatus: DomainStatus;
   }> {
-    const propagated = await this.checkDNSPropagation(domain);
-    let verified = false;
-    
-    if (propagated && verificationToken) {
-      verified = await this.verifyDomainOwnership(domain, verificationToken);
+    try {
+      Logger.info(`Getting domain status for ${domain} via Sudo API`);
+      
+      const result = await SudoApiClient.getDomainStatus(domain);
+      
+      if (!result.success) {
+        throw new Error(`Failed to get domain status: ${result.message}`);
+      }
+      
+      let verified = false;
+      if (verificationToken) {
+        verified = await this.verifyDomainOwnership(domain, verificationToken);
+      }
+      
+      return {
+        propagated: result.data?.propagated || false,
+        verified: result.data?.verified || verified,
+        recommendedStatus: result.data?.verified || verified 
+          ? DomainStatus.ACTIVE 
+          : result.data?.propagated 
+            ? DomainStatus.PROPAGATING 
+            : DomainStatus.PENDING_DNS
+      };
+    } catch (error) {
+      Logger.error(`Error getting domain status: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      return {
+        propagated: false,
+        verified: false,
+        recommendedStatus: DomainStatus.PENDING_DNS
+      };
     }
-    
-    let recommendedStatus = DomainStatus.PENDING;
-    
-    if (!propagated) {
-      recommendedStatus = DomainStatus.PENDING_DNS;
-    } else if (propagated && !verified) {
-      recommendedStatus = DomainStatus.PROPAGATING;
-    } else if (propagated && verified) {
-      recommendedStatus = DomainStatus.ACTIVE;
-    }
-    
-    return {
-      propagated,
-      verified,
-      recommendedStatus
-    };
   }
 
-  /**
-   * Set up a domain with Nginx configuration and SSL certificate
-   * This is the main method that should be called to configure a domain
-   * @param domain Domain name
-   * @param projectId Project ID
-   * @param generateSSL Whether to generate SSL certificate
-   * @returns Result of domain setup
-   */  static async setupDomain(domain: string, projectId: string, generateSSL: boolean = true): Promise<boolean> {
+  static async setupDomain(domain: string, projectId: string, generateSSL: boolean = true): Promise<boolean> {
     try {
       Logger.info(`Setting up domain ${domain} for project ${projectId}`);
       
-      // In production, use privileged command utility
       if (isProd) {
-        const result = await PrivilegedCommandUtil.setupDomain(domain, projectId, {
-          configureOnly: !generateSSL
+        const result = await SudoApiClient.setupDomain({
+          domain,
+          project_id: projectId,
+          ssl_enabled: generateSSL,
+          email: env.ADMIN_EMAIL || 'admin@example.com'
         });
         
-        if (!result.success) {
-          Logger.error(`Failed to set up domain ${domain}: ${result.stderr}`);
-          return false;
-        }
-        
-        Logger.info(`Domain ${domain} set up successfully`);
-        return true;
-      } else {
-        // In development, skip all file operations and return success
-        Logger.info(`Skipping domain setup for ${domain} in non-production environment`);
-        return true;
+        return result.success;
       }
+      
+      Logger.info(`Development mode: Simulating domain setup for ${domain}`);
+      return true;
     } catch (error) {
       Logger.error(`Error setting up domain ${domain}: ${error instanceof Error ? error.message : 'Unknown error'}`);
       return false;
     }
   }
   
-  /**
-   * Remove Nginx configuration for a domain
-   * @param domain Domain name
-   * @returns True if successful
-   */
-  static async removeNginxConfig(domain: string): Promise<boolean> {
+  static async cleanupDomain(domain: string, projectId: string): Promise<boolean> {
     try {
-      // Skip file operations in non-production environments
-      if (!isProd) {
-        Logger.info(`Skipping Nginx config removal for ${domain} in non-production environment`);
-        return true;
+      Logger.info(`Cleaning up domain ${domain}`);
+      
+      if (isProd) {
+        const result = await SudoApiClient.cleanupDomain({
+          domain,
+          project_id: projectId
+        });
+        
+        return result.success;
       }
       
-      const configPath = path.join(NGINX_SITES_AVAILABLE, `${domain}.conf`);
-      const enabledPath = path.join(NGINX_SITES_ENABLED, `${domain}.conf`);
-      const localConfigPath = path.join(NGINX_CONFIG_DIR, `${domain}.conf`);
-        // Create commands to remove the Nginx configuration
-      try {
-        // Remove symlink if it exists
-        try {
-          const enabledExists = await fs.pathExists(enabledPath);
-          if (enabledExists) {
-            await PrivilegedCommandUtil.executeCommand(`sudo rm "${enabledPath}"`);
-            Logger.info(`Removed Nginx symlink: ${enabledPath}`);
-          }
-        } catch (error) {
-          Logger.warn(`Could not remove symlink ${enabledPath}: ${error}`);
-        }
-
-        // Remove configuration file if it exists
-        try {
-          const configExists = await fs.pathExists(configPath);
-          if (configExists) {
-            await PrivilegedCommandUtil.executeCommand(`sudo rm "${configPath}"`);
-            Logger.info(`Removed Nginx config file: ${configPath}`);
-          }
-        } catch (error) {
-          Logger.warn(`Could not remove config file ${configPath}: ${error}`);
-        }
-
-        // Test Nginx configuration
-        try {
-          await PrivilegedCommandUtil.executeCommand('sudo nginx -t');
-          Logger.info('Nginx configuration test successful after removal');
-          
-          // If successful, reload Nginx
-          await PrivilegedCommandUtil.executeCommand('sudo nginx -s reload');
-          Logger.info(`Nginx configuration for ${domain} removed and reloaded successfully`);
-        } catch (testError) {
-          Logger.error(`Nginx configuration test failed after removal: ${testError}`);
-          throw new Error(`Nginx configuration test failed after removal: ${testError}`);
-        }
-      } catch (removalError) {
-        throw new Error(`Failed to remove Nginx configuration: ${removalError}`);
-      }      
-      // Also remove local copy
-      if (await fs.pathExists(localConfigPath)) {
-        await fs.remove(localConfigPath);
-      }
-
-      Logger.info(`Nginx configuration for ${domain} removed successfully`);
+      Logger.info(`Development mode: Simulating domain cleanup for ${domain}`);
       return true;
     } catch (error) {
-      Logger.error(`Error removing Nginx config: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      Logger.error(`Error cleaning up domain ${domain}: ${error instanceof Error ? error.message : 'Unknown error'}`);
       return false;
     }
   }
-
+  /**
+   * Get TXT records for a domain
+   * @param domain Domain to get TXT records for
+   * @returns Array of TXT records
+   */
   static async getDomainTxtRecords(domain: string): Promise<string[][]> {
     try {
-      return await resolveTxt(domain);
+      Logger.info(`Getting TXT records for ${domain} via Sudo API`);
+      
+      const result = await SudoApiClient.getDomainTxtRecords(domain);
+      
+      if (!result.success) {
+        Logger.warn(`Failed to get TXT records for ${domain}: ${result.message}`);
+        return [];
+      }
+      
+      return result.data?.records || [];
     } catch (error) {
-      Logger.warn(`No TXT records found for domain ${domain}`);
+      Logger.error(`Error getting TXT records for ${domain}: ${error instanceof Error ? error.message : 'Unknown error'}`);
       return [];
     }
   }

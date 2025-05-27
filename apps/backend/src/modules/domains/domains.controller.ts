@@ -5,7 +5,7 @@ import { DomainVerificationDTO, SSLCertificateDTO } from './domains.dtos';
 import { DomainQueryOptions, DomainStatus } from '@halogen/common';
 import Logger from '../../config/logger.config';
 import { DomainQueue } from '../../lib/domain-queue.lib';
-import { SSLManager } from '../../lib/ssl.lib';
+import { SSLManager } from '../../lib/ssl-manager.lib';
 import DomainModel from './domains.model';
 import ProjectModel from '../projects/projects.model';
 import { VERIFICATION_TXT_NAME } from '../../config/constants';
@@ -392,13 +392,11 @@ export class DomainsController {
             const certResults: CertResult[] = await Promise.all(
                 domains.map(async (domain) => {
                     const certInfo = await SSLManager.checkCertificate(domain.name);
-                    return {
-                        domainId: domain._id as string,
-                        domainName: domain.name,
+                    return {                        domainId: domain._id as string,                        domainName: domain.name,
                         projectId: domain.project,
                         hasValidCert: certInfo.isValid,
                         certExpiry: certInfo.expiryDate,
-                        certIssued: certInfo.issuedDate,
+                        certIssued: domain.sslIssuedAt ? new Date(domain.sslIssuedAt) : new Date(),
                         certPath: certInfo.certPath
                     };
                 })

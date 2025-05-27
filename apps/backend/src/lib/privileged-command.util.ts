@@ -1,19 +1,9 @@
-import { exec } from 'child_process';
-import { promisify } from 'util';
-import { promises as fs } from 'fs';
-import path from 'path';
+import fs from 'fs-extra';
 import { isProd } from '../config/env.config';
 import Logger from '../config/logger.config';
-import { NginxSetupUtil } from '../utils/nginx-setup.util';
-import { SSLSetupUtil } from '../utils/ssl-setup.util';
-import { SystemPermissionsUtil } from '../utils/system-permissions.util';
-import { SudoersUtil } from '../utils/sudoers.util';
-
-const execAsync = promisify(exec);
+import { SudoApiClient } from './sudo-api.client';
 
 const NGINX_CONFIG_DIR = '/home/msuser/nginx-configs';
-const NGINX_SITES_AVAILABLE = '/etc/nginx/sites-available';
-const NGINX_SITES_ENABLED = '/etc/nginx/sites-enabled';
 
 export interface CommandResult {
   success: boolean;
@@ -24,46 +14,33 @@ export interface CommandResult {
 
 /**
  * Utility class for executing privileged commands
- * Uses a secure approach to execute system commands with elevated privileges
+ * Uses the Python API for elevated privileges
  */
-export class PrivilegedCommandUtil {  /**
-   * Initialize the script directory and ensure it exists
+export class PrivilegedCommandUtil {
+  /**
+   * Initialize the client
    */
   static async initialize(): Promise<void> {
-    // Skip initialization in non-production environments
+    // Skip detailed initialization in non-production environments
     if (!isProd) {
-      Logger.info('Skipping privileged command scripts initialization in non-production environment');
+      Logger.info('Skipping privileged command initialization in non-production environment');
       return;
     }
 
     try {
+      // Check if Python API is healthy
+      const health = await SudoApiClient.healthCheck();
+      if (health.success) {
+        Logger.info('Privileged command utility initialized - Python API is healthy');
+      } else {
+        Logger.warn('Privileged command utility initialized, but Python API health check failed');
+      }
+      
+      // Create local directory for Nginx configs (these will be transferred to the server)
       await fs.mkdir(NGINX_CONFIG_DIR, { recursive: true });
-      console.log(`\n\n\n\n ============= DOMAIN CONFIG STARTED ==============`)
       Logger.info(`Initialized ${NGINX_CONFIG_DIR} directory`);
       
-      // Set up required directories using SystemPermissionsUtil
-      Logger.info('Setting up required system directories');
-      const dirSetupResult = await SystemPermissionsUtil.setupRequiredDirectories();
-      if (dirSetupResult.success) {
-        Logger.info(`System directories set up successfully: ${dirSetupResult.createdDirectories.length} directories`);
-      } else {
-        Logger.warn(`Directory setup completed with warnings: ${dirSetupResult.errors.join(', ')}`);
-      }
-
-      // Check and update sudoers configuration
-      Logger.info('Checking sudoers configuration');
-      const sudoersCheck = await SudoersUtil.checkSudoersConfiguration();
-      if (!sudoersCheck.isValid) {
-        Logger.warn('Sudoers configuration needs to be updated');
-        const sudoersUpdate = await SudoersUtil.updateSudoersConfiguration();
-        if (sudoersUpdate.success) {
-          Logger.info('Sudoers configuration updated successfully');
-        } else {
-          Logger.error(`Failed to update sudoers: ${sudoersUpdate.errors.join(', ')}`);
-        }
-      }
-
-      // Ensure webroot directory is set up during initialization
+      // Ensure webroot directory is set up during initialization through the Python API
       Logger.info('Setting up webroot directory during system initialization');
       const webrootResult = await this.ensureWebrootDirectory();
       if (webrootResult.success) {
@@ -72,15 +49,16 @@ export class PrivilegedCommandUtil {  /**
         Logger.warn(`Webroot directory setup warning: ${webrootResult.stderr}`);
       }
     } catch (error) {
-      Logger.error(`Failed to initialize directories: ${error}`);
-      throw error;
+      Logger.error(`Failed to initialize privileged command utility: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
+
   /**
-   * Execute a privileged command using sudo if on Linux/Unix
+   * Execute a privileged command using the Python API
    * @param command Command to execute
    * @param args Command arguments
    * @returns Result of command execution
+   * @deprecated Use SudoApiClient directly instead
    */
   static async executeCommand(command: string, args: string[] = []): Promise<CommandResult> {
     try {
@@ -89,108 +67,77 @@ export class PrivilegedCommandUtil {  /**
         return { success: true, stdout: '', stderr: '' };
       }
 
-      // Check if this is an allowed NOPASSWD command
-      let cmdToExecute = '';
+      Logger.warn('PrivilegedCommandUtil.executeCommand is deprecated. Use SudoApiClient directly');
       
-      if (command === 'cp' && args[0]?.startsWith(NGINX_CONFIG_DIR)) {
-        cmdToExecute = `sudo /bin/cp ${args.join(' ')}`;
-      } else if (command === 'ln' && args.includes('-s') && args.some(arg => arg.startsWith(NGINX_SITES_AVAILABLE))) {
-        // Remove duplicate -s if present
-        const filteredArgs = args.filter((arg, index) => !(arg === '-s' && index > 0 && args[index - 1] === '-s'));
-        cmdToExecute = `sudo /bin/ln ${filteredArgs.join(' ')}`;
-      } else if (command === 'rm' && args.some(arg => arg.startsWith(NGINX_SITES_ENABLED))) {
-        cmdToExecute = `sudo /bin/rm ${args.join(' ')}`;
-      } else if (command === 'nginx') {
-        if (args.includes('-t')) {
-          cmdToExecute = `sudo /usr/sbin/nginx -t`;
-        } else if (args.includes('-s') && args.includes('reload')) {
-          cmdToExecute = `sudo /usr/sbin/nginx -s reload`;
-        }
-      } else if (command === 'certbot') {
-        cmdToExecute = `sudo /usr/bin/certbot ${args.join(' ')}`;
-      } else if (command === 'systemctl') {
-        if (args.includes('is-active') && args.includes('nginx')) {
-          cmdToExecute = `sudo /bin/systemctl is-active --quiet nginx`;
-        } else if (args.includes('status') && args.includes('nginx')) {
-          cmdToExecute = `sudo /bin/systemctl status nginx`;
-        }
-      } else if (command === 'ls' && args.includes('/etc/nginx/sites-enabled/')) {
-        cmdToExecute = `sudo /bin/ls -la /etc/nginx/sites-enabled/`;
-      } else if (command === 'mkdir' && args.some(arg => arg.includes('/var/www/certbot'))) {
-        cmdToExecute = `sudo /bin/mkdir ${args.join(' ')}`;
-      } else if (command === 'chmod' && args.some(arg => arg.includes('/var/www/certbot'))) {
-        cmdToExecute = `sudo /bin/chmod ${args.join(' ')}`;
-      } else if (command === 'chown' && args.some(arg => arg.includes('/var/www/certbot'))) {
-        cmdToExecute = `sudo /bin/chown ${args.join(' ')}`;
-      } else if (command === 'echo' && args.some(arg => arg.includes('/var/www/certbot'))) {
-        cmdToExecute = `sudo /bin/echo ${args.join(' ')}`;
-      } else if (command === 'tee' && args.some(arg => arg.includes('/var/www/certbot'))) {
-        cmdToExecute = `sudo /usr/bin/tee ${args.join(' ')}`;
-      } else if (command.startsWith('sudo mkdir -p /var/www/certbot')) {
-        cmdToExecute = command; // Already has sudo prefix
-      } else if (command.startsWith('sudo chmod') && command.includes('/var/www/certbot')) {
-        cmdToExecute = command; // Already has sudo prefix
-      } else if (command.startsWith('sudo rm -f') && command.includes('/var/www/certbot')) {
-        cmdToExecute = command; // Already has sudo prefix
-      } else if (command.startsWith('echo') && command.includes('sudo tee')) {
-        cmdToExecute = command; // Complex command with pipe
+      // For backward compatibility, map common operations to API calls
+      if (command === 'nginx' && args.includes('-s') && args.includes('reload')) {
+        const result = await SudoApiClient.reloadNginx();
+        return {
+          success: result.success,
+          stdout: result.message,
+          stderr: result.error || ''
+        };
+      } else {
+        Logger.error(`Unsupported command: ${command} ${args.join(' ')}`);
+        return {
+          success: false,
+          stdout: '',
+          stderr: `Unsupported command: ${command}. Use SudoApiClient directly.`
+        };
       }
-
-      if (!cmdToExecute) {
-        throw new Error(`Command not in NOPASSWD list: ${command} ${args.join(' ')}`);
-      }
-
-      Logger.info(`[PRIVILEGED_CMD] Executing: ${cmdToExecute}`);
-      const { stdout, stderr } = await execAsync(cmdToExecute);
-      
-      return {
-        success: true,
-        stdout: stdout.trim(),
-        stderr: stderr.trim()
-      };
-    } catch (error: any) {
-      Logger.error(`[PRIVILEGED_CMD] Error executing command: ${error.message}`);
+    } catch (error) {
+      Logger.error(`[PRIVILEGED_CMD] Error executing command: ${error instanceof Error ? error.message : 'Unknown error'}`);
       return {
         success: false,
         stdout: '',
-        stderr: error.message,
-        error
+        stderr: error instanceof Error ? error.message : 'Unknown error',
+        error: error instanceof Error ? error : new Error('Unknown error')
       };
     }
   }
+
   /**
    * Deploy Nginx configuration for a specific domain
    * @param domain Domain name
    * @param configContent Nginx configuration content
    * @returns Result of the deployment
+   * @deprecated Use SudoApiClient.deployNginxConfig directly
    */
   static async deployNginxConfig(domain: string, configContent: string): Promise<CommandResult> {
     try {
       Logger.info(`[NGINX_DEPLOY] Deploying Nginx config for domain: ${domain}`);
       
-      // Use the new NginxSetupUtil instead of direct command execution
-      const result = await NginxSetupUtil.deployNginxConfig(domain, configContent);
-        return {
+      // Use the SudoApiClient directly instead of NginxSetupUtil
+      const result = await SudoApiClient.deployNginxConfig({
+        domain,
+        project_id: 'nginx-config',
+        ssl_enabled: configContent.includes('ssl_certificate'),
+        config_content: configContent
+      });
+      
+      return {
         success: result.success,
-        stdout: result.stdout || '',
-        stderr: result.stderr || ''
+        stdout: result.message || '',
+        stderr: result.error || ''
       };
-
-    } catch (error: any) {
-      Logger.error(`[NGINX_DEPLOY] Error deploying Nginx config for ${domain}: ${error.message}`);
+    } catch (error) {
+      Logger.error(`[NGINX_DEPLOY] Error deploying Nginx config for ${domain}: ${error instanceof Error ? error.message : 'Unknown error'}`);
       return {
         success: false,
         stdout: '',
-        stderr: error.message,
-        error
+        stderr: error instanceof Error ? error.message : 'Unknown error',
+        error: error instanceof Error ? error : new Error('Unknown error')
       };
     }
-  }  /**
+  }
+
+  /**
    * Set up a domain with Nginx configuration and optional SSL certificate
    * @param domain Domain name
    * @param projectId Project ID
    * @param options Configuration options
    * @returns Result of domain setup
+   * @deprecated Use SudoApiClient.setupDomain directly
    */
   static async setupDomain(domain: string, projectId: string, options?: { configureOnly?: boolean }): Promise<CommandResult> {
     try {
@@ -204,50 +151,35 @@ export class PrivilegedCommandUtil {  /**
       Logger.info(`[SETUP_DOMAIN] Setting up domain ${domain} for project ${projectId} (configureOnly: ${configureOnly})`);
       
       try {
-        // Ensure webroot directory exists with proper permissions
-        const webrootResult = await this.ensureWebrootDirectory();
-        if (!webrootResult.success) {
-          Logger.warn(`[SETUP_DOMAIN] Webroot setup warning: ${webrootResult.stderr}`);
-        }        // Check if domain is already configured
-        const isDomainConfigured = await NginxSetupUtil.isDomainConfigured(domain);
-        if (isDomainConfigured) {
-          Logger.info(`[SETUP_DOMAIN] Domain ${domain} is already configured`);
-        }
-
-        // Set up SSL certificate if not in configure-only mode
-        if (!configureOnly) {
-          Logger.info(`[SETUP_DOMAIN] Setting up SSL certificate for domain ${domain}`);
-          const sslResult = await SSLSetupUtil.generateSSLCertificate(domain);
-          if (!sslResult.success) {
-            Logger.warn(`[SETUP_DOMAIN] SSL setup failed for ${domain}: ${sslResult.message}`);
-          } else {
-            Logger.info(`[SETUP_DOMAIN] SSL certificate generated successfully for ${domain}`);
-          }
-        }
-        
-        Logger.info(`[SETUP_DOMAIN] Domain ${domain} setup completed successfully`);
+        // Call the Python API to set up the domain
+        const result = await SudoApiClient.setupDomain({
+          domain,
+          project_id: projectId,
+          ssl_enabled: !configureOnly,
+          email: process.env.ADMIN_EMAIL || 'admin@example.com'
+        });
         
         return {
-          success: true,
-          stdout: 'Domain setup completed using Node.js commands',
-          stderr: ''
+          success: result.success,
+          stdout: result.message || '',
+          stderr: result.error || ''
         };
-      } catch (error: any) {
-        Logger.error(`[SETUP_DOMAIN] Domain ${domain} setup failed: ${error.message}`);
+      } catch (setupError) {
+        Logger.error(`[SETUP_DOMAIN] Domain ${domain} setup failed: ${setupError instanceof Error ? setupError.message : 'Unknown error'}`);
         return {
           success: false,
           stdout: '',
-          stderr: error.message,
-          error
+          stderr: setupError instanceof Error ? setupError.message : 'Unknown error',
+          error: setupError instanceof Error ? setupError : new Error('Unknown error')
         };
       }
-    } catch (error: any) {
-      Logger.error(`[SETUP_DOMAIN] Error setting up domain ${domain}: ${error.message}`);
+    } catch (error) {
+      Logger.error(`[SETUP_DOMAIN] Error setting up domain ${domain}: ${error instanceof Error ? error.message : 'Unknown error'}`);
       return {
         success: false,
         stdout: '',
-        stderr: error.message,
-        error
+        stderr: error instanceof Error ? error.message : 'Unknown error',
+        error: error instanceof Error ? error : new Error('Unknown error')
       };
     }
   }
@@ -262,57 +194,28 @@ export class PrivilegedCommandUtil {  /**
         return { success: true, stdout: '', stderr: '' };
       }
 
-      Logger.info(`[WEBROOT_SETUP] Ensuring webroot directory exists and has proper permissions`);
-
-      // Create directories using Node.js fs instead of shell scripts
-      try {
-        // Create the main webroot directory
-        await fs.mkdir('/var/www/certbot', { recursive: true });
-        Logger.info(`[WEBROOT_SETUP] Created/verified webroot directory: /var/www/certbot`);
-
-        // Create .well-known/acme-challenge directory
-        await fs.mkdir('/var/www/certbot/.well-known/acme-challenge', { recursive: true });
-        Logger.info(`[WEBROOT_SETUP] Created/verified ACME challenge directory: /var/www/certbot/.well-known/acme-challenge`);
-
-        // Set proper ownership and permissions using individual commands
-        const chownResult = await execAsync('sudo chown -R www-data:www-data /var/www/certbot');
-        if (chownResult.stderr) {
-          Logger.warn(`[WEBROOT_SETUP] chown warning: ${chownResult.stderr}`);
-        }
-
-        const chmodResult = await execAsync('sudo chmod -R 755 /var/www/certbot');
-        if (chmodResult.stderr) {
-          Logger.warn(`[WEBROOT_SETUP] chmod warning: ${chmodResult.stderr}`);
-        }
-
-        Logger.info(`[WEBROOT_SETUP] Webroot directory setup completed successfully`);
-        
-        return {
-          success: true,
-          stdout: 'Webroot directory setup completed successfully',
-          stderr: ''
-        };
-      } catch (fsError: any) {
-        // If Node.js mkdir fails due to permissions, fall back to direct commands
-        Logger.warn(`[WEBROOT_SETUP] Node.js mkdir failed, using sudo commands: ${fsError.message}`);
-        
-        const mkdirResult = await execAsync('sudo mkdir -p /var/www/certbot/.well-known/acme-challenge');
-        const chownResult = await execAsync('sudo chown -R www-data:www-data /var/www/certbot');
-        const chmodResult = await execAsync('sudo chmod -R 755 /var/www/certbot');
-
-        return {
-          success: true,
-          stdout: 'Webroot directory setup completed successfully (using sudo)',
-          stderr: mkdirResult.stderr + chownResult.stderr + chmodResult.stderr
-        };
-      }
-    } catch (error: any) {
-      Logger.error(`[WEBROOT_SETUP] Error setting up webroot directory: ${error.message}`);
+      Logger.info(`[WEBROOT_SETUP] Ensuring webroot directory exists and has proper permissions via Python API`);
+      
+      // Use SudoApiClient.setupDomain which will ensure the webroot directory exists
+      const result = await SudoApiClient.setupDomain({
+        domain: 'webroot-setup',
+        project_id: 'system',
+        ssl_enabled: false,
+        email: process.env.ADMIN_EMAIL || 'admin@example.com'
+      });
+      
+      return {
+        success: result.success,
+        stdout: result.message || '',
+        stderr: result.error || ''
+      };
+    } catch (error) {
+      Logger.error(`[WEBROOT_SETUP] Error setting up webroot directory: ${error instanceof Error ? error.message : 'Unknown error'}`);
       return {
         success: false,
         stdout: '',
-        stderr: error.message,
-        error
+        stderr: error instanceof Error ? error.message : 'Unknown error',
+        error: error instanceof Error ? error : new Error('Unknown error')
       };
     }
   }

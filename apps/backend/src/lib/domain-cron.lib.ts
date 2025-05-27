@@ -1,9 +1,10 @@
 import { CronJob } from 'cron';
-import { SSLManager, CertificateInfo } from './ssl.lib';
+import { SSLManager, CertificateInfo } from './ssl-manager.lib';
 import { DomainStatus } from '@halogen/common';
 import { DomainsService } from '../modules/domains/domains.service';
 import { DomainQueue } from './domain-queue.lib';
 import { DomainLib } from './domain.lib';
+import { SudoApiClient } from './sudo-api.client';
 import Logger from '../config/logger.config';
 import PrivilegedCommandUtil from './privileged-command.util';
 import { isProd, validateEnv } from '../config/env.config';
@@ -20,7 +21,8 @@ export class DomainCronJobs {
     private static NGINX_SITES_AVAILABLE = '/etc/nginx/sites-available';
     
     static async initialize() {
-        if (this.initialized) return;        // Skip cron jobs in non-production environments
+        if (this.initialized) return;
+        
         if (!isProd) {
             Logger.info('Skipping domain cron jobs initialization in non-production environment');
             this.initialized = true;
@@ -62,11 +64,12 @@ export class DomainCronJobs {
         this.initialized = true;
 
         Logger.info('Domain cron jobs initialized');
-    }    private static async verifyActiveDomainsNginxConfigs(): Promise<void> {
+    }
+
+    private static async verifyActiveDomainsNginxConfigs(): Promise<void> {
         try {
             Logger.info('Verifying nginx configs for active domains...');
             
-            // Get all active domains
             const DomainModel = require('../modules/domains/domains.model').default;
             const activeDomains = await DomainModel.find({ 
                 status: 'active',
@@ -105,83 +108,144 @@ export class DomainCronJobs {
         if (!activeDomains.length) {
             Logger.info('No active domains found for SSL renewal check');
             return;
-        }        Logger.info(`Checking ${activeDomains.length} domains for SSL renewal`);        // In production, use Certbot for renewal
+        }
+
+        Logger.info(`Checking ${activeDomains.length} domains for SSL renewal`);
+
         if (isProd) {
-            try {
-                // Use Node.js direct commands instead of shell scripts
-                Logger.info('[RENEW_CERTS] Running Certbot renewal with direct commands');
+            try {                Logger.info('[RENEW_CERTS] Using Python API for certificate renewal');
                 
-                // Run Certbot renewal
-                const renewResult = await PrivilegedCommandUtil.executeCommand('certbot', ['renew', '--non-interactive', '--quiet']);
+                let renewedCount = 0;
+                let failedCount = 0;
                 
-                let result: { success: boolean; stdout: string; stderr: string } = {
-                    success: false,
-                    stdout: '',
-                    stderr: ''
-                };
-                
-                if (renewResult.success) {
-                    // Test Nginx configuration
-                    const testResult = await PrivilegedCommandUtil.executeCommand('nginx', ['-t']);
-                    
-                    if (testResult.success) {
-                        // Reload Nginx
-                        const reloadResult = await PrivilegedCommandUtil.executeCommand('nginx', ['-s', 'reload']);
+                for (const domain of activeDomains) {
+                    try {
+                        // Check if certificate needs renewal using SSLManager
+                        const needsRenewal = await SSLManager.needsRenewal(domain.name);
                         
-                        result = {
-                            success: reloadResult.success,
-                            stdout: 'Certificates renewed successfully',
-                            stderr: reloadResult.stderr
-                        };
-                    } else {
-                        result = {
-                            success: false,
-                            stdout: renewResult.stdout,
-                            stderr: `Nginx config test failed: ${testResult.stderr}`
-                        };
+                        if (needsRenewal) {
+                            Logger.info(`[RENEW_CERTS] Certificate for ${domain.name} needs renewal`);
+                            
+                            // Attempt renewal via Python API through SSLManager
+                            const renewResult = await SSLManager.renewCertificate(domain.name, domain.project);
+                            
+                            if (renewResult.isValid) {
+                                Logger.info(`[RENEW_CERTS] Certificate for ${domain.name} renewed successfully`);
+                                renewedCount++;
+                                  // Update database with new certificate dates
+                                await DomainModel.findByIdAndUpdate(domain._id, {
+                                    sslIssuedAt: new Date(),
+                                    sslExpiresAt: renewResult.expiryDate || null
+                                });
+                            } else {
+                                Logger.error(`[RENEW_CERTS] Certificate renewal failed for ${domain.name}`);
+                                failedCount++;
+                            }
+                        } else {
+                            Logger.info(`[RENEW_CERTS] Certificate for ${domain.name} does not need renewal yet`);
+                        }
+                    } catch (error) {
+                        Logger.error(`[RENEW_CERTS] Error processing ${domain.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                        failedCount++;
                     }
+                }
+                
+                Logger.info(`[RENEW_CERTS] Renewal completed: ${renewedCount} renewed, ${failedCount} failed`);
+                
+                // If there were failures, fall back to individual domain check
+                if (failedCount > 0) {
+                    Logger.info('[RENEW_CERTS] Some renewals failed, checking with fallback method');
+                    await this.checkIndividualDomainsForRenewal(activeDomains);
+                }
+                
+            } catch (error) {
+                Logger.error(`[RENEW_CERTS] Error using Python API for renewal: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                
+                // Fall back to legacy Certbot approach
+                Logger.info('[RENEW_CERTS] Falling back to legacy Certbot renewal');
+                await this.legacyCertbotRenewal(activeDomains);
+            }
+        } else {
+            // Development mode - check individual domains
+            await this.checkIndividualDomainsForRenewal(activeDomains);
+        }
+    }
+
+    /**
+     * Legacy Certbot renewal method (fallback)
+     */
+    private static async legacyCertbotRenewal(activeDomains: any[]): Promise<void> {
+        try {
+            // Use Node.js direct commands instead of shell scripts
+            Logger.info('[RENEW_CERTS] Running Certbot renewal with direct commands');
+            
+            // Run Certbot renewal
+            const renewResult = await PrivilegedCommandUtil.executeCommand('certbot', ['renew', '--non-interactive', '--quiet']);
+            
+            let result: { success: boolean; stdout: string; stderr: string } = {
+                success: false,
+                stdout: '',
+                stderr: ''
+            };
+            
+            if (renewResult.success) {
+                // Test Nginx configuration
+                const testResult = await PrivilegedCommandUtil.executeCommand('nginx', ['-t']);
+                
+                if (testResult.success) {
+                    // Reload Nginx
+                    const reloadResult = await PrivilegedCommandUtil.executeCommand('nginx', ['-s', 'reload']);
+                    
+                    result = {
+                        success: reloadResult.success,
+                        stdout: 'Certificates renewed successfully',
+                        stderr: reloadResult.stderr
+                    };
                 } else {
                     result = {
                         success: false,
                         stdout: renewResult.stdout,
-                        stderr: `Certificate renewal failed: ${renewResult.stderr}`
+                        stderr: `Nginx config test failed: ${testResult.stderr}`
                     };
                 }
+            } else {
+                result = {
+                    success: false,
+                    stdout: renewResult.stdout,
+                    stderr: `Certificate renewal failed: ${renewResult.stderr}`
+                };
+            }
+            
+            if (result.success) {
+                Logger.info('Certificates renewed successfully using Certbot');
                 
-                if (result.success) {
-                    Logger.info('Certificates renewed successfully using Certbot');
-                    
-                    // Update renewal dates in database
-                    for (const domain of activeDomains) {
-                        try {
-                            const certificate = await SSLManager.checkCertificate(domain.name);
+                // Update renewal dates in database
+                const DomainModel = require('../modules/domains/domains.model').default;
+                for (const domain of activeDomains) {
+                    try {
+                        const certificate = await SSLManager.checkCertificate(domain.name);
+                        
+                        if (certificate.isValid && certificate.expiryDate) {                            await DomainModel.findByIdAndUpdate(domain._id, {
+                                sslIssuedAt: new Date(),
+                                sslExpiresAt: certificate.expiryDate
+                            });
                             
-                            if (certificate.isValid && certificate.expiryDate) {
-                                await DomainModel.findByIdAndUpdate(domain._id, {
-                                    sslIssuedAt: certificate.issuedDate || new Date(),
-                                    sslExpiresAt: certificate.expiryDate
-                                });
-                                
-                                Logger.info(`Updated certificate dates for ${domain.name}`);
-                            }
-                        } catch (error) {
-                            Logger.error(`Error updating certificate dates for ${domain.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                            Logger.info(`Updated certificate dates for ${domain.name}`);
                         }
+                    } catch (error) {
+                        Logger.error(`Error updating certificate dates for ${domain.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
                     }
-                } else {
-                    Logger.error(`Certbot renewal failed: ${result.stderr}`);
-                    
-                    // Fall back to checking individual domains
-                    await this.checkIndividualDomainsForRenewal(activeDomains);
                 }
-            } catch (error) {
-                Logger.error(`Error running Certbot renewal: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            } else {
+                Logger.error(`Certbot renewal failed: ${result.stderr}`);
                 
                 // Fall back to checking individual domains
                 await this.checkIndividualDomainsForRenewal(activeDomains);
             }
-        } else {
-            // Development mode - check individual domains
+        } catch (error) {
+            Logger.error(`Error running legacy Certbot renewal: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            
+            // Fall back to checking individual domains
             await this.checkIndividualDomainsForRenewal(activeDomains);
         }
     }
@@ -350,7 +414,6 @@ export class DomainCronJobs {
                 // Check if Nginx config exists for active domains
                 if (domain.status === DomainStatus.ACTIVE) {
                     try {
-                        const fs = require('fs-extra');
                         const configExists = await fs.pathExists(`${process.cwd()}/nginx-configs/${domain.name}.conf`);
                         
                         if (!configExists) {

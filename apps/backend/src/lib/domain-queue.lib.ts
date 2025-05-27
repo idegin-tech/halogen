@@ -1,14 +1,13 @@
 import Queue from 'bull';
 import { DomainData, DomainStatus } from '@halogen/common';
 import { DomainLib } from './domain.lib';
-import { SSLManager } from './ssl.lib';
+import { SSLManager } from './ssl-manager.lib';
+import { SudoApiClient } from './sudo-api.client';
 import Logger from '../config/logger.config';
 import { isProd, validateEnv } from '../config/env.config';
-import PrivilegedCommandUtil from './privileged-command.util';
 
 const env = validateEnv();
 const REDIS_URL = env.REDIS_URL || 'redis://localhost:6379';
-
 
 interface DomainVerificationJob {
   domainId: string;
@@ -25,7 +24,8 @@ interface SSLGenerationJob {
 
 export class DomainQueue {
   public static verificationQueue = new Queue<DomainVerificationJob>('domain-verification', REDIS_URL);
-  public static sslQueue = new Queue<SSLGenerationJob>('ssl-generation', REDIS_URL);  private static initialized = false;
+  public static sslQueue = new Queue<SSLGenerationJob>('ssl-generation', REDIS_URL);
+  private static initialized = false;
   
   static initialize(domainsService: any): void {
     if (this.initialized) {
@@ -48,7 +48,8 @@ export class DomainQueue {
         const status = await DomainLib.getDomainStatus(domainName, verificationToken);
         
         Logger.info(`[DOMAIN_QUEUE] Domain status: propagated=${status.propagated}, verified=${status.verified}, recommendedStatus=${status.recommendedStatus}`);
-          if (status.verified) {
+        
+        if (status.verified) {
           Logger.info(`[DOMAIN_QUEUE] Domain ${domainName} verification successful`);
           
           // First generate Nginx config before marking domain as active
@@ -106,84 +107,61 @@ export class DomainQueue {
             
             throw new Error('Domain not yet verified, will retry');
           } else {
-            Logger.warn(`[DOMAIN_QUEUE] Domain verification failed after ${retryCount} attempts for ${domainName}`);
+            Logger.warn(`[DOMAIN_QUEUE] Domain verification failed after ${retryCount + 1} attempts for ${domainName}`);
             await domainsService.updateDomainStatus(domainId, DomainStatus.FAILED);
           }
         } else {
-          Logger.info(`[DOMAIN_QUEUE] Domain ${domainName} verified successfully`);
-          if (isProd) {
-            try {
-              const configOptions = {
-                domain: domainName,
-                projectId
-              };
-              
-              Logger.info(`[DOMAIN_QUEUE] Generating Nginx config for ${domainName}`);
-              await DomainLib.generateNginxConfig(configOptions);
-              Logger.info(`[DOMAIN_QUEUE] Initial Nginx config created for ${domainName}`);
-              
-              Logger.info(`[DOMAIN_QUEUE] Adding SSL generation job for ${domainName}`);
-              await this.addSSLGenerationJob({
-                _id: domainId,
-                name: domainName,
-                project: projectId
-              } as DomainData);
-              
-              Logger.info(`[DOMAIN_QUEUE] SSL generation job queued for ${domainName}`);
-            } catch (error) {
-              Logger.error(`[DOMAIN_QUEUE] Error creating initial Nginx config for ${domainName}: ${error instanceof Error ? error.message : 'Unknown error'}`);
-            }
+          Logger.info(`[DOMAIN_QUEUE] Domain ${domainName} DNS not yet propagated`);
+          await domainsService.updateDomainStatus(domainId, DomainStatus.PENDING_DNS);
+          
+          if (retryCount < 5) {
+            Logger.info(`[DOMAIN_QUEUE] Will retry verification for ${domainName} (attempt ${retryCount + 1}/5)`);
+            await domainsService.updateDomainVerificationAttempt(domainId, `Attempt ${retryCount + 1}: Waiting for DNS propagation`);
+            
+            throw new Error('Domain DNS not yet propagated, will retry');
+          } else {
+            Logger.warn(`[DOMAIN_QUEUE] Domain verification failed after ${retryCount + 1} attempts for ${domainName}`);
+            await domainsService.updateDomainStatus(domainId, DomainStatus.FAILED);
           }
         }
         
         return { success: status.recommendedStatus === DomainStatus.ACTIVE };
       } catch (error) {
         Logger.error(`[DOMAIN_QUEUE] Error in domain verification job: ${error instanceof Error ? error.message : 'Unknown error'}`);
-        console.log(error)
         throw error;
       }
-    });    this.sslQueue.process(async (job) => {
+    });
+    
+    // Configure SSL generation queue processor
+    this.sslQueue.process(async (job) => {
       try {
         Logger.info(`[SSL_QUEUE] Processing SSL generation job for ${job.data.domainName}`);
         const { domainId, domainName, projectId } = job.data;
-        const retryCount = job.attemptsMade;
         
-        Logger.info(`[SSL_QUEUE] SSL generation attempt ${retryCount + 1} for ${domainName}`);
+        // Check if the domain is verified and propagated before generating SSL
+        const status = await DomainLib.getDomainStatus(domainName);
         
-        // First, ensure domain is properly set up with Nginx configuration
-        Logger.info(`[SSL_QUEUE] Ensuring domain setup for ${domainName} before SSL generation`);
-        const setupResult = await PrivilegedCommandUtil.setupDomain(domainName, projectId, { configureOnly: true });
-        
-        if (!setupResult.success) {
-          Logger.error(`[SSL_QUEUE] Domain setup failed for ${domainName}: ${setupResult.stderr}`);
-          
-          if (retryCount < 2) {
-            Logger.info(`[SSL_QUEUE] Will retry SSL generation for ${domainName} after domain setup failure (attempt ${retryCount + 1}/3)`);
-            throw new Error(`Domain setup failed: ${setupResult.stderr}`);
-          } else {
-            Logger.error(`[SSL_QUEUE] Domain setup failed after ${retryCount + 1} attempts for ${domainName}`);
-            await domainsService.updateDomainSSLStatus(domainId, 'FAILED', null);
-            return { success: false, error: 'Domain setup failed' };
-          }
+        if (!status.verified || !status.propagated) {
+          Logger.error(`[SSL_QUEUE] Domain ${domainName} is not verified or propagated. Skipping SSL generation.`);
+          await domainsService.updateDomainSSLStatus(domainId, 'FAILED', null);
+          return;
         }
         
-        Logger.info(`[SSL_QUEUE] Domain setup completed for ${domainName}, proceeding with SSL generation`);
+        Logger.info(`[SSL_QUEUE] Domain ${domainName} is verified and propagated. Proceeding with SSL generation.`);
         
-        // Add a small delay to ensure DNS propagation and Nginx reload completion
-        await new Promise(resolve => setTimeout(resolve, 5000)); // 5 second delay
-        
-        const certificate = await SSLManager.requestCertificate(domainName, projectId);
-        
-        if (!certificate.isValid) {
-          if (retryCount < 2) {
-            Logger.info(`[SSL_QUEUE] SSL generation attempt ${retryCount + 1} failed for ${domainName}, will retry`);
-            throw new Error('SSL generation failed, will retry');
-          } else {
-            Logger.warn(`[SSL_QUEUE] SSL generation failed after ${retryCount + 1} attempts for ${domainName}`);
+        // Generate SSL certificate through the Sudo API
+        try {
+          Logger.info(`[SSL_QUEUE] Requesting SSL certificate for ${domainName} via Sudo API`);
+          
+          // Use the new SSLManager
+          const certificate = await SSLManager.requestCertificate(domainName, projectId);
+          
+          if (!certificate.isValid) {
+            Logger.error(`[SSL_QUEUE] Failed to generate SSL certificate for ${domainName}`);
             await domainsService.updateDomainSSLStatus(domainId, 'FAILED', null);
-            return { success: false, error: 'SSL generation failed' };
+            return;
           }
-        } else {
+          
           Logger.info(`[SSL_QUEUE] SSL certificate for ${domainName} generated successfully`);
           
           await domainsService.updateDomainSSLStatus(
@@ -194,15 +172,13 @@ export class DomainQueue {
           
           // Generate updated Nginx config with SSL
           try {
-            const configOptions = {
+            Logger.info(`[SSL_QUEUE] Updating Nginx configuration with SSL for ${domainName}`);
+            await DomainLib.generateNginxConfig({
               domain: domainName,
               projectId,
               sslCertPath: certificate.certPath,
               sslKeyPath: certificate.keyPath
-            };
-            
-            Logger.info(`[SSL_QUEUE] Updating Nginx configuration with SSL for ${domainName}`);
-            await DomainLib.generateNginxConfig(configOptions);
+            });
             
             const reloadSuccess = await DomainLib.reloadNginx();
             
@@ -217,17 +193,17 @@ export class DomainQueue {
             Logger.error(`[SSL_QUEUE] Error updating Nginx config with SSL for ${domainName}: ${configError instanceof Error ? configError.message : 'Unknown error'}`);
             // Don't fail the job, certificate is still valid
           }
+          
+          return { success: certificate.isValid, certificate };
+        } catch (error) {
+          Logger.error(`[SSL_QUEUE] Error generating SSL certificate for ${domainName}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+          await domainsService.updateDomainSSLStatus(domainId, 'FAILED', null);
+          return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
         }
-        
-        return { success: certificate.isValid, certificate };
       } catch (error) {
         Logger.error(`[SSL_QUEUE] Error in SSL generation job for ${job.data.domainName}: ${error instanceof Error ? error.message : 'Unknown error'}`);
-        throw error;
+        return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
       }
-    });
-    
-    PrivilegedCommandUtil.initialize().catch(error => {
-      Logger.error(`Failed to initialize privileged command utility: ${error instanceof Error ? error.message : 'Unknown error'}`);
     });
     
     this.initialized = true;
