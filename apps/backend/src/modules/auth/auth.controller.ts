@@ -38,9 +38,7 @@ export class AuthController {
         sessionId: req.session?.id,
         sessionExists: !!req.session,
         isNewSession
-      })}`);
-
-      if (req.session && isNewSession) {
+      })}`);      if (req.session && isNewSession) {
         req.session.userId = String(user._id);
         
         Logger.info(`Session after setting userId: ${JSON.stringify({
@@ -48,21 +46,8 @@ export class AuthController {
           userId: req.session.userId,
           cookie: req.session.cookie
         })}`);
-
-        // Save session before sending response
-        await new Promise<void>((resolve, reject) => {
-          req.session.save((err) => {
-            if (err) {
-              Logger.error(`Session save error: ${err.message}`);
-              reject(err);
-            } else {
-              Logger.info(`Session saved successfully for user: ${user._id}`);
-              Logger.info(`Session cookie after save: ${JSON.stringify(req.session?.cookie)}`);
-              Logger.info(`Response Set-Cookie header after session save: ${res.getHeader('Set-Cookie')}`);
-              resolve();
-            }
-          });
-        });
+        
+        Logger.info(`Session will be automatically saved by express-session middleware`);
       }
 
       res.on('finish', () => {

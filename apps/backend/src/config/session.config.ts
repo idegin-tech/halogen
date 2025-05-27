@@ -52,6 +52,20 @@ export class SessionConfig {
       })}`);      app.use(session(sessionConfig));
       
       app.use((req, res, next) => {
+        const originalSend = res.send;
+        res.send = function(...args) {
+          //@ts-ignore
+          if (req.session && req.session.userId) {
+            //@ts-ignore
+            Logger.info(`Session data before response: SessionID: ${req.session.id}, UserID: ${req.session.userId}`);
+            Logger.info(`Set-Cookie will be set by express-session: ${!!res.getHeader('Set-Cookie')}`);
+          }
+          return originalSend.apply(this, args);
+        };
+        next();
+      });
+      
+      app.use((req, res, next) => {
         //@ts-ignore
         Logger.debug(`Session middleware: SessionID: ${req.session?.id}, UserID: ${req.session?.userId}`);
         Logger.debug(`Session cookie settings: ${JSON.stringify(req.session?.cookie)}`);
