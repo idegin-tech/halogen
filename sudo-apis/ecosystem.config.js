@@ -2,8 +2,8 @@ module.exports = {
   apps: [
     {
       name: 'halogen-sudo-api',
-      script: 'main.py',
-      interpreter: 'python3',
+      script: './start-prod.sh',
+      interpreter: 'bash',
       instances: 1,
       autorestart: true,
       watch: false,

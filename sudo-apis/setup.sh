@@ -1,18 +1,42 @@
 #!/bin/bash
-# Install Python dependencies for sudo-apis
+# Install Python dependencies for sudo-apis using a virtual environment
 
 # Navigate to sudo-apis directory
 cd "$(dirname "$0")" || exit
 
-# Make sure pip is available
-if ! command -v pip3 &> /dev/null; then
-    echo "Error: pip3 is not installed. Please install Python 3 and pip."
+# Detect OS for appropriate commands
+if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" || "$OSTYPE" == "win32" ]]; then
+    VENV_CMD="python -m venv"
+    VENV_ACTIVATE="venv/Scripts/activate"
+    PYTHON_CMD="python"
+    PIP_CMD="pip"
+else
+    VENV_CMD="python3 -m venv"
+    VENV_ACTIVATE="venv/bin/activate"
+    PYTHON_CMD="python3"
+    PIP_CMD="pip3"
+fi
+
+# Make sure python is available
+if ! command -v $PYTHON_CMD &> /dev/null; then
+    echo "Error: python is not installed. Please install Python 3."
     exit 1
 fi
 
+# Create virtual environment if it doesn't exist
+if [ ! -d "venv" ]; then
+    echo "Creating Python virtual environment..."
+    $VENV_CMD venv
+fi
+
+# Activate the virtual environment
+echo "Activating virtual environment..."
+source "$VENV_ACTIVATE"
+
 # Install dependencies
 echo "Installing Python dependencies..."
-pip3 install -r requirements.txt
+$PIP_CMD install --upgrade pip
+$PIP_CMD install -r requirements.txt
 
 # Create .env file if it doesn't exist
 if [ ! -f .env ]; then
