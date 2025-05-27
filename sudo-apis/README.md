@@ -50,6 +50,44 @@ python main.py
 ### Using the Startup Script
 ```bash
 cd sudo-apis
+./start-dev.sh
+```
+
+### Production Mode with PM2
+
+1. **First Time Setup**
+   ```bash
+   cd sudo-apis
+   ./setup.sh
+   ```
+
+2. **Managing with PM2**
+   ```bash
+   # Start the API
+   pm2 start ecosystem.config.js --env production
+   
+   # Check status
+   pm2 status
+   
+   # View logs
+   pm2 logs halogen-sudo-api
+   
+   # Restart
+   pm2 restart halogen-sudo-api
+   
+   # Stop
+   pm2 stop halogen-sudo-api
+   
+   # View detailed monitoring
+   pm2 monit
+   ```
+
+3. **Auto-start on System Boot**
+   ```bash
+   pm2 startup
+   pm2 save
+   ```
+cd sudo-apis
 chmod +x start.sh
 ./start.sh
 ```

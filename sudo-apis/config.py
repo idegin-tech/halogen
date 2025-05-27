@@ -1,6 +1,15 @@
 import os
 from pathlib import Path
 from typing import List
+import os
+
+# Add dotenv support for consistent environment handling
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+    print("Loaded environment variables from .env file")
+except ImportError:
+    print("python-dotenv not installed, using os.environ only")
 
 class Config:
     API_HOST: str = os.getenv("API_HOST", "0.0.0.0")
