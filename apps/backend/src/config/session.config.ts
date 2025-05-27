@@ -49,9 +49,14 @@ export class SessionConfig {
         cookieHttpOnly: sessionConfig.cookie.httpOnly,
         cookieMaxAge: sessionConfig.cookie.maxAge,
         sessionName: sessionConfig.name
-      })}`);
-
-      app.use(session(sessionConfig));
+      })}`);      app.use(session(sessionConfig));
+      
+      app.use((req, res, next) => {
+        //@ts-ignore
+        Logger.debug(`Session middleware: SessionID: ${req.session?.id}, UserID: ${req.session?.userId}`);
+        Logger.debug(`Session cookie settings: ${JSON.stringify(req.session?.cookie)}`);
+        next();
+      });
       
       Logger.info('Session middleware configured successfully');
     } catch (error) {

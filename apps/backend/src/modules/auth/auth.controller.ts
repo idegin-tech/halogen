@@ -23,6 +23,7 @@ export class AuthController {
     try {
       const loginData = req.body as LoginDTO;
       
+      console.log(`\n\n\n`)
       Logger.info(`Login attempt for email: ${loginData.email}`);
       Logger.info(`Request headers: ${JSON.stringify({
         origin: req.headers.origin,
@@ -48,19 +49,24 @@ export class AuthController {
           userId: req.session.userId,
           cookie: req.session.cookie
         })}`);
-        
-        req.session.save((err) => {
+          req.session.save((err) => {
           if (err) {
             Logger.error(`Session save error: ${err.message}`);
           } else {
             Logger.info(`Session saved successfully for user: ${user._id}`);
+            Logger.info(`Session cookie after save: ${JSON.stringify(req.session?.cookie)}`);
+            Logger.info(`Response Set-Cookie header after session save: ${res.getHeader('Set-Cookie')}`);
+            console.log(`\n\n\n`)
           }
         });
       }
-      
-      res.on('finish', () => {
+        res.on('finish', () => {
         Logger.info(`Response sent for login - Status: ${res.statusCode}`);
         Logger.info(`Response headers: ${JSON.stringify(res.getHeaders())}`);
+        Logger.info(`Set-Cookie header present: ${!!res.getHeader('Set-Cookie')}`);
+        if (res.getHeader('Set-Cookie')) {
+          Logger.info(`Set-Cookie value: ${res.getHeader('Set-Cookie')}`);
+        }
       });
       
       ResponseHelper.success(res, user, 'Login successful');
