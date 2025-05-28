@@ -1,6 +1,5 @@
 import * as z from 'zod';
 
-// User type definition matching backend
 export interface User {
   _id?: string;
   displayName: string;
@@ -11,7 +10,6 @@ export interface User {
   updatedAt: string;
 }
 
-// Login form validation schema
 export const loginSchema = z.object({
   email: z
     .string()
@@ -23,7 +21,6 @@ export const loginSchema = z.object({
     .max(100, 'Password is too long')
 });
 
-// Registration form validation schema
 export const registerFormSchema = z.object({
   email: z
     .string()
@@ -45,7 +42,6 @@ export const registerFormSchema = z.object({
   path: ["confirmPassword"],
 });
 
-// Password reset request schema
 export const resetPasswordRequestSchema = z.object({
   email: z
     .string()
@@ -53,7 +49,6 @@ export const resetPasswordRequestSchema = z.object({
     .min(1, 'Email is required'),
 });
 
-// Password reset schema
 export const resetPasswordSchema = z.object({
   token: z.string().min(1, 'Token is required'),
   password: z

@@ -13,7 +13,6 @@ export async function getBlockFromRegistry(
   try {
     const path = `${folderName}/${subFolder}`;
     
-    // Use the dynamic component lookup system
     const component = UiBlocks.getBlockComponent(folderName, subFolder);
     
     if (component) {
@@ -29,7 +28,6 @@ export async function getBlockFromRegistry(
   } catch (err) {
     console.error(`Error loading UI block: ${folderName}/${subFolder}`, err);
     
-    // Return an error component instead of trying local blocks
     const ErrorComponent = ({ error }: { error?: string }) => (
       <div className="p-6 border-2 border-red-300 bg-red-50 rounded-md">
         <h3 className="text-lg font-semibold text-red-700 mb-2">Block Error</h3>

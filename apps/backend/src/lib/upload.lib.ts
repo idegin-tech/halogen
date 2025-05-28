@@ -46,10 +46,6 @@ export const upload = multer({
   fileFilter,
 });
 
-/**
- * Delete a file from the temporary uploads directory
- * @param filePath - Path to the file to delete
- */
 export const deleteLocalFile = (filePath: string): void => {
   FileSystemUtil.deleteFile(filePath);
 };

@@ -72,7 +72,8 @@ class App {
                     }
 
                     return false;
-                }); if (isAllowed) {
+                }); 
+                if (isAllowed) {
                     callback(null, true);
                 } else {
                     Logger.warn(`CORS: Origin rejected: ${origin}`);
@@ -106,7 +107,8 @@ class App {
         this.app.use(express.urlencoded({ extended: true, limit: '20mb' }));
         this.app.use(cookieParser());
         this.app.use(compression());
-        SessionConfig.configure(this.app);        this.app.use((req: Request, res: Response, next: NextFunction) => {
+        SessionConfig.configure(this.app);        
+        this.app.use((req: Request, res: Response, next: NextFunction) => {
             req.requestTime = new Date().toISOString();
 
             if (!req.url.includes('/health')) {
@@ -126,7 +128,9 @@ class App {
             });
             next();
         });
-    } private configureRoutes(): void {
+    } 
+    
+    private configureRoutes(): void {
         this.app.get('/health', (req: Request, res: Response) => {
             const dbStatus = Database.getInstance().getStatus();
 

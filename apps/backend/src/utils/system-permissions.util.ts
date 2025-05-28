@@ -28,10 +28,6 @@ export interface SudoPermissionInfo {
   restrictions: string[];
 }
 
-/**
- * Utility class for system permissions management using pure Node.js
- * Replaces check-sudoers.sh and fix-permissions.sh functionality
- */
 export class SystemPermissionsUtil {
   private static readonly REQUIRED_DIRECTORIES = [
     '/home/msuser/halogen-scripts',
@@ -45,9 +41,6 @@ export class SystemPermissionsUtil {
     '/etc/nginx/sites-enabled'
   ];
 
-  /**
-   * Check and verify sudo permissions for the msuser account
-   */
   static async checkSudoPermissions(username: string = 'msuser'): Promise<PermissionCheckResult> {
     const result: PermissionCheckResult = {
       success: false,

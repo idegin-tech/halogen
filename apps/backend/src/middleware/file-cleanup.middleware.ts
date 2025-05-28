@@ -2,13 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { FileSystemUtil } from '../lib/fs.util';
 import Logger from '../config/logger.config';
 
-/**
- * Middleware to clean up temporary files after request completion
- */
 export class FileCleanupMiddleware {
-  /**
-   * Middleware function that automatically cleans up temporary files after request completes
-   */
   static cleanupAfterRequest(req: Request, res: Response, next: NextFunction): void {
     const originalEnd = res.end;
 

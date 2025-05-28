@@ -1,6 +1,4 @@
-/**
- * Main application configuration for Halogen
- */
+
 
 export const appConfig = {
     name: 'Halogen',

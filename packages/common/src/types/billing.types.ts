@@ -1,18 +1,8 @@
-/**
- * Billing related types for the Halogen project
- */
-
-/**
- * Currency type for the application
- */
 export enum Currency {
     NGN = 'NGN',
     USD = 'USD'
 }
 
-/**
- * Wallet data interface
- */
 export interface WalletData {
     _id?: string;
     project: string;
@@ -22,9 +12,6 @@ export interface WalletData {
     updated_at?: Date;
 }
 
-/**
- * Transaction types
- */
 export enum TransactionType {
     DEPOSIT = 'DEPOSIT',
     WITHDRAWAL = 'WITHDRAWAL',
@@ -33,9 +20,6 @@ export enum TransactionType {
     SUBSCRIPTION = 'SUBSCRIPTION'
 }
 
-/**
- * Transaction status
- */
 export enum TransactionStatus {
     PENDING = 'PENDING',
     COMPLETED = 'COMPLETED',
@@ -43,9 +27,6 @@ export enum TransactionStatus {
     CANCELLED = 'CANCELLED'
 }
 
-/**
- * Transaction data interface
- */
 export interface TransactionData {
     _id?: string;
     wallet: string;

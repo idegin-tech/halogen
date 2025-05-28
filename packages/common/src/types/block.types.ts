@@ -30,13 +30,13 @@ export type BlockProperties = {
 
 export type BlockInstance = {
     _id?: string;
-    instance_id?: string; // Maps to MongoDB model
-    page_id: string;      // Frontend page ID reference (not MongoDB _id)
+    instance_id?: string; 
+    page_id: string;      
     index: number;
-    page: PageData | string; // MongoDB page reference
+    page: PageData | string; 
     folderName: string;
     subFolder: string;
     value: Record<string, any> | null;
     instance: string | null;
-    ref?: string | null;   // Frontend instance_id reference of the block being referenced
+    ref?: string | null;  
 }

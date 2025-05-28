@@ -1,6 +1,4 @@
-/**
- * Google Fonts API response types
- */
+
 
 export interface GoogleFontItem {
   family: string;

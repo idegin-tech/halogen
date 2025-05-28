@@ -8,7 +8,6 @@ import {
   FileQueryOptions
 } from '@halogen/common';
 
-// Get project files
 export const getProjectFiles = async (projectId: string, options: FileQueryOptions = {}): Promise<FileListResponse> => {
   const { page, limit, search, sort, type, mimeTypes } = options;
   const queryParams = new URLSearchParams();
@@ -42,7 +41,6 @@ export const uploadProjectFiles = async (projectId: string, files: File[]): Prom
   return extractResponseData<FileUploadResponse>(response);
 };
 
-// Delete files from project
 export const deleteProjectFiles = async (projectId: string, fileIds: string[]): Promise<FileDeleteResponse> => {
   const response = await apiClient.delete(`/files/${projectId}`, {
     data: { fileIds },

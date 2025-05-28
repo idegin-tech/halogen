@@ -26,7 +26,7 @@ export type ProjectData = {
     headingFont: string;
     bodyFont: string;
   } | null;
-  metadata?: any | null; // Using any as a temporary solution, could be replaced with a proper type
+  metadata?: any | null; 
 }
 
 export type DomainData = {

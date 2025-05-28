@@ -168,9 +168,6 @@ server {
     }
   }
 
-  /**
-   * Deploy Nginx configuration for a domain
-   */
   static async deployNginxConfig(domain: string, configContent: string): Promise<NginxSetupResult> {
     try {
       if (!isProd) {
@@ -182,7 +179,6 @@ server {
       const enabledPath = path.join(this.NGINX_SITES_ENABLED, `${domain}.conf`);
       const localPath = path.join(this.NGINX_CONFIG_DIR, `${domain}.conf`);
 
-      // Write config locally first
       await fs.writeFile(localPath, configContent);
       Logger.info(`[NGINX_DEPLOY] Written config to ${localPath}`);
 

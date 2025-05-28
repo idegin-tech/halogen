@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { AnyZodObject, ZodError, ZodType } from 'zod';
+import { ZodError, ZodType } from 'zod';
 import { createErrorResponse } from '../types/api.types';
 
 export class RequestValidation {

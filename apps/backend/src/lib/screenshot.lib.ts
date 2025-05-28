@@ -4,12 +4,6 @@ import Logger from '../config/logger.config';
 import { FileSystemUtil } from './fs.util';
 import { FileReplacementUtil } from './file-replacement.util';
 
-/**
- * Takes a screenshot of a website and uploads it to Cloudinary
- * @param url The URL to take a screenshot of
- * @param projectId The ID of the project (used for Cloudinary folder)
- * @returns The URL of the uploaded screenshot
- */
 export async function takeScreenshotAndUpload(url: string, projectId: string): Promise<string> {
   let browser;
   const tempDir = FileSystemUtil.getTempSubDir('screenshots');
@@ -31,7 +25,7 @@ export async function takeScreenshotAndUpload(url: string, projectId: string): P
 
     const page = await browser.newPage();
 
-    page.setDefaultNavigationTimeout(60000); // 60 seconds
+    page.setDefaultNavigationTimeout(60000);
 
     await page.setViewport({
       width: 1200,

@@ -1,4 +1,4 @@
-import axios, { AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios';
+import axios, { AxiosError, AxiosResponse } from 'axios';
 import { toast } from 'sonner';
 
 const apiClient = axios.create({
@@ -9,7 +9,6 @@ const apiClient = axios.create({
   withCredentials: true, 
 });
 
-// Response interceptor for error handling
 apiClient.interceptors.response.use(
   (response) => response,
   (error: AxiosError) => {

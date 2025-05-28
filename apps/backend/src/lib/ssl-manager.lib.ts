@@ -1,7 +1,4 @@
-/**
- * Utility class for SSL operations via the Python Sudo API
- * This replaces the direct SSL operations previously handled in Node.js
- */
+
 import { DomainStatus } from '@halogen/common';
 import Logger from '../config/logger.config';
 import { SudoApiClient } from './sudo-api.client';
@@ -18,12 +15,7 @@ export interface CertificateInfo {
 }
 
 export class SSLManager {
-  /**
-   * Request a certificate for a domain
-   * @param domain Domain to request certificate for
-   * @param projectId Project ID associated with the domain
-   * @returns Certificate information
-   */
+
   static async requestCertificate(domain: string, projectId: string): Promise<CertificateInfo> {
     try {
       Logger.info(`Requesting SSL certificate for ${domain} via Sudo API`);
@@ -59,11 +51,7 @@ export class SSLManager {
       };
     }
   }
-  /**
-   * Check certificate status for a domain
-   * @param domain Domain to check certificate for
-   * @returns Certificate information
-   */
+  
   static async checkCertificate(domain: string): Promise<CertificateInfo> {
     try {
       Logger.info(`Checking SSL certificate for ${domain} via Sudo API`);
@@ -78,7 +66,6 @@ export class SSLManager {
         };
       }
       
-      // Ensure expiryDate is always a Date object when valid
       let expiryDate: Date | undefined = undefined;
       if (result.data?.expiry_date) {
         if (result.data.expiry_date instanceof Date) {
@@ -102,18 +89,14 @@ export class SSLManager {
     }
   }
 
-  /**
-   * Revoke certificate for a domain
-   * @param domain Domain to revoke certificate for
-   * @returns Success status
-   */
+  
   static async revokeCertificate(domain: string): Promise<boolean> {
     try {
       Logger.info(`Revoking SSL certificate for ${domain} via Sudo API`);
       
       const result = await SudoApiClient.removeSSLCertificate({
         domain,
-        project_id: 'cleanup' // Project ID not needed for removal
+        project_id: 'cleanup'
       });
       
       if (!result.success) {
@@ -129,11 +112,7 @@ export class SSLManager {
     }
   }
 
-  /**
-   * Check if a domain needs SSL certificate renewal
-   * @param domain Domain to check
-   * @returns Whether renewal is needed
-   */
+  
   static async needsRenewal(domain: string): Promise<boolean> {
     try {
       Logger.info(`Checking if SSL certificate for ${domain} needs renewal via Sudo API`);
@@ -148,8 +127,7 @@ export class SSLManager {
         return false;
       }
       
-      // Consider renewal needed if expiry is within 30 days
-      const renewalThreshold = 30 * 24 * 60 * 60 * 1000; // 30 days in milliseconds
+      const renewalThreshold = 30 * 24 * 60 * 60 * 1000;
       const timeUntilExpiry = certificateInfo.expiryDate.getTime() - Date.now();
       
       return timeUntilExpiry < renewalThreshold;
@@ -159,12 +137,6 @@ export class SSLManager {
     }
   }
 
-  /**
-   * Renew certificate for a domain
-   * @param domain Domain to renew certificate for
-   * @param projectId Project ID associated with the domain
-   * @returns Certificate information
-   */
   static async renewCertificate(domain: string, projectId: string): Promise<CertificateInfo> {
     try {
       Logger.info(`Renewing SSL certificate for ${domain} via Sudo API`);
@@ -198,18 +170,10 @@ export class SSLManager {
     }
   }
 
-  /**
-   * Validate domain for SSL
-   * This checks if the domain meets the requirements for SSL generation
-   * @param domain Domain to validate
-   * @returns Whether the domain is valid for SSL
-   */
   static async validateDomainForSSL(domain: string): Promise<boolean> {
     try {
-      // Check if domain DNS is properly configured
       const result = await SudoApiClient.getDomainStatus(domain);
       
-      // Domain needs to be propagated and verified to get SSL
       return result.success && result.data?.propagated && result.data?.verified;
     } catch (error) {
       Logger.error(`Error validating domain for SSL: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -217,10 +181,6 @@ export class SSLManager {
     }
   }
 
-  /**
-   * Initialize SSL client and verify SSL capabilities
-   * Checks if Python API is healthy and SSL tools are available
-   */
   static async initializeClient(): Promise<void> {
     try {
       if (!isProd) {
@@ -230,7 +190,6 @@ export class SSLManager {
 
       Logger.info('Initializing SSL manager and verifying SSL capabilities');
       
-      // Check if Python API is healthy
       const healthCheck = await SudoApiClient.healthCheck();
       
       if (!healthCheck.success) {
@@ -238,7 +197,6 @@ export class SSLManager {
         return;
       }
       
-      // Check if dependencies are available in the Python API
       if (healthCheck.data?.dependencies) {
         const dependencies = healthCheck.data.dependencies as Record<string, boolean>;
         
