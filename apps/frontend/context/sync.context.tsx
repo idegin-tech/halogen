@@ -229,7 +229,7 @@ export function SyncProvider({
                     instance_id: id,
                     page_id: pageId,
                 };
-            });      // 1. Sync project data
+            });
             toast.loading("Synchronizing project data...", {id: toastId});
             const projectData = {
                 project: {

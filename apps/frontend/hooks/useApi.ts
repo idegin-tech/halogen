@@ -4,14 +4,12 @@ import { useState, useEffect, useCallback } from 'react';
 import axios, { AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios';
 import { toast } from 'sonner';
 
-// Define API response structure to match backend
 interface ApiResponse<T> {
   status: string;
   message: string;
   payload: T;
 }
 
-// Create an axios instance with default config
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1',
   withCredentials: true,
@@ -20,7 +18,6 @@ const api = axios.create({
   }
 });
 
-// Error handler
 const handleError = (error: any) => {
   const message =
     error instanceof AxiosError
@@ -33,7 +30,6 @@ const handleError = (error: any) => {
   return message;
 };
 
-// Types
 export type ApiState<T> = {
   data: T | null;
   isLoading: boolean;
@@ -64,7 +60,6 @@ export function useQuery<T>(
       });
       return response.data.payload;
     } catch (error) {
-      // Don't show toast for 404 responses as they're often expected
       if (error instanceof AxiosError && error.response?.status === 404) {
         setState({
           data: null,

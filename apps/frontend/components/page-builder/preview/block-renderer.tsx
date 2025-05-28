@@ -66,7 +66,6 @@ function BlockComponent({ block, isSelected }: BlockComponentProps) {
         const folderName = block.folderName;
         const subFolder = block.subFolder;
 
-        // Use the block registry to get the component
         const blockModule = await getBlockFromRegistry(folderName, subFolder);
         setComponent(() => blockModule.component);
       } catch (err) {
@@ -95,7 +94,7 @@ function BlockComponent({ block, isSelected }: BlockComponentProps) {
 
       if (!sourceBlock) {
         console.warn(`Source block with ID ${instanceId} not found for linked block ${currentBlock.instance_id}`);
-        return currentBlock; // Return current block as fallback
+        return currentBlock; 
       }
 
       return getRootBlock(sourceBlock);

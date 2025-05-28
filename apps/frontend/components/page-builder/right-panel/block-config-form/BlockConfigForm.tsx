@@ -137,7 +137,7 @@ export default function BlockConfigForm() {
 
     const valueToCommit = localFormState[fieldName];
     console.log(`Committing field change for ${fieldName} with value:`, valueToCommit);
-    
+
     handleFieldChange(fieldName, valueToCommit);
 
     setLocalFormState(prev => {
@@ -168,7 +168,6 @@ export default function BlockConfigForm() {
 
     handleFieldChange(fieldName, updatedList);
 
-    // Clear from local state after committing
     setLocalListItemsState(prev => {
       const newState = { ...prev };
       delete newState[fieldName][itemIndex][itemFieldName];
@@ -183,7 +182,7 @@ export default function BlockConfigForm() {
       if (block.value !== null || block.instance === null) {
         return block;
       }
-      // Use ref field if available, otherwise fall back to instance
+
       const instanceId = block.ref || block.instance;
       const instanceBlock = state.blocks.find(b => b.instance_id === instanceId);
       if (!instanceBlock) return block;
@@ -200,7 +199,6 @@ export default function BlockConfigForm() {
     const sourceBlock = state.blocks.find(b => b.instance_id === selectedBlock.instance);
     if (!sourceBlock) return;
 
-    // Copy its values
     const instanceValues = JSON.parse(JSON.stringify(sourceBlock.value));
 
     const updatedBlocks = state.blocks.map(block => {
@@ -222,7 +220,6 @@ export default function BlockConfigForm() {
     const sourceBlock = getSourceBlock();
     if (!sourceBlock) return;
 
-    // Get the real source block's instance_id, not the currently selected block's
     const sourceBlockId = sourceBlock.instance_id;
 
     const updatedBlocks = state.blocks.map(block => {
@@ -340,7 +337,8 @@ export default function BlockConfigForm() {
               <p className="text-xs text-muted-foreground">{itemField.description}</p>
             )}
           </div>
-        ); case 'textarea':
+        );
+      case 'textarea':
         return (
           <div className="grid gap-1.5">
             <label htmlFor={`${fieldName}-${itemIndex}-${itemFieldName}`} className="text-sm font-medium text-muted-foreground">
@@ -358,7 +356,8 @@ export default function BlockConfigForm() {
               <p className="text-xs text-muted-foreground">{itemField.description}</p>
             )}
           </div>
-        );        case 'url':
+        );
+      case 'url':
         return (
           <div className="grid gap-1.5">
             <label htmlFor={`${fieldName}-${itemIndex}-${itemFieldName}`} className="text-sm font-medium text-muted-foreground">
@@ -383,7 +382,7 @@ export default function BlockConfigForm() {
             )}
           </div>
         );
-        case 'image':
+      case 'image':
         return (
           <div className="grid gap-1.5">
             <label htmlFor={`${fieldName}-${itemIndex}-${itemFieldName}`} className="text-sm font-medium text-muted-foreground">
@@ -397,7 +396,8 @@ export default function BlockConfigForm() {
               description={itemField.description}
             />
           </div>
-        ); default:
+        );
+      default:
         return (
           <div className="grid gap-1.5">
             <label htmlFor={`${fieldName}-${itemIndex}-${itemFieldName}`} className="text-sm font-medium text-muted-foreground">
@@ -644,7 +644,7 @@ export default function BlockConfigForm() {
               />
             </div>
           </div>
-        );      case 'url':
+        ); case 'url':
         return (
           <div className="grid gap-1.5">
             <label className="text-sm font-medium text-muted-foreground">{field.label}</label>
@@ -665,7 +665,7 @@ export default function BlockConfigForm() {
               <p className="text-xs text-muted-foreground">{field.description}</p>
             )}
           </div>
-        );      case 'image':
+        ); case 'image':
         return (
           <ImageInput
             label={field.label}
@@ -676,7 +676,7 @@ export default function BlockConfigForm() {
             description={field.description}
             fieldName={fieldName}
           />
-        );case 'color':
+        ); case 'color':
         return (
           <div className="grid gap-1.5">
             <label className="text-sm font-medium text-muted-foreground">{field.label}</label>

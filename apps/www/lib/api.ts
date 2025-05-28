@@ -1,12 +1,4 @@
 
-/**
- * Fetch complete project data including pages, blocks, variables and metadata
- * 
- * @param subdomain - The project's subdomain
- * @param path - The current page path
- * @param tags - Tags for cache invalidation
- * @returns Complete project data including metadata
- */
 export async function fetchProjectData(subdomain: string, path: string, tags: string[]) {
   try {
     console.log('Fetching project data...', {
@@ -15,14 +7,13 @@ export async function fetchProjectData(subdomain: string, path: string, tags: st
       tags
     });
     
-    // Always include metadata in the project data request
     const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/preview/projects/subdomain/${subdomain}?path=${path}&includeMetadata=true`;
     console.log('API TO GET PROJECT:', apiUrl);
     
     const response = await fetch(apiUrl, {
       next: { 
-        revalidate: 180, // Cache for 3 minutes
-        tags // For cache invalidation
+        revalidate: 180,
+        tags 
       },
       headers: {
         'Content-Type': 'application/json',

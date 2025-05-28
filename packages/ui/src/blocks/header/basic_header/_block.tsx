@@ -9,10 +9,8 @@ export function BasicHeader(fields: typeof properties.fields) {
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null)
   const dropdownRefs = useRef<{ [key: string]: HTMLDivElement | null }>({})
   
-  // Use provided navigation from fields
   const navigation = fields?.navigation?.value || [];
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (
@@ -30,12 +28,10 @@ export function BasicHeader(fields: typeof properties.fields) {
     }
   }, [activeDropdown])
 
-  // Toggle dropdown menu
   const toggleDropdown = (name: string) => {
     setActiveDropdown(activeDropdown === name ? null : name)
   }
 
-  // Extract customizable styles
   const headerStyles = {
     backgroundColor: fields?.headerBackgroundColor?.value || "",
     borderColor: fields?.headerBorderColor?.value || ""

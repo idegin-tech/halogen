@@ -57,7 +57,6 @@ export async function generateMetadata(
     };
   } catch (error) {
     console.error('Error generating metadata:', error);
-    // Create a new metadata object instead of returning parent directly
     const parentMetadata = await parent;
     return {
       title: parentMetadata.title,
@@ -108,8 +107,6 @@ export default async function CatchAllPage({ params }: Props) {
   try {
     const projectData = await fetchProjectData(subdomain, pathSegment, [subdomain]);
 
-    // console.log('THE DATA:::', projectData)
-
     if (!projectData) {
       console.error(`Project not found: Subdomain=${subdomain}, Path=${pathSegment}, Host=${host}`);
       return (
@@ -150,7 +147,6 @@ export default async function CatchAllPage({ params }: Props) {
     }
 
     const matchingPage = projectData.pages?.find((page: PageData) => page.path === pathSegment); if (!matchingPage) {
-      console.error(`Page not found: Subdomain=${subdomain}, Path=${pathSegment}, ProjectID=${projectData.project_id}`);
       return (
         <div className="container mx-auto p-8">
           <div className="flex flex-col gap-3">
@@ -188,7 +184,6 @@ export default async function CatchAllPage({ params }: Props) {
     }
 
     const pageBlocks: BlockInstance[] = projectData.blocks?.filter((block: BlockInstance) => block.page_id === matchingPage.page_id); if (!pageBlocks || pageBlocks.length === 0) {
-      console.warn(`Empty page (no blocks): Subdomain=${subdomain}, Path=${pathSegment}, PageID=${matchingPage.page_id}, ProjectID=${projectData.project_id}`);
       return (
         <div className="container mx-auto p-8">
           <div className="flex flex-col gap-3">

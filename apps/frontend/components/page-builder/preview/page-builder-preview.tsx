@@ -40,10 +40,10 @@ export default function PageBuilderPreview({ }: Props) {
   }
 
   const fontStyles = `
-                            ${headingFont ? `--heading-font: "${headingFont}", var(--font-sans), sans-serif;` : ''}
-                            ${bodyFont ? `--body-font: "${bodyFont}", var(--font-sans), sans-serif;` : ''}
-                            ${bodyFont ? `font-family: "${bodyFont}", var(--font-sans), sans-serif;` : ''}
-                          `;
+    ${headingFont ? `--heading-font: "${headingFont}", var(--font-sans), sans-serif;` : ''}
+    ${bodyFont ? `--body-font: "${bodyFont}", var(--font-sans), sans-serif;` : ''}
+    ${bodyFont ? `font-family: "${bodyFont}", var(--font-sans), sans-serif;` : ''}
+  `;
 
   useEffect(() => {
     const requirementsMet = !isLoading &&

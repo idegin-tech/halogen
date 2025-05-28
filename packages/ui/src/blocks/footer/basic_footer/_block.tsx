@@ -34,7 +34,6 @@ export function BasicFooter({ }: Props) {
                             </div>
                         </div>
 
-                        {/* Quick Links */}
                         <div>
                             <h3 className="font-medium text-base mb-4">Services</h3>
                             <ul className="space-y-2">

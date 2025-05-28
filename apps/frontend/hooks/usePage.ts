@@ -12,9 +12,7 @@ export const usePage = () => {
 
   const addPage = useCallback((page: Partial<PageData>) => {
     const newPage: PageData = {
-      // Spread the passed page data first so it won't be overwritten by defaults
       ...page,
-      // Then set defaults only if not provided
       page_id: page.page_id || generateId(9),
       name: page.name || "New Page",
       path: page.path || `/${page.name?.toLowerCase().replace(/\s+/g, "-") || "new-page"}`,

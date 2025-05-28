@@ -14,13 +14,11 @@ export function useAuth() {
   
   const handleLoginSuccess = async (user: User) => {
     toast.success(`Welcome back, ${user.displayName}!`);
-    // Refresh the page to trigger middleware cookie check
     window.location.href = '/client/projects';
   };
   
   const handleRegisterSuccess = async (user: User) => {
     toast.success(`Welcome to Halogen, ${user.displayName}!`);
-    // Refresh the page to trigger middleware cookie check
     window.location.href = '/client/projects';
   };
 
