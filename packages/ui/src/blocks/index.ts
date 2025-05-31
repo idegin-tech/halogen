@@ -1,7 +1,7 @@
 import { BlockProperties } from '@halogen/common/types';
 import React from 'react';
 
-export type BlockPath = 'hero/basic_saas_hero' | 'testimonials/simple_testimonial' | 'footer/basic_footer' | 'header/basic_header' | 'about/basic_about_us';
+export type BlockPath = 'hero/basic_saas_hero' | 'testimonials/simple_testimonial' | 'footer/basic_footer' | 'header/basic_header' | 'header/dynamic_header' | 'about/basic_about_us';
 
 export interface BlockRegistryItem {
   component: React.ComponentType<unknown>;
@@ -39,14 +39,14 @@ blocksContext.keys().forEach((path: string) => {
         const registryPath = `${folderName}/${subFolder}`;
         
         const module = blocksContext(path);
-        
-        const component = module.default || 
+          const component = module.default || 
                           module[subFolder.charAt(0).toUpperCase() + subFolder.slice(1)] ||
                           module[`${folderName.charAt(0).toUpperCase() + folderName.slice(1)}${subFolder.charAt(0).toUpperCase() + subFolder.slice(1)}`] ||
                           module.SaasHeroSection ||
                           module.BasicTestimonials ||
                           module.BasicFooter ||
                           module.BasicHeader ||
+                          module.DynamicHeader ||
                           module.BasicAboutUs;
         
         const properties = module.properties as BlockProperties;
@@ -91,8 +91,5 @@ Object.entries(blockRegistry).forEach(([path, item]) => {
   blockProperties[path as BlockPath] = item.properties;
 });
 
-export { SaasHeroSection } from './hero/basic_saas_hero/_block';
-export { BasicTestimonials } from './testimonials/simple_testimonial/_block';
-export { BasicFooter } from './footer/basic_footer/_block';
 export { BasicHeader } from './header/basic_header/_block';
-export { BasicAboutUs } from './about/basic_about_us/_block';
+export { DynamicHeader } from './header/dynamic_header/_block';

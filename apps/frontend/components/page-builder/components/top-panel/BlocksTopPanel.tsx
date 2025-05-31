@@ -5,12 +5,11 @@ import { useBuilderContext } from '@/context/builder.context'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { BlockInstance, BlockProperties } from '@halogen/common/types'
+import { BlockInstance, BlockProperties, BlockFieldConfig } from '@halogen/common/types'
 import { BlockThumbnailUtil } from '@halogen/common'
 import { usePage } from '@/hooks/usePage'
 import { generateId } from '@halogen/common/lib'
-import { getBlockProperties } from '@repo/ui/blocks'
-import blocksRegistry from '@repo/ui/blocks.json'
+import { getBlockProperties, getAllBlockPaths } from '@repo/ui/blocks'
 
 
 type BlockFolder = {
@@ -178,33 +177,39 @@ export default function BlocksTopPanel({ show, onHide }: { show: boolean, onHide
         const loadBlockFolders = async () => {
             setIsLoadingThumbnails(true);
             setLoadError(null);
-            
-            try {
+              try {
                 const folders: BlockFolder[] = [];
+                const blockPaths = getAllBlockPaths();
                 
-                // Use the imported blocksRegistry instead of dynamic discovery
-                for (const [folderName, blockInfos] of Object.entries(blocksRegistry)) {
-                    const subFolders: BlockSubFolder[] = [];
+                // Group blocks by folder
+                const folderMap: Record<string, BlockSubFolder[]> = {};
+                
+                for (const blockPath of blockPaths) {
+                    const [folderName, subFolderName] = blockPath.split('/');
                     
-                    for (const blockInfo of blockInfos) {
+                    if (folderName && subFolderName) {
                         try {
                             // Get the properties for each block
-                            const properties = getBlockProperties(folderName, blockInfo.name);
+                            const properties = getBlockProperties(folderName, subFolderName);
                             
                             if (properties) {
-                                subFolders.push({
-                                    name: blockInfo.name,
+                                if (!folderMap[folderName]) {
+                                    folderMap[folderName] = [];
+                                }
+                                
+                                folderMap[folderName].push({
+                                    name: subFolderName,
                                     properties,
-                                    thumbnailPath: blockInfo.hasThumbnail ? 
-                                        BlockThumbnailUtil.buildThumbnailUrl(folderName, blockInfo.name) : 
-                                        undefined
+                                    thumbnailPath: BlockThumbnailUtil.buildThumbnailUrl(folderName, subFolderName)
                                 });
                             }
                         } catch (err) {
-                            console.warn(`Failed to load properties for block: ${folderName}/${blockInfo.name}`, err);
+                            console.warn(`Failed to load properties for block: ${folderName}/${subFolderName}`, err);
                         }
                     }
-                    
+                }
+                
+                for (const [folderName, subFolders] of Object.entries(folderMap)) {
                     folders.push({
                         name: folderName,
                         subFolders
@@ -220,7 +225,6 @@ export default function BlocksTopPanel({ show, onHide }: { show: boolean, onHide
                 console.error('Error loading block folders:', err);
                 setLoadError(err?.message || 'Failed to load blocks from UI package');
             } finally {
-                // Delay setting isLoadingThumbnails to false for a better UI experience
                 setTimeout(() => {
                     setIsLoadingThumbnails(false);
                 }, 300);
@@ -236,23 +240,34 @@ export default function BlocksTopPanel({ show, onHide }: { show: boolean, onHide
         return folderName.toLowerCase().replace(/\s+/g, '-');
     };
 
-    const handleRemoveBlockFolder = (id: string) => {
-        console.log(`Remove block folder: ${id}`);
-        if (selectedFolder === id) {
-            setSelectedFolder(null);
-        }
-    };
-
     const currentFolderSubfolders = useMemo(() => {
         if (!selectedFolder || selectedFolder === 'used-blocks') return [];
         const folder = blockFolders.find(f => f.name === selectedFolder);
         return folder ? folder.subFolders : [];
-    }, [selectedFolder, blockFolders]);    const handleAddBlockToPage = (folderName: string, subFolder: string, properties: BlockProperties) => {
+    }, [selectedFolder, blockFolders]);    
+    
+    const handleAddBlockToPage = (folderName: string, subFolder: string, properties: BlockProperties) => {
         if (!selectedPageId) {
             console.error("Cannot add block: No page selected");
             return;
         }        
         const blockId = generateId();
+        const processFields = (fields: Record<string, BlockFieldConfig> | undefined) => {
+            if (!fields) return {};
+            const processed: Record<string, any> = {};
+            Object.entries(fields).forEach(([key, field]) => {
+                processed[key] = { value: field.defaultValue };
+            });
+            return processed;
+        }; 
+        
+        const blockValue = {
+            ...processFields(properties.contentFields),
+            ...processFields(properties.themeFields),
+            ...processFields(properties.layoutFields),
+            ...processFields(properties.fields)
+        };
+
         const newBlock: BlockInstance = {
             instance_id: blockId,
             page_id: selectedPageId,
@@ -260,10 +275,7 @@ export default function BlocksTopPanel({ show, onHide }: { show: boolean, onHide
             page: selectedPageId,
             folderName: folderName,
             subFolder: subFolder,
-            value: Object.entries(properties.fields).reduce((acc, [key, field]) => {
-                acc[key] = { value: field.defaultValue };
-                return acc;
-            }, {} as Record<string, any>),
+            value: blockValue,
             instance: null,
             ref: null
         };

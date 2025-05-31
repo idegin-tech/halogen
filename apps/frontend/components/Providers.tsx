@@ -1,6 +1,7 @@
 'use client'
 import React from 'react'
 import { Next13ProgressBar } from 'next13-progressbar';
+import { AuthProvider } from '@/context/auth.context';
 
 type Props = {
     children?: React.ReactNode;
@@ -9,8 +10,15 @@ type Props = {
 export default function Providers({ children }: Props) {
     return (
         <>
-            <Next13ProgressBar height="4px" color="var(--primary)" options={{ showSpinner: true }} showOnShallow />
-            {children}
+            <AuthProvider>
+                <Next13ProgressBar
+                    height="4px"
+                    color="var(--primary)"
+                    options={{ showSpinner: true }}
+                    showOnShallow
+                />
+                {children}
+            </AuthProvider>
         </>
     )
 }

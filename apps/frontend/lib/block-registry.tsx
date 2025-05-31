@@ -44,7 +44,9 @@ export async function getBlockFromRegistry(
       properties: {
         name: `Error: ${folderName}/${subFolder}`,
         description: `This block could not be loaded from the UI package.`,
-        fields: {}
+        contentFields:{},
+        layoutFields: {},
+        themeFields: {},
       }
     };
   }

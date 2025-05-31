@@ -1,8 +1,5 @@
-'use client';
-
 import React, { useEffect, useState } from 'react';
 import { useBuilderContext } from '@/context/builder.context';
-import PropertyFormContainer from './PropertyFormContainer';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -12,6 +9,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import {
   Plus,
   Trash2,
@@ -22,12 +20,16 @@ import {
   Check,
   ChevronDown,
   Settings,
-  X
+  X,
+  FileText,
+  Palette,
+  Layout
 } from 'lucide-react';
 import { getBlockProperties } from '@repo/ui/blocks';
 import { BlockConfigListValue, BlockFieldConfig, BlockProperties } from '@halogen/common/types';
 import { motion } from 'framer-motion';
 import { ImageInput } from './fixed-ImageInput';
+import { ThemeDropdown } from './ThemeDropdown';
 
 export default function BlockConfigForm() {
   const { state, updateBuilderState } = useBuilderContext();
@@ -270,15 +272,55 @@ export default function BlockConfigForm() {
       setActiveListItem(null);
       setIsPopoverOpen(false);
     }
-  };
-
-  const renderListItemForm = (fieldName: string, listConfig: BlockFieldConfig, itemIndex: number) => {
+  };  const renderListItemForm = (fieldName: string, listConfig: BlockFieldConfig, itemIndex: number) => {
     if (!selectedBlock) return null;
 
     const effectiveValues = getEffectiveValues();
     const listValue = effectiveValues[fieldName]?.value || [];
     const itemValue = listValue[itemIndex] || {};
-    const listItemConfig = (listConfig.value as BlockConfigListValue).items;
+    const listItemConfig = listConfig.value as BlockConfigListValue;
+
+    // Add defensive checks for listItemConfig
+    if (!listItemConfig || typeof listItemConfig !== 'object') {
+      return (
+        <div className="p-4 text-center text-muted-foreground">
+          <p className="text-sm">Invalid list configuration</p>
+        </div>
+      );
+    }
+
+    const renderFieldSection = (sectionName: string, fields: Record<string, BlockFieldConfig>, icon: React.ReactNode) => {
+      // Add defensive check for fields
+      if (!fields || typeof fields !== 'object') return null;
+      const fieldEntries = Object.entries(fields);
+      if (fieldEntries.length === 0) return null;
+
+      return (
+        <AccordionItem value={sectionName}>
+          <AccordionTrigger className="text-sm font-medium">
+            <div className="flex items-center gap-2">
+              {icon}
+              {sectionName.charAt(0).toUpperCase() + sectionName.slice(1)}
+            </div>
+          </AccordionTrigger>
+          <AccordionContent className="pt-2">
+            <div className="space-y-3">
+              {fieldEntries.map(([itemFieldName, itemField]) => (
+                <div key={itemFieldName} className="space-y-2 w-full">
+                  {renderItemFieldInput(
+                    fieldName,
+                    itemIndex,
+                    itemFieldName,
+                    itemField,
+                    itemValue[itemFieldName]
+                  )}
+                </div>
+              ))}
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+      );
+    };
 
     return (
       <div className="space-y-4 py-3 w-full px-2 pb-8">
@@ -295,19 +337,13 @@ export default function BlockConfigForm() {
           >
             <Trash2 className="h-4 w-4" />
           </Button>
-        </div>
-        <Separator className="my-2" />
-        {Object.entries(listItemConfig).map(([itemFieldName, itemField]) => (
-          <div key={itemFieldName} className="space-y-2 w-full">
-            {renderItemFieldInput(
-              fieldName,
-              itemIndex,
-              itemFieldName,
-              itemField,
-              itemValue[itemFieldName]
-            )}
-          </div>
-        ))}
+        </div>        <Separator className="my-2" />
+        
+        <Accordion type="multiple" defaultValue={['content', 'theme', 'layout']}>
+          {renderFieldSection('content', listItemConfig.contentFields || {}, <FileText className="h-4 w-4" />)}
+          {renderFieldSection('theme', listItemConfig.themeFields || {}, <Palette className="h-4 w-4" />)}
+          {renderFieldSection('layout', listItemConfig.layoutFields || {}, <Layout className="h-4 w-4" />)}
+        </Accordion>
       </div>
     );
   };
@@ -394,9 +430,23 @@ export default function BlockConfigForm() {
               onBlur={() => commitListItemChange(fieldName, itemIndex, itemFieldName)}
               placeholder={itemField.placeholder || `Enter image URL or select from project`}
               description={itemField.description}
+            />          </div>
+        );
+
+      case 'theme':
+        return (
+          <div className="grid gap-1.5">
+            <ThemeDropdown
+              label={itemField.label}
+              value={getListItemValue(fieldName, itemIndex, itemFieldName) ?? (value || itemField.defaultValue || '')}
+              onChange={(themeValue) => updateLocalListItemValue(fieldName, itemIndex, itemFieldName, themeValue)}
+              onBlur={() => commitListItemChange(fieldName, itemIndex, itemFieldName)}
+              description={itemField.description}
+              fieldName={`${fieldName}-${itemIndex}-${itemFieldName}`}
             />
           </div>
         );
+
       default:
         return (
           <div className="grid gap-1.5">
@@ -423,7 +473,6 @@ export default function BlockConfigForm() {
         );
     }
   };
-
   const renderFieldInput = (fieldName: string, field: any) => {
     const effectiveValues = getEffectiveValues();
     const value = effectiveValues[fieldName]?.value ?? field.defaultValue;
@@ -431,6 +480,21 @@ export default function BlockConfigForm() {
     if (field.type === 'list') {
       const listConfig = field.value as BlockConfigListValue;
       const listItems = value || [];
+
+      // Add defensive check for listConfig
+      if (!listConfig || typeof listConfig !== 'object') {
+        return (
+          <div className="space-y-3 bg-muted/30 p-4 rounded-lg border border-muted">
+            <div className="flex items-center gap-2">
+              <ListIcon className="h-5 w-5 text-destructive" />
+              <div>
+                <label className="text-sm font-medium text-destructive">{field.label}</label>
+                <p className="text-xs text-destructive">Invalid list configuration - missing structure</p>
+              </div>
+            </div>
+          </div>
+        );
+      }
 
       return (
         <div className="space-y-3 bg-muted/30 p-4 rounded-lg border border-muted">
@@ -470,13 +534,14 @@ export default function BlockConfigForm() {
                 Add First Item
               </Button>
             </div>
-          ) : (
-            <div className="space-y-2 max-h-[50vh] overflow-y-auto pr-1">
+          ) : (            <div className="space-y-2 max-h-[50vh] overflow-y-auto pr-1">
               {listItems.map((item: any, index: number) => {
-                const nameField = Object.keys(listConfig.items).find(
+                const nameField = Object.keys(listConfig.contentFields || {}).find(
+                  (key: string) => key === 'name'
+                ) || Object.keys(listConfig.contentFields || {}).find(
                   (key: string) => {
-                    const itemConfig = (listConfig.items as Record<string, any>)[key];
-                    return itemConfig?.name === 'name' || key === 'name';
+                    const itemConfig = listConfig.contentFields[key];
+                    return itemConfig?.name === 'name';
                   }
                 );
 
@@ -702,12 +767,25 @@ export default function BlockConfigForm() {
                 placeholder="#FFFFFF"
                 className="flex-1"
               />
-            </div>
-            {field.description && (
+            </div>            {field.description && (
               <p className="text-xs text-muted-foreground">{field.description}</p>
             )}
           </div>
-        ); default:
+        );
+
+      case 'theme':
+        return (
+          <ThemeDropdown
+            label={field.label}
+            value={getFieldValue(fieldName) ?? value}
+            onChange={(themeValue) => handleFieldChange(fieldName, themeValue)}
+            onBlur={() => commitFieldChange(fieldName)}
+            description={field.description}
+            fieldName={fieldName}
+          />
+        );
+
+      default:
         return (
           <div className="grid gap-1.5">
             <label className="text-sm font-medium text-muted-foreground">{field.label}</label>
@@ -775,9 +853,7 @@ export default function BlockConfigForm() {
     );
   }
 
-  const isLinkedBlock = selectedBlock.value === null && selectedBlock.instance !== null;
-
-  return (
+  const isLinkedBlock = selectedBlock.value === null && selectedBlock.instance !== null;  return (
     <>
       <div className="space-y-6 pb-8">
         {isLinkedBlock && (
@@ -809,17 +885,101 @@ export default function BlockConfigForm() {
           </motion.div>
         )}
 
-        {Object.entries(blockProperties.fields).map(([fieldName, field]) => (
-          <motion.div
-            key={fieldName}
-            className="space-y-2"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.2 }}
-          >
-            {renderFieldInput(fieldName, field)}
-          </motion.div>
-        ))}
+        {blockProperties.fields ? (
+          <div className="space-y-4">
+            {Object.entries(blockProperties.fields).map(([fieldName, field]) => (
+              <motion.div
+                key={fieldName}
+                className="space-y-2"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.2 }}
+              >
+                {renderFieldInput(fieldName, field)}
+              </motion.div>
+            ))}
+          </div>
+        ) : (
+          <Accordion type="multiple" defaultValue={['content', 'theme', 'layout']}>
+            {Object.keys(blockProperties.contentFields || {}).length > 0 && (
+              <AccordionItem value="content">
+                <AccordionTrigger className="text-md font-medium">
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    Content
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="pt-4">
+                  <div className="space-y-4">
+                    {Object.entries(blockProperties.contentFields || {}).map(([fieldName, field]) => (
+                      <motion.div
+                        key={fieldName}
+                        className="space-y-2"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        {renderFieldInput(fieldName, field)}
+                      </motion.div>
+                    ))}
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            )}
+
+            {Object.keys(blockProperties.themeFields || {}).length > 0 && (
+              <AccordionItem value="theme">
+                <AccordionTrigger className="text-md font-medium">
+                  <div className="flex items-center gap-2">
+                    <Palette className="h-4 w-4" />
+                    Theme
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="pt-4">
+                  <div className="space-y-4">
+                    {Object.entries(blockProperties.themeFields || {}).map(([fieldName, field]) => (
+                      <motion.div
+                        key={fieldName}
+                        className="space-y-2"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        {renderFieldInput(fieldName, field)}
+                      </motion.div>
+                    ))}
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            )}
+
+            {Object.keys(blockProperties.layoutFields || {}).length > 0 && (
+              <AccordionItem value="layout">
+                <AccordionTrigger className="text-md font-medium">
+                  <div className="flex items-center gap-2">
+                    <Layout className="h-4 w-4" />
+                    Layout
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="pt-4">
+                  <div className="space-y-4">
+                    {Object.entries(blockProperties.layoutFields || {}).map(([fieldName, field]) => (
+                      <motion.div
+                        key={fieldName}
+                        className="space-y-2"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        {renderFieldInput(fieldName, field)}
+                      </motion.div>
+                    ))}
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            )}
+          </Accordion>
+        )}
       </div>
     </>
   );

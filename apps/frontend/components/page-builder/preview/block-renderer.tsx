@@ -2,7 +2,7 @@
 
 import { useBuilderContext } from '@/context/builder.context';
 import { BlockInstance } from '@halogen/common/types';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import AddBlock from '../components/AddBlock';
 import { getBlockFromRegistry } from '@/lib/block-registry';
@@ -54,6 +54,21 @@ function BlockComponent({ block, isSelected }: BlockComponentProps) {
   const [error, setError] = useState<string | null>(null);
   const { updateBuilderState, state } = useBuilderContext();
 
+  // Extract color variables for blocks that need them
+  const colorVariables = useMemo(() => {
+    const defaultColorSetId = 'set_colors';
+    return state.variables.filter(v => {
+      const setId = typeof v.variableSet === 'string' 
+        ? v.variableSet 
+        : v.variableSet?.set_id;
+      return setId === defaultColorSetId && v.type === 'color';
+    }).reduce((acc, variable) => {
+      const key = variable.variable_id.replace('--', '');
+      acc[key] = variable.primaryValue;
+      return acc;
+    }, {} as Record<string, string>);
+  }, [state.variables]);
+
   const handleBlockClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -102,10 +117,9 @@ function BlockComponent({ block, isSelected }: BlockComponentProps) {
 
     return currentBlock;
   };
-
   const rootBlock = getRootBlock(block);
 
-  const blockValues = rootBlock.value || {};
+  const blockValues = { ...rootBlock.value || {}, colorVariables };
 
   const blockClassName = isSelected
     ? "block-wrapper block-selected relative cursor-pointer"

@@ -1,7 +1,7 @@
 import { PageData } from "./builder.types"
 
 export type BlockFieldConfig = {
-    type: "text" | "textarea" | "select" | "checkbox" | "radio" | "number" | "color" | "image" | "switch" | "list"
+    type: "text" | "textarea" | "select" | "number" | "color" | "image" | "switch" | "list" | "theme"
     name: string
     label: string
     description?: string
@@ -18,14 +18,20 @@ export type BlockFieldConfig = {
 export type BlockConfigListValue = {
     name: string;
     description?: string;
-    items: BlockFieldConfig;
-} 
+
+    contentFields: Record<string, BlockFieldConfig>;
+    themeFields: Record<string, BlockFieldConfig>;
+    layoutFields: Record<string, BlockFieldConfig>;
+}
 
 export type BlockProperties = {
     name: string
     description: string;
-    fields: Record<string, BlockFieldConfig>;
-    theme?: Record<string, BlockFieldConfig> | null;
+    contentFields: Record<string, BlockFieldConfig>;
+    themeFields: Record<string, BlockFieldConfig>;
+    layoutFields: Record<string, BlockFieldConfig>;
+    fields?: Record<string, BlockFieldConfig>; // Legacy support
+    theme?: Record<string, BlockFieldConfig> | null; // Legacy support
 }
 
 export type BlockInstance = {
