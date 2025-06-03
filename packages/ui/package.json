@@ -5,7 +5,8 @@
   "exports": {
     "./*": "./src/*.tsx",
     "./blocks": "./src/blocks/index.ts",
-    "./blocks.json": "./src/blocks.json"
+    "./blocks.json": "./src/blocks.json",
+    "./config": "./src/config/index.ts"
   },
   "scripts": {
     "lint": "eslint . --max-warnings 0",

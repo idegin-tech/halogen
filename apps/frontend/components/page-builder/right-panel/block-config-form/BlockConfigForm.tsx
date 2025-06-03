@@ -110,8 +110,8 @@ export default function BlockConfigForm() {
     const itemValue = listValue[itemIndex] || {};
     return itemValue[itemFieldName];
   };
-
   const updateLocalFieldValue = (fieldName: string, value: any) => {
+    console.log(`📝 updateLocalFieldValue - fieldName: ${fieldName}, value: ${value}`);
     setLocalFormState(prev => ({
       ...prev,
       [fieldName]: value
@@ -215,9 +215,10 @@ export default function BlockConfigForm() {
     });
 
     updateBuilderState({ blocks: updatedBlocks });
-  };
-  const handleFieldChange = (fieldName: string, value: any) => {
+  };  const handleFieldChange = (fieldName: string, value: any) => {
     if (!selectedBlock) return;
+
+    console.log(`🔄 handleFieldChange: ${fieldName} = ${value}`);
 
     const sourceBlock = getSourceBlock();
     if (!sourceBlock) return;
@@ -233,6 +234,8 @@ export default function BlockConfigForm() {
             value: value
           }
         };
+
+        console.log(`✅ Updated block ${sourceBlockId} with field ${fieldName}:`, updatedValue);
 
         return {
           ...block,
@@ -272,7 +275,7 @@ export default function BlockConfigForm() {
       setActiveListItem(null);
       setIsPopoverOpen(false);
     }
-  };  const renderListItemForm = (fieldName: string, listConfig: BlockFieldConfig, itemIndex: number) => {
+  }; const renderListItemForm = (fieldName: string, listConfig: BlockFieldConfig, itemIndex: number) => {
     if (!selectedBlock) return null;
 
     const effectiveValues = getEffectiveValues();
@@ -338,7 +341,7 @@ export default function BlockConfigForm() {
             <Trash2 className="h-4 w-4" />
           </Button>
         </div>        <Separator className="my-2" />
-        
+
         <Accordion type="multiple" defaultValue={['content', 'theme', 'layout']}>
           {renderFieldSection('content', listItemConfig.contentFields || {}, <FileText className="h-4 w-4" />)}
           {renderFieldSection('theme', listItemConfig.themeFields || {}, <Palette className="h-4 w-4" />)}
@@ -432,14 +435,16 @@ export default function BlockConfigForm() {
               description={itemField.description}
             />          </div>
         );
-
       case 'theme':
         return (
           <div className="grid gap-1.5">
             <ThemeDropdown
               label={itemField.label}
               value={getListItemValue(fieldName, itemIndex, itemFieldName) ?? (value || itemField.defaultValue || '')}
-              onChange={(themeValue) => updateLocalListItemValue(fieldName, itemIndex, itemFieldName, themeValue)}
+              onChange={(value) => {
+                console.log("THE ON CHANGE VALUE",value);
+                updateLocalListItemValue(fieldName, itemIndex, itemFieldName, value);
+              }}
               onBlur={() => commitListItemChange(fieldName, itemIndex, itemFieldName)}
               description={itemField.description}
               fieldName={`${fieldName}-${itemIndex}-${itemFieldName}`}
@@ -534,66 +539,66 @@ export default function BlockConfigForm() {
                 Add First Item
               </Button>
             </div>
-          ) : (            <div className="space-y-2 max-h-[50vh] overflow-y-auto pr-1">
-              {listItems.map((item: any, index: number) => {
-                const nameField = Object.keys(listConfig.contentFields || {}).find(
-                  (key: string) => key === 'name'
-                ) || Object.keys(listConfig.contentFields || {}).find(
-                  (key: string) => {
-                    const itemConfig = listConfig.contentFields[key];
-                    return itemConfig?.name === 'name';
-                  }
-                );
+          ) : (<div className="space-y-2 max-h-[50vh] overflow-y-auto pr-1">
+            {listItems.map((item: any, index: number) => {
+              const nameField = Object.keys(listConfig.contentFields || {}).find(
+                (key: string) => key === 'name'
+              ) || Object.keys(listConfig.contentFields || {}).find(
+                (key: string) => {
+                  const itemConfig = listConfig.contentFields[key];
+                  return itemConfig?.name === 'name';
+                }
+              );
 
-                const displayName = nameField && item[nameField]
-                  ? item[nameField]
-                  : `Item ${index + 1}`;
+              const displayName = nameField && item[nameField]
+                ? item[nameField]
+                : `Item ${index + 1}`;
 
-                const isActive = activeListItem?.fieldName === fieldName && activeListItem?.itemIndex === index;
+              const isActive = activeListItem?.fieldName === fieldName && activeListItem?.itemIndex === index;
 
-                return (
-                  <Popover
-                    key={`${fieldName}-${index}`}
-                    open={isActive && isPopoverOpen}
-                    onOpenChange={(open) => {
-                      if (open) {
-                        setActiveListItem({ fieldName, itemIndex: index });
-                        setIsPopoverOpen(true);
-                      } else {
-                        setIsPopoverOpen(false);
-                      }
-                    }}
-                  >
-                    <PopoverTrigger asChild>
-                      <Card
-                        className={`cursor-pointer px-0 py-2 transition-all duration-200 ${isActive
-                          ? 'border-primary shadow-sm shadow-primary/20'
-                          : 'hover:border-primary/50 hover:shadow-sm'
-                          }`}
-                      >
-                        <CardContent className="px-3 flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary text-sm font-medium">
-                              {index + 1}
-                            </div>
-                            <p className="font-medium">{displayName}</p>
-                          </div>
-                          <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isActive ? 'rotate-180' : ''}`} />
-                        </CardContent>
-                      </Card>
-                    </PopoverTrigger>
-                    <PopoverContent
-                      className="w-80 p-0 shadow-lg"
-                      align="end"
-                      sideOffset={40}
-                      alignOffset={-40}
+              return (
+                <Popover
+                  key={`${fieldName}-${index}`}
+                  open={isActive && isPopoverOpen}
+                  onOpenChange={(open) => {
+                    if (open) {
+                      setActiveListItem({ fieldName, itemIndex: index });
+                      setIsPopoverOpen(true);
+                    } else {
+                      setIsPopoverOpen(false);
+                    }
+                  }}
+                >
+                  <PopoverTrigger asChild>
+                    <Card
+                      className={`cursor-pointer px-0 py-2 transition-all duration-200 ${isActive
+                        ? 'border-primary shadow-sm shadow-primary/20'
+                        : 'hover:border-primary/50 hover:shadow-sm'
+                        }`}
                     >
-                      {renderListItemForm(fieldName, field, index)}
-                    </PopoverContent>
-                  </Popover>
-                );
-              })}
-            </div>
+                      <CardContent className="px-3 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary text-sm font-medium">
+                            {index + 1}
+                          </div>
+                          <p className="font-medium">{displayName}</p>
+                        </div>
+                        <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isActive ? 'rotate-180' : ''}`} />
+                      </CardContent>
+                    </Card>
+                  </PopoverTrigger>
+                  <PopoverContent
+                    className="w-80 p-0 shadow-lg"
+                    align="end"
+                    sideOffset={40}
+                    alignOffset={-40}
+                  >
+                    {renderListItemForm(fieldName, field, index)}
+                  </PopoverContent>
+                </Popover>
+              );
+            })}
+          </div>
           )}
         </div>
       );
@@ -771,14 +776,12 @@ export default function BlockConfigForm() {
               <p className="text-xs text-muted-foreground">{field.description}</p>
             )}
           </div>
-        );
-
-      case 'theme':
+        ); case 'theme':
         return (
           <ThemeDropdown
             label={field.label}
             value={getFieldValue(fieldName) ?? value}
-            onChange={(themeValue) => handleFieldChange(fieldName, themeValue)}
+            onChange={(themeValue) => updateLocalFieldValue(fieldName, themeValue)}
             onBlur={() => commitFieldChange(fieldName)}
             description={field.description}
             fieldName={fieldName}
@@ -853,7 +856,7 @@ export default function BlockConfigForm() {
     );
   }
 
-  const isLinkedBlock = selectedBlock.value === null && selectedBlock.instance !== null;  return (
+  const isLinkedBlock = selectedBlock.value === null && selectedBlock.instance !== null; return (
     <>
       <div className="space-y-6 pb-8">
         {isLinkedBlock && (

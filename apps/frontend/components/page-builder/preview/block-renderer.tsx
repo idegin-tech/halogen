@@ -128,8 +128,8 @@ function BlockComponent({ block, isSelected }: BlockComponentProps) {
   return (
     <div className={blockClassName} onClick={handleBlockClick}>
       {isSelected && (
-        <div className="absolute inset-0 outline-dashed outline-[#8A2BE2] pointer-events-none z-50">
-          <small className='px-2 py-1 bg-[#8A2BE2] text-white rounded-lg shadow-md z-10 left-2 top-2 absolute flex items-center gap-1'><CheckIcon className='h-4 w-4' /> Selected</small>
+        <div className="absolute inset-0 outline-dashed outline-[#8A2BE2] pointer-events-none z-[8800]">
+          <small className='px-2 py-1 bg-[#8A2BE2] text-white rounded-lg shadow-md z-[8800] left-2 top-2 absolute flex items-center gap-1'><CheckIcon className='h-4 w-4' /> Selected</small>
         </div>
       )}
       {Component && (

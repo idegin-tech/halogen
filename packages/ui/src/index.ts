@@ -1,7 +1,7 @@
-// Export component library
 export * from './button';
 export * from './card';
 export * from './code';
 
-// Export blocks for dynamic importing
+export * from './config';
+
 export * as Blocks from './blocks';

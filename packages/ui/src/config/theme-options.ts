@@ -6,7 +6,7 @@ export const themeOptions: Record<string, BlockFieldConfig> = {
     name: "theme",
     label: "Theme",
     description: "Choose a theme for styling",
-    defaultValue: "primary"
+    defaultValue: "background"
   },
   backgroundColor: {
     type: "color",
@@ -23,6 +23,15 @@ export const themeOptions: Record<string, BlockFieldConfig> = {
     defaultValue: "#000000"
   }
 };
+
+export const backgroundThemeOptions = [
+  { label: "Background", value: "background" },
+  { label: "Primary", value: "primary" },
+  { label: "Secondary", value: "secondary" },
+  { label: "Muted", value: "muted" },
+  { label: "Accent", value: "accent" },
+  { label: "Card", value: "card" },
+];
 
 // Individual option exports for easier access
 export const backgroundColorOptions = themeOptions.backgroundColor;
