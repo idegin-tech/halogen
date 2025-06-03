@@ -13,10 +13,10 @@ export async function getBlockFromRegistry(
   try {
     const path = `${folderName}/${subFolder}`;
     
-    const component = UiBlocks.getBlockComponent(folderName, subFolder);
+    const component = await UiBlocks.getBlockComponent(folderName, subFolder);
     
     if (component) {
-      const properties = UiBlocks.getBlockProperties(folderName, subFolder) || {} as BlockProperties;
+      const properties = await UiBlocks.getBlockProperties(folderName, subFolder) || {} as BlockProperties;
       
       return {
         component,

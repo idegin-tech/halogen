@@ -1,95 +1,80 @@
 import { BlockProperties } from '@halogen/common/types';
 import React from 'react';
-
-export type BlockPath = 'hero/basic_saas_hero' | 'testimonials/simple_testimonial' | 'footer/basic_footer' | 'header/basic_header' | 'header/dynamic_header' | 'about/basic_about_us';
+import blocksConfig from '../blocks.json';
 
 export interface BlockRegistryItem {
   component: React.ComponentType<unknown>;
   properties: BlockProperties;
 }
 
-const blockRegistry: Record<string, BlockRegistryItem> = {}
-
-export const dynamicComponents: Record<string, React.ComponentType<unknown>> = {};
-
-interface WebpackContext {
-  keys(): string[];
-  (id: string): Record<string, unknown>;
-  <T>(id: string): T;
-  resolve(id: string): string;
-  id: string;
+interface BlockConfig {
+  name: string;
+  path: string;
+  displayName: string;
+  description: string;
+  hasThumbnail: boolean;
 }
 
-declare global {
-  interface NodeRequire {
-    context(directory: string, useSubdirectories: boolean, regExp: RegExp): WebpackContext;
-  }
+// Helper function to get component name based on folder structure
+function getComponentName(folderName: string, subFolder: string): string {
+  const folderPascal = folderName.charAt(0).toUpperCase() + folderName.slice(1);
+  const subFolderPascal = subFolder.charAt(0).toUpperCase() + subFolder.slice(1);
+  return `${folderPascal}${subFolderPascal}`;
 }
 
-// @ts-expect-error - require.context is provided by webpack at runtime
-const blocksContext: WebpackContext = require.context('./', true, /\/_block\.tsx$/);
-
-blocksContext.keys().forEach((path: string) => {
+export async function getBlockProperties(folderName: string, subFolder: string): Promise<BlockProperties | null> {
   try {
-    const pathMatch = path.match(/^\.\/([^/]+)\/([^/]+)\/_block\.tsx$/);
-    
-    if (pathMatch) {
-      const [, folderName, subFolder] = pathMatch;
-      if (folderName && subFolder) {
-        const registryPath = `${folderName}/${subFolder}`;
-        
-        const module = blocksContext(path);
-          const component = module.default || 
-                          module[subFolder.charAt(0).toUpperCase() + subFolder.slice(1)] ||
-                          module[`${folderName.charAt(0).toUpperCase() + folderName.slice(1)}${subFolder.charAt(0).toUpperCase() + subFolder.slice(1)}`] ||
-                          module.SaasHeroSection ||
-                          module.BasicTestimonials ||
-                          module.BasicFooter ||
-                          module.BasicHeader ||
-                          module.DynamicHeader ||
-                          module.BasicAboutUs;
-        
-        const properties = module.properties as BlockProperties;
-        
-        if (component && properties) {
-          const typedComponent = component as React.ComponentType<unknown>;
-          
-          blockRegistry[registryPath] = {
-            component: typedComponent,
-            properties
-          };
-          
-          if (typeof component === 'function' && 'name' in component && component.name) {
-            dynamicComponents[component.name] = typedComponent;
-          }
-        } else {
-          console.warn(`Block at ${path} doesn't export both a component and properties`);
-        }
-      }
-    }
+    const module = await import(`./${folderName}/${subFolder}/_block`);
+    return module.properties || null;
   } catch (err) {
-    console.error(`Failed to load block at ${path}`, err);
+    console.error(`Failed to load properties for block ${folderName}/${subFolder}`, err);
+    return null;
   }
-});
-
-export function getBlockProperties(folderName: string, subFolder: string): BlockProperties | null {
-  const path = `${folderName}/${subFolder}`;
-  return blockRegistry[path]?.properties || null;
 }
 
-export function getBlockComponent(folderName: string, subFolder: string): React.ComponentType<unknown> | null {
-  const path = `${folderName}/${subFolder}`;
-  return blockRegistry[path]?.component || null;
+export async function getBlockComponent(folderName: string, subFolder: string): Promise<React.ComponentType<unknown> | null> {
+  try {
+    const module = await import(`./${folderName}/${subFolder}/_block`);
+    
+    // Try multiple export patterns
+    const component = module.default || 
+                     module[subFolder.charAt(0).toUpperCase() + subFolder.slice(1)] ||
+                     module[getComponentName(folderName, subFolder)] ||
+                     module.SaasHeroSection ||
+                     module.BasicTestimonials ||
+                     module.BasicFooter ||
+                     module.BasicHeader ||
+                     module.DynamicHeader ||
+                     module.BasicAboutUs;
+    
+    return component as React.ComponentType<unknown> || null;
+  } catch (err) {
+    console.error(`Failed to load component for block ${folderName}/${subFolder}`, err);
+    return null;
+  }
 }
 
 export function getAllBlockPaths(): string[] {
-  return Object.keys(blockRegistry);
+  const paths: string[] = [];
+  
+  Object.entries(blocksConfig).forEach(([folderName, blocks]) => {
+    if (Array.isArray(blocks)) {
+      blocks.forEach((block: BlockConfig) => {
+        paths.push(`${folderName}/${block.name}`);
+      });
+    }
+  });
+  
+  return paths;
 }
 
-export const blockProperties: Partial<Record<BlockPath, BlockProperties>> = {};
-Object.entries(blockRegistry).forEach(([path, item]) => {
-  blockProperties[path as BlockPath] = item.properties;
-});
+// Synchronous versions for backwards compatibility (deprecated)
+export function getBlockPropertiesSync(_folderName: string, _subFolder: string): BlockProperties | null {
+  console.warn('getBlockPropertiesSync is deprecated. Use getBlockProperties instead.');
+  return null;
+}
 
-export { BasicHeader } from './header/basic_header/_block';
-export { DynamicHeader } from './header/dynamic_header/_block';
+export function getBlockComponentSync(_folderName: string, _subFolder: string): React.ComponentType<unknown> | null {
+  console.warn('getBlockComponentSync is deprecated. Use getBlockComponent instead.');
+  return null;
+}

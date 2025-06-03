@@ -27,12 +27,10 @@ function UsedBlockItem({ block, instanceCount }: { block: BlockInstance, instanc
     const [blockName, setBlockName] = useState(`${block.folderName}/${block.subFolder}`);
     const { selectedPageId } = usePage();
     const { state, updateBuilderState } = useBuilderContext();
-    const [blockDescription, setBlockDescription] = useState('');
-
-    useEffect(() => {
+    const [blockDescription, setBlockDescription] = useState('');    useEffect(() => {
         const loadBlockInfo = async () => {
             try {
-                const properties = getBlockProperties(block.folderName, block.subFolder);
+                const properties = await getBlockProperties(block.folderName, block.subFolder);
                 
                 if (properties?.name) {
                     setBlockName(properties.name);
@@ -187,10 +185,9 @@ export default function BlocksTopPanel({ show, onHide }: { show: boolean, onHide
                 for (const blockPath of blockPaths) {
                     const [folderName, subFolderName] = blockPath.split('/');
                     
-                    if (folderName && subFolderName) {
-                        try {
+                    if (folderName && subFolderName) {                        try {
                             // Get the properties for each block
-                            const properties = getBlockProperties(folderName, subFolderName);
+                            const properties = await getBlockProperties(folderName, subFolderName);
                             
                             if (properties) {
                                 if (!folderMap[folderName]) {
@@ -390,8 +387,8 @@ export default function BlocksTopPanel({ show, onHide }: { show: boolean, onHide
                                         return (
                                             <div key={subFolder.name} className='rounded-xl overflow-hidden'>
                                                 <Card
-                                                    className="group relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:shadow-primary/10 select-none"
-                                                >                                                    <div className="relative w-full min-h-40 flex items-center overflow-hidden justify-center">
+                                                    className="group relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:shadow-primary/10 py-0 select-none"
+                                                >                                                    <div className="relative w-full min-h-48 flex items-center overflow-hidden justify-center">
                                                         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-primary/10 flex items-center justify-center">
                                                             {subFolder.thumbnailPath ? (
                                                                 <img 

@@ -54,7 +54,7 @@ export default function PageOutline() {
 
             for (const block of blocks) {
                 try {
-                    const properties = getBlockProperties(block.folderName, block.subFolder);
+                    const properties = await getBlockProperties(block.folderName, block.subFolder);
                     if (properties?.name) {
                         names[block.instance_id!] = properties.name;
                     } else {

@@ -251,10 +251,11 @@ export default async function CatchAllPage({ params }: Props) {
             <h1 className="text-4xl font-bold text-warning-foreground">Empty Page</h1>
             <p className="text-lg text-muted-foreground">This page has no content blocks.</p>
           </div>
-        </div>
-      ) : (
-        sortedBlocks.map(block => {
-          const BlockComponent = UiBlocks.getBlockComponent(block.folderName, block.subFolder); if (!BlockComponent) {
+        </div>      ) : (
+        await Promise.all(sortedBlocks.map(async (block) => {
+          const BlockComponent = await UiBlocks.getBlockComponent(block.folderName, block.subFolder);
+
+          if (!BlockComponent) {
             return (
               <div key={block.instance_id} className="p-4 bg-destructive/10 border border-destructive/20 rounded-md shadow-sm text-destructive">
                 {process.env.NODE_ENV !== 'production' ? (
@@ -264,7 +265,9 @@ export default async function CatchAllPage({ params }: Props) {
                 )}
               </div>
             );
-          } const rootBlock = getRootBlock(block);
+          }
+
+          const rootBlock = getRootBlock(block);
           const blockValues = rootBlock.value || {};
 
           return (
@@ -272,7 +275,7 @@ export default async function CatchAllPage({ params }: Props) {
               <BlockComponent {...blockValues} />
             </div>
           );
-        })
+        }))
       )}
       </div>
     );

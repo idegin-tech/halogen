@@ -49,7 +49,7 @@ export default function BlockConfigForm() {
       }
 
       try {
-        const properties = getBlockProperties(selectedBlock.folderName, selectedBlock.subFolder);
+        const properties = await getBlockProperties(selectedBlock.folderName, selectedBlock.subFolder);
 
         if (properties) {
           setBlockProperties(properties);
