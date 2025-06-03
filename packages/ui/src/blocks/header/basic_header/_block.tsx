@@ -1,8 +1,9 @@
 "use client"
 
 import Link from "next/link"
-import { useState, useRef, useEffect, useMemo } from "react"
+import { useState, useRef, useEffect } from "react"
 import { BlockProperties } from "@halogen/common/types";
+import { backgroundThemeOptions } from "../../../config";
 
 interface NavigationItem {
   name: string;
@@ -18,7 +19,7 @@ export function BasicHeader(fields: typeof properties.contentFields & typeof pro
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null)
   const dropdownRefs = useRef<{ [key: string]: HTMLDivElement | null }>({})
-    // Extract field values with proper fallbacks
+
   const navigation = (fields?.navigation?.value || []) as NavigationItem[];
   const alignment = fields?.alignment?.value || "justify-between";
   const height = fields?.height?.value || "h-16 md:h-20";
@@ -43,16 +44,14 @@ export function BasicHeader(fields: typeof properties.contentFields & typeof pro
   const toggleDropdown = (name: string) => {
     setActiveDropdown(activeDropdown === name ? null : name)
   }
-  // Get theme from fields
+
   const theme = fields?.theme?.value || "primary";
   const colorVariables = fields?.colorVariables || {};
 
-  // Helper function to get color value with fallback
   const getColor = (colorKey: string, fallback: string) => {
     return colorVariables[colorKey] || fallback;
   };
 
-  // Helper function to apply opacity to hex color
   const applyOpacity = (color: string, opacity: number) => {
     if (color.startsWith('#')) {
       const alpha = Math.round(opacity * 255).toString(16).padStart(2, '0');
@@ -61,7 +60,6 @@ export function BasicHeader(fields: typeof properties.contentFields & typeof pro
     return color;
   };
 
-  // Theme-based styling with dynamic colors
   const getThemeClasses = (theme: string) => {
     switch (theme) {
       case "primary":
@@ -308,18 +306,18 @@ export function BasicHeader(fields: typeof properties.contentFields & typeof pro
   // Render buttons function for desktop
   const renderButtons = () => (
     <div className="flex items-center gap-3">      {showSecondary && fields?.secondaryButtonText?.value && (
-        <Link
-          href={fields?.secondaryButtonLink?.value || "#"}
-          className="hidden md:inline-flex h-9 md:h-10 items-center justify-center rounded-md border px-4 md:px-6 py-2 text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-          style={{
-            ...themeStyles.secondaryButton,
-            borderWidth: '1px',
-            borderStyle: 'solid',
-          }}
-        >
-          {fields?.secondaryButtonText?.value}
-        </Link>
-      )}
+      <Link
+        href={fields?.secondaryButtonLink?.value || "#"}
+        className="hidden md:inline-flex h-9 md:h-10 items-center justify-center rounded-md border px-4 md:px-6 py-2 text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        style={{
+          ...themeStyles.secondaryButton,
+          borderWidth: '1px',
+          borderStyle: 'solid',
+        }}
+      >
+        {fields?.secondaryButtonText?.value}
+      </Link>
+    )}
       {showPrimary && fields?.primaryButtonText?.value && (
         <Link
           href={fields?.primaryButtonLink?.value || "#contact"}
@@ -361,8 +359,8 @@ export function BasicHeader(fields: typeof properties.contentFields & typeof pro
         </svg>
       </button>
     </div>
-  );  return (
-    <header 
+  ); return (
+    <header
       className="sticky top-0 z-40 w-full border-b"
       style={{
         ...themeStyles.header,
@@ -374,18 +372,18 @@ export function BasicHeader(fields: typeof properties.contentFields & typeof pro
         {/* Logo Section */}
         <div className="flex items-center gap-3">
           {/* Logo - Image Only (No Text Fallback) */}          {fields?.logoImage?.value ? (
-            <div 
+            <div
               className="relative h-9 w-9 md:h-10 md:w-10 overflow-hidden rounded-lg"
               style={themeStyles.logo}
             >
-              <img 
-                src={fields.logoImage.value} 
+              <img
+                src={fields.logoImage.value}
                 alt={fields?.companyName?.value || "Company Logo"}
                 className="w-full h-full object-cover"
               />
             </div>
           ) : (
-            <div 
+            <div
               className="relative h-9 w-9 md:h-10 md:w-10 overflow-hidden rounded-lg flex items-center justify-center"
               style={themeStyles.logo}
             >
@@ -400,21 +398,85 @@ export function BasicHeader(fields: typeof properties.contentFields & typeof pro
         </div>
 
         {/* Navigation - Only show when alignment is justify-between */}
-        {alignment === "justify-between" && (          <nav className="hidden md:flex items-center gap-1 lg:gap-2">
+        {alignment === "justify-between" && (<nav className="hidden md:flex items-center gap-1 lg:gap-2">
+          {navigation.map((item: NavigationItem) => (
+            <div key={item.name} className="relative" ref={(el) => {
+              dropdownRefs.current[item.name] = el;
+            }}>
+              {item.children && item.children.length > 0 ? (
+                <>
+                  <button
+                    onClick={() => toggleDropdown(item.name)}
+                    className={`px-3 py-2 text-sm font-medium rounded-md transition-colors flex items-center gap-1 ${activeDropdown === item.name
+                        ? "bg-primary/10 text-foreground"
+                        : "text-foreground/80 hover:text-foreground hover:bg-accent/50"
+                      }`}
+                    aria-expanded={activeDropdown === item.name}
+                  >
+                    {item.name}
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className={`transition-transform duration-200 ${activeDropdown === item.name ? "rotate-180" : ""
+                        }`}
+                    >
+                      <path d="m6 9 6 6 6-6" />
+                    </svg>
+                  </button>
+                  {activeDropdown === item.name && (
+                    <div className="absolute top-full left-0 mt-1 w-56 rounded-md border border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 shadow-lg overflow-hidden z-50 animate-in fade-in slide-in-from-top-5 duration-200">                        <div className="py-1">
+                      {item.children.map((child: NavigationItem) => (
+                        <Link
+                          key={child.name}
+                          href={child.href}
+                          className="block px-4 py-2 text-sm text-foreground/80 hover:bg-primary/10 hover:text-foreground transition-colors"
+                          onClick={() => setActiveDropdown(null)}
+                        >
+                          {child.name}
+                        </Link>
+                      ))}
+                    </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <Link
+                  href={item.href}
+                  className="px-3 py-2 text-sm font-medium rounded-md text-foreground/80 transition-colors hover:text-foreground hover:bg-accent/50"
+                >
+                  {item.name}
+                </Link>
+              )}
+            </div>
+          ))}
+        </nav>
+        )}
+
+        {/* Action Buttons */}
+        {renderButtons()}
+      </div>
+
+      {/* Mobile menu */}
+      {isMenuOpen && (
+        <div className="md:hidden border-t border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 animate-in slide-in-from-top duration-300">
+          <div className="container py-3">            <nav className="flex flex-col space-y-1">
             {navigation.map((item: NavigationItem) => (
-              <div key={item.name} className="relative" ref={(el) => {
-                dropdownRefs.current[item.name] = el;
-              }}>
+              <div key={item.name} className="w-full">
                 {item.children && item.children.length > 0 ? (
-                  <>
+                  <div className="w-full">
                     <button
                       onClick={() => toggleDropdown(item.name)}
-                      className={`px-3 py-2 text-sm font-medium rounded-md transition-colors flex items-center gap-1 ${
-                        activeDropdown === item.name
+                      className={`flex w-full items-center justify-between px-4 py-3 text-sm font-medium rounded-md ${activeDropdown === item.name
                           ? "bg-primary/10 text-foreground"
-                          : "text-foreground/80 hover:text-foreground hover:bg-accent/50"
-                      }`}
-                      aria-expanded={activeDropdown === item.name}
+                          : "text-foreground/80 hover:bg-accent/50 hover:text-foreground"
+                        }`}
                     >
                       {item.name}
                       <svg
@@ -427,134 +489,66 @@ export function BasicHeader(fields: typeof properties.contentFields & typeof pro
                         strokeWidth="2"
                         strokeLinecap="round"
                         strokeLinejoin="round"
-                        className={`transition-transform duration-200 ${
-                          activeDropdown === item.name ? "rotate-180" : ""
-                        }`}
+                        className={`transition-transform duration-200 ${activeDropdown === item.name ? "rotate-180" : ""
+                          }`}
                       >
                         <path d="m6 9 6 6 6-6" />
                       </svg>
                     </button>
-                    {activeDropdown === item.name && (
-                      <div className="absolute top-full left-0 mt-1 w-56 rounded-md border border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 shadow-lg overflow-hidden z-50 animate-in fade-in slide-in-from-top-5 duration-200">                        <div className="py-1">
-                          {item.children.map((child: NavigationItem) => (
-                            <Link
-                              key={child.name}
-                              href={child.href}
-                              className="block px-4 py-2 text-sm text-foreground/80 hover:bg-primary/10 hover:text-foreground transition-colors"
-                              onClick={() => setActiveDropdown(null)}
-                            >
-                              {child.name}
-                            </Link>
-                          ))}
-                        </div>
-                      </div>
+                    {activeDropdown === item.name && (<div className="ml-4 mt-1 border-l-2 border-border/40 pl-4 animate-in slide-in-from-left duration-200">
+                      {item.children.map((child: NavigationItem) => (
+                        <Link
+                          key={child.name}
+                          href={child.href}
+                          className="block py-2 px-3 text-sm text-foreground/80 hover:bg-primary/10 hover:text-foreground rounded-md transition-colors"
+                          onClick={() => {
+                            setActiveDropdown(null)
+                            setIsMenuOpen(false)
+                          }}
+                        >
+                          {child.name}
+                        </Link>
+                      ))}
+                    </div>
                     )}
-                  </>
+                  </div>
                 ) : (
                   <Link
                     href={item.href}
-                    className="px-3 py-2 text-sm font-medium rounded-md text-foreground/80 transition-colors hover:text-foreground hover:bg-accent/50"
+                    className="block px-4 py-3 text-sm font-medium text-foreground/80 hover:bg-accent/50 hover:text-foreground rounded-md transition-colors"
+                    onClick={() => setIsMenuOpen(false)}
                   >
                     {item.name}
                   </Link>
                 )}
               </div>
-            ))}
+            ))}              <div className="pt-2 flex flex-col gap-2">
+              {showSecondary && fields?.secondaryButtonText?.value && (
+                <Link
+                  href={fields?.secondaryButtonLink?.value || "#"}
+                  className="flex h-10 items-center justify-center rounded-md border px-6 py-2 text-sm font-medium w-full"
+                  style={{
+                    ...themeStyles.secondaryButton,
+                    borderWidth: '1px',
+                    borderStyle: 'solid',
+                  }}
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  {fields?.secondaryButtonText?.value}
+                </Link>
+              )}
+              {showPrimary && fields?.primaryButtonText?.value && (
+                <Link
+                  href={fields?.primaryButtonLink?.value || "#contact"}
+                  className="flex h-10 items-center justify-center rounded-md px-6 py-2 text-sm font-medium shadow-md w-full"
+                  style={themeStyles.primaryButton}
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  {fields?.primaryButtonText?.value}
+                </Link>
+              )}
+            </div>
           </nav>
-        )}
-
-        {/* Action Buttons */}
-        {renderButtons()}
-      </div>
-
-      {/* Mobile menu */}
-      {isMenuOpen && (
-        <div className="md:hidden border-t border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 animate-in slide-in-from-top duration-300">
-          <div className="container py-3">            <nav className="flex flex-col space-y-1">
-              {navigation.map((item: NavigationItem) => (
-                <div key={item.name} className="w-full">
-                  {item.children && item.children.length > 0 ? (
-                    <div className="w-full">
-                      <button
-                        onClick={() => toggleDropdown(item.name)}
-                        className={`flex w-full items-center justify-between px-4 py-3 text-sm font-medium rounded-md ${
-                          activeDropdown === item.name
-                            ? "bg-primary/10 text-foreground"
-                            : "text-foreground/80 hover:bg-accent/50 hover:text-foreground"
-                        }`}
-                      >
-                        {item.name}
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="16"
-                          height="16"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          className={`transition-transform duration-200 ${
-                            activeDropdown === item.name ? "rotate-180" : ""
-                          }`}
-                        >
-                          <path d="m6 9 6 6 6-6" />
-                        </svg>
-                      </button>
-                      {activeDropdown === item.name && (                        <div className="ml-4 mt-1 border-l-2 border-border/40 pl-4 animate-in slide-in-from-left duration-200">
-                          {item.children.map((child: NavigationItem) => (
-                            <Link
-                              key={child.name}
-                              href={child.href}
-                              className="block py-2 px-3 text-sm text-foreground/80 hover:bg-primary/10 hover:text-foreground rounded-md transition-colors"
-                              onClick={() => {
-                                setActiveDropdown(null)
-                                setIsMenuOpen(false)
-                              }}
-                            >
-                              {child.name}
-                            </Link>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <Link
-                      href={item.href}
-                      className="block px-4 py-3 text-sm font-medium text-foreground/80 hover:bg-accent/50 hover:text-foreground rounded-md transition-colors"
-                      onClick={() => setIsMenuOpen(false)}
-                    >
-                      {item.name}
-                    </Link>
-                  )}
-                </div>
-              ))}              <div className="pt-2 flex flex-col gap-2">
-                {showSecondary && fields?.secondaryButtonText?.value && (
-                  <Link
-                    href={fields?.secondaryButtonLink?.value || "#"}
-                    className="flex h-10 items-center justify-center rounded-md border px-6 py-2 text-sm font-medium w-full"
-                    style={{
-                      ...themeStyles.secondaryButton,
-                      borderWidth: '1px',
-                      borderStyle: 'solid',
-                    }}
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    {fields?.secondaryButtonText?.value}
-                  </Link>
-                )}
-                {showPrimary && fields?.primaryButtonText?.value && (
-                  <Link
-                    href={fields?.primaryButtonLink?.value || "#contact"}
-                    className="flex h-10 items-center justify-center rounded-md px-6 py-2 text-sm font-medium shadow-md w-full"
-                    style={themeStyles.primaryButton}
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    {fields?.primaryButtonText?.value}
-                  </Link>
-                )}
-              </div>
-            </nav>
           </div>
         </div>
       )}
@@ -565,7 +559,7 @@ export function BasicHeader(fields: typeof properties.contentFields & typeof pro
 export const properties: BlockProperties = {
   name: "Basic Header",
   description: "A responsive header with dropdown navigation, mobile menu, and customizable buttons",
-  
+
   contentFields: {
     companyName: {
       type: "text",
@@ -680,13 +674,13 @@ export const properties: BlockProperties = {
         { name: "Contact", href: "#contact" }
       ]
     }
-  },
-  themeFields: {
+  }, themeFields: {
     theme: {
-      type: "theme",
+      type: "select",
       name: "theme",
       label: "Header Theme",
       description: "Choose a theme for the header styling",
+      options: backgroundThemeOptions,
       defaultValue: "primary"
     }
   },

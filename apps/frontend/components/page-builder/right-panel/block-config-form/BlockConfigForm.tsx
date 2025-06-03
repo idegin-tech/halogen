@@ -28,8 +28,7 @@ import {
 import { getBlockProperties } from '@repo/ui/blocks';
 import { BlockConfigListValue, BlockFieldConfig, BlockProperties } from '@halogen/common/types';
 import { motion } from 'framer-motion';
-import { ImageInput } from './fixed-ImageInput';
-import { ThemeDropdown } from './ThemeDropdown';
+import { ImageInput } from './ImageInput';
 
 export default function BlockConfigForm() {
   const { state, updateBuilderState } = useBuilderContext();
@@ -432,24 +431,7 @@ export default function BlockConfigForm() {
               onChange={(value) => updateLocalListItemValue(fieldName, itemIndex, itemFieldName, value)}
               onBlur={() => commitListItemChange(fieldName, itemIndex, itemFieldName)}
               placeholder={itemField.placeholder || `Enter image URL or select from project`}
-              description={itemField.description}
-            />          </div>
-        );
-      case 'theme':
-        return (
-          <div className="grid gap-1.5">
-            <ThemeDropdown
-              label={itemField.label}
-              value={getListItemValue(fieldName, itemIndex, itemFieldName) ?? (value || itemField.defaultValue || '')}
-              onChange={(value) => {
-                console.log("THE ON CHANGE VALUE",value);
-                updateLocalListItemValue(fieldName, itemIndex, itemFieldName, value);
-              }}
-              onBlur={() => commitListItemChange(fieldName, itemIndex, itemFieldName)}
-              description={itemField.description}
-              fieldName={`${fieldName}-${itemIndex}-${itemFieldName}`}
-            />
-          </div>
+              description={itemField.description}            />          </div>
         );
 
       default:
@@ -774,20 +756,8 @@ export default function BlockConfigForm() {
               />
             </div>            {field.description && (
               <p className="text-xs text-muted-foreground">{field.description}</p>
-            )}
-          </div>
-        ); case 'theme':
-        return (
-          <ThemeDropdown
-            label={field.label}
-            value={getFieldValue(fieldName) ?? value}
-            onChange={(themeValue) => updateLocalFieldValue(fieldName, themeValue)}
-            onBlur={() => commitFieldChange(fieldName)}
-            description={field.description}
-            fieldName={fieldName}
-          />
-        );
-
+            )}          </div>
+        ); 
       default:
         return (
           <div className="grid gap-1.5">

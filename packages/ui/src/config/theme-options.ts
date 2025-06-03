@@ -2,7 +2,7 @@ import { BlockFieldConfig } from "@halogen/common/types";
 
 export const themeOptions: Record<string, BlockFieldConfig> = {
   theme: {
-    type: "theme",
+    type: "select",
     name: "theme",
     label: "Theme",
     description: "Choose a theme for styling",
@@ -29,8 +29,6 @@ export const backgroundThemeOptions = [
   { label: "Primary", value: "primary" },
   { label: "Secondary", value: "secondary" },
   { label: "Muted", value: "muted" },
-  { label: "Accent", value: "accent" },
-  { label: "Card", value: "card" },
 ];
 
 // Individual option exports for easier access

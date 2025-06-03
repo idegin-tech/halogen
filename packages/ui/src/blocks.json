@@ -14,5 +14,14 @@
       "description": "A flexible header component with theme and layout options",
       "hasThumbnail": false
     }
+  ],
+  "test_run": [
+    {
+      "name": "cta_section",
+      "path": "test_run/cta_section",
+      "displayName": "CTA Section",
+      "description": "A modern call-to-action section with customizable content and theming",
+      "hasThumbnail": false
+    }
   ]
 }

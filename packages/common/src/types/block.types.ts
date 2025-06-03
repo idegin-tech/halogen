@@ -1,7 +1,7 @@
 import { PageData } from "./builder.types"
 
 export type BlockFieldConfig = {
-    type: "text" | "textarea" | "select" | "number" | "color" | "image" | "switch" | "list" | "theme"
+    type: "text" | "textarea" | "select" | "number" | "color" | "image" | "switch" | "list"
     name: string
     label: string
     description?: string

@@ -455,7 +455,7 @@ export const properties: BlockProperties = {
     }
   },  themeFields: {
     backgroundTheme: {
-      type: "theme",
+      type: "select",
       name: "backgroundTheme",
       label: "Background Theme",
       description: "Choose the background theme for the header",
