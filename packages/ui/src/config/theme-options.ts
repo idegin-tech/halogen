@@ -1,12 +1,85 @@
 import { BlockFieldConfig } from "@halogen/common/types";
 
+export const backgroundThemeOptions = [
+  { label: "Primary", value: "primary" },
+  { label: "Primary Foreground", value: "primary-foreground" },
+  { label: "Secondary", value: "secondary" },
+  { label: "Secondary Foreground", value: "secondary-foreground" },
+  { label: "Background", value: "background" },
+  { label: "Foreground", value: "foreground" },
+  { label: "Muted", value: "muted" },
+  { label: "Muted Foreground", value: "muted-foreground" },
+  { label: "Card", value: "card" },
+  { label: "Card Foreground", value: "card-foreground" },
+  { label: "Accent", value: "accent" },
+  { label: "Accent Foreground", value: "accent-foreground" },
+  { label: "Border", value: "border" },
+];
+
+export const variantOptions = [
+  { label: "Solid", value: "solid" },
+  { label: "Outline", value: "outline" },
+  { label: "Ghost", value: "ghost" },
+  { label: "Soft", value: "soft" },
+];
+
+export const backgroundTypeOptions = [
+  { label: "Solid", value: "solid" },
+  { label: "Gradient", value: "gradient" },
+  { label: "Image", value: "image" },
+  { label: "Video", value: "video" },
+];
+
+export const roundnessOptions = [
+  { label: "None", value: "none" },
+  { label: "Medium", value: "medium" },
+  { label: "Large", value: "large" },
+  { label: "Extra Large", value: "extra-large" },
+  { label: "Full", value: "full" },
+];
+
+export const borderWidthOptions = [
+  { label: "None", value: "none" },
+  { label: "Small", value: "small" },
+  { label: "Large", value: "large" },
+  { label: "Extra Large", value: "extra-large" },
+];
+
+export const borderColorOptions = backgroundThemeOptions;
+
+export const shadowOptions = [
+  { label: "None", value: "none" },
+  { label: "Small", value: "small" },
+  { label: "Large", value: "large" },
+  { label: "Extra Large", value: "extra-large" },
+];
+
+export const shadowColorOptions = backgroundThemeOptions;
+
 export const themeOptions: Record<string, BlockFieldConfig> = {
   theme: {
     type: "select",
     name: "theme",
-    label: "Theme",
-    description: "Choose a theme for styling",
+    label: "Color Scheme",
+    description: "Choose a color scheme for styling",
+    options: backgroundThemeOptions,
     defaultValue: "background"
+  },
+  variant: {
+    type: "select",
+    name: "variant",
+    label: "Variant",
+    description: "Choose a visual variant style",
+    options: variantOptions,
+    defaultValue: "solid"
+  },
+  backgroundType: {
+    type: "select",
+    name: "backgroundType",
+    label: "Background Type",
+    description: "Choose the background type",
+    options: backgroundTypeOptions,
+    defaultValue: "solid"
   },
   backgroundColor: {
     type: "color",
@@ -23,13 +96,6 @@ export const themeOptions: Record<string, BlockFieldConfig> = {
     defaultValue: "#000000"
   }
 };
-
-export const backgroundThemeOptions = [
-  { label: "Background", value: "background" },
-  { label: "Primary", value: "primary" },
-  { label: "Secondary", value: "secondary" },
-  { label: "Muted", value: "muted" },
-];
 
 // Individual option exports for easier access
 export const backgroundColorOptions = themeOptions.backgroundColor;

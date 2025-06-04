@@ -1,545 +1,501 @@
 "use client"
 
-import { useState } from "react"
+import React, { useState, useEffect } from 'react'
 import Link from "next/link"
-import { Menu, X } from "lucide-react"
-import { cn } from "../../../utils/classNames"
 import { BlockProperties } from "@halogen/common/types"
-import { backgroundThemeOptions } from "../../../config"
-
-interface NavigationItem {
-  text: string;
-  url: string;
-}
+import { backgroundThemeOptions, roundnessOptions } from '../../../config'
 
 interface ColorVariables {
   [key: string]: string;
 }
 
-export function DynamicHeader(fields: typeof properties.contentFields & typeof properties.themeFields & typeof properties.layoutFields & { colorVariables?: ColorVariables }) {
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false)
+interface LinkItem {
+  text: string;
+  url: string;
+}
 
-  // Extract field values with proper fallbacks
-  const logoText = fields?.logoText?.value || "";
-  const logoImage = fields?.logoImage?.value || "";
-  const showLogo = fields?.showLogo?.value !== false;
-  const showNavigation = fields?.showNavigation?.value !== false;
-  const navigationItems = (fields?.navigationItems?.value || []) as NavigationItem[];
-  const primaryButtonText = fields?.primaryButtonText?.value || "Get Started";
-  const primaryButtonUrl = fields?.primaryButtonUrl?.value || "#";
-  const secondaryButtonText = fields?.secondaryButtonText?.value || "Learn More";
-  const secondaryButtonUrl = fields?.secondaryButtonUrl?.value || "#";
-  const showPrimaryButton = fields?.showPrimaryButton?.value !== false;
-  const showSecondaryButton = fields?.showSecondaryButton?.value || false;
+export function DynamicHeader(fields: typeof properties.contentFields & typeof properties.themeFields & typeof properties.layoutFields & { colorVariables?: ColorVariables }) {
+    const [isScrolled, setIsScrolled] = useState(false);
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+    // Content fields
+    const logo = fields?.logo?.value || "";
+    const logoAlt = fields?.logoAlt?.value || "Logo";
+    const links = fields?.links?.value || [];
+
+    // CTA buttons
+    const primaryButtonText = fields?.primaryButtonText?.value || "";
+    const primaryButtonLink = fields?.primaryButtonLink?.value || "#";
+    const secondaryButtonText = fields?.secondaryButtonText?.value || "";
+    const secondaryButtonLink = fields?.secondaryButtonLink?.value || "#";    // Layout fields
+    const linksAlignment = fields?.linksAlignment?.value || "left";
+    const detached = fields?.detached?.value || false;
+    const sticky = fields?.sticky?.value || false;
+    const spacing = fields?.spacing?.value || [];
+    const roundness = fields?.roundness?.value || "medium";
+    const buttonRoundness = fields?.buttonRoundness?.value || "medium";
+
     // Theme fields
-  const backgroundTheme = fields?.backgroundTheme?.value || "background";
-  const gradientType = fields?.gradientType?.value || "none";
-  const gradientDirection = fields?.gradientDirection?.value || "to-right"; // eslint-disable-line @typescript-eslint/no-unused-vars
-  const gradientStyle = fields?.gradientStyle?.value || "subtle";
-  
-  console.log(`🔥 DynamicHeader render - backgroundTheme: ${backgroundTheme}, fields:`, fields);
-  
-  // Layout fields
-  const alignment = fields?.alignment?.value || "left";
-  const roundedCorners = fields?.roundedCorners?.value || "none";
-  const isDetached = fields?.detachedMode?.value || false;  
-  
-  const getThemeColors = () => {
-    if (gradientType !== "none" && gradientStyle) {
-      return {
-        text: "text-foreground",
-        border: "border-border",
-        background: "bg-background",
-        primaryButton: "bg-primary text-primary-foreground hover:bg-primary/90",
-        outlineButton: "border-primary text-primary hover:bg-primary/10",
-        mobileMenuBg: "gradient-overlay",
-        linkHover: "hover:text-primary/80",
-      };
-    }const themeMap = {
-      background: {
-        text: "text-foreground",
-        border: "border-border",
-        background: "bg-background",
-        primaryButton: "bg-primary text-primary-foreground hover:bg-primary/90",
-        outlineButton: "border-primary text-primary hover:bg-primary/10",
-        mobileMenuBg: "bg-background",
-        linkHover: "hover:text-primary",
-      },
-      primary: {
-        text: "text-primary-foreground",
-        border: "border-primary-foreground/20",
-        background: "bg-primary",
-        primaryButton: "bg-secondary text-secondary-foreground hover:bg-secondary/90",
-        outlineButton: "border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10",
-        mobileMenuBg: "bg-primary",
-        linkHover: "hover:text-primary-foreground/80",
-      },
-      secondary: {
-        text: "text-secondary-foreground",
-        border: "border-secondary-foreground/20",
-        background: "bg-secondary",
-        primaryButton: "bg-primary text-primary-foreground hover:bg-primary/90",
-        outlineButton: "border-primary text-primary hover:bg-primary/10",
-        mobileMenuBg: "bg-secondary",
-        linkHover: "hover:text-secondary-foreground/80",
-      },
-      muted: {
-        text: "text-muted-foreground",
-        border: "border-muted-foreground/20",
-        background: "bg-muted",
-        primaryButton: "bg-primary text-primary-foreground hover:bg-primary/90",
-        outlineButton: "border-primary text-primary hover:bg-primary/10",
-        mobileMenuBg: "bg-muted",
-        linkHover: "hover:text-foreground",
-      },
-      accent: {
-        text: "text-accent-foreground",
-        border: "border-accent-foreground/20",
-        background: "bg-accent",
-        primaryButton: "bg-primary text-primary-foreground hover:bg-primary/90",
-        outlineButton: "border-primary text-primary hover:bg-primary/10",
-        mobileMenuBg: "bg-accent",
-        linkHover: "hover:text-accent-foreground/80",
-      },
-      card: {
-        text: "text-card-foreground",
-        border: "border-card-foreground/20",
-        background: "bg-card",
-        primaryButton: "bg-primary text-primary-foreground hover:bg-primary/90",
-        outlineButton: "border-primary text-primary hover:bg-primary/10",
-        mobileMenuBg: "bg-card",
-        linkHover: "hover:text-card-foreground/80",
-      },
-      destructive: {
-        text: "text-destructive-foreground",
-        border: "border-destructive-foreground/20",
-        background: "bg-destructive",
-        primaryButton: "bg-primary text-primary-foreground hover:bg-primary/90",
-        outlineButton: "border-primary text-primary hover:bg-primary/10",
-        mobileMenuBg: "bg-destructive",
-        linkHover: "hover:text-destructive-foreground/80",
-      },
+    const backgroundColor = fields?.backgroundColor?.value || "background";
+    const textColor = fields?.textColor?.value || "foreground";
+    const buttonColor = fields?.buttonColor?.value || "primary";
+
+    const colorVariables = fields?.colorVariables || {};
+
+    const getColor = (colorKey: string, fallback: string) => {
+        return colorVariables[colorKey] || fallback;
+    };    const getRoundnessClass = (roundness: string) => {
+        switch (roundness) {
+            case "none":
+                return "";
+            case "medium":
+                return "rounded-lg";
+            case "large":
+                return "rounded-xl";
+            case "extra-large":
+                return "rounded-2xl";
+            case "full":
+                return "rounded-full";
+            default:
+                return "rounded-lg";
+        }
+    };    const getSpacingClass = (spacing: string[]) => {
+        const classes = [];
+        if (spacing.includes('top')) {
+            classes.push('pt-8');
+        }
+        if (spacing.includes('bottom')) {
+            classes.push('pb-8');
+        }
+        return classes.join(' ');
     };
 
-    return themeMap[backgroundTheme as keyof typeof themeMap] || themeMap.background;
-  };  
-  
+    useEffect(() => {
+        if (!sticky) return;
 
-  const getAlignmentClass = () => {
-    switch (alignment) {
-      case "center":
-        return "justify-center"
-      case "right":
-        return "justify-end"
-      case "space-between":
-        return "justify-between"
-      case "space-around":
-        return "justify-around"
-      case "space-evenly":
-        return "justify-evenly"
-      default:
-        return "justify-start"
-    }
-  }
+        const handleScroll = () => {
+            setIsScrolled(window.scrollY > 10);
+        };
 
-  // Determine rounded corners class
-  const getRoundedClass = () => {
-    if (!isDetached) return ""
+        window.addEventListener('scroll', handleScroll);
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, [sticky]);
 
-    switch (roundedCorners) {
-      case "sm":
-        return "rounded-sm"
-      case "md":
-        return "rounded-md"
-      case "lg":
-        return "rounded-lg"
-      case "xl":
-        return "rounded-xl"
-      case "2xl":
-        return "rounded-2xl"
-      case "full":
-        return "rounded-full"
-      default:
-        return ""
-    }
-  }
+    const getColorStyles = (backgroundColor: string, textColor: string, buttonColor: string) => {
+        const getForegroundColor = (colorScheme: string) => {
+            switch (colorScheme) {
+                case "primary":
+                    return getColor('primary-foreground', '#FAFAFA');
+                case "primary-foreground":
+                    return getColor('primary', '#6D3DF2');
+                case "secondary":
+                    return getColor('secondary-foreground', '#0F0F10');
+                case "secondary-foreground":
+                    return getColor('secondary', '#F55B00');
+                case "muted":
+                    return getColor('muted-foreground', '#757578');
+                case "muted-foreground":
+                    return getColor('muted', '#F5F5F6');
+                case "card":
+                    return getColor('card-foreground', '#0A0A0A');
+                case "card-foreground":
+                    return getColor('card', '#FFFFFF');
+                case "accent":
+                    return getColor('accent-foreground', '#FAFAFA');
+                case "accent-foreground":
+                    return getColor('accent', '#F1F5F9');
+                case "foreground":
+                    return getColor('background', '#FFFFFF');
+                case "border":
+                    return getColor('foreground', '#0A0A0A');
+                default: // background
+                    return getColor('foreground', '#0A0A0A');
+            }
+        };
 
-  const colors = getThemeColors()
+        // Helper function to get color value for a given color scheme
+        const getSchemeColor = (colorScheme: string) => {
+            switch (colorScheme) {
+                case "primary":
+                    return getColor('primary', '#6D3DF2');
+                case "primary-foreground":
+                    return getColor('primary-foreground', '#FAFAFA');
+                case "secondary":
+                    return getColor('secondary', '#F55B00');
+                case "secondary-foreground":
+                    return getColor('secondary-foreground', '#0F0F10');
+                case "muted":
+                    return getColor('muted', '#F5F5F6');
+                case "muted-foreground":
+                    return getColor('muted-foreground', '#757578');
+                case "card":
+                    return getColor('card', '#FFFFFF');
+                case "card-foreground":
+                    return getColor('card-foreground', '#0A0A0A');
+                case "accent":
+                    return getColor('accent', '#F1F5F9');
+                case "accent-foreground":
+                    return getColor('accent-foreground', '#0F172A');
+                case "foreground":
+                    return getColor('foreground', '#0A0A0A');
+                case "border":
+                    return getColor('border', '#E4E4E7');
+                default: // background
+                    return getColor('background', '#FFFFFF');
+            }
+        };
 
-  return (
-    <div className={cn(
-      "sticky top-0 z-50 w-full ",
-      isDetached && "container mx-auto max-w-7xl"
-    )}>      <header
-        className={cn(
-          "w-full border transition-all duration-200",
-          colors.text,
-          colors.border,
-          colors.background,
-          getRoundedClass(),
-          isDetached ? "shadow-sm border" : "border-b border-l-0 border-r-0 border-t-0",
-        )}
-      >
-        <div className="container mx-auto px-6">
-          <div className="flex h-16 items-center justify-between">
-            {/* Logo */}
-            {showLogo && (
-              <div className="flex shrink-0 items-center">
-                {logoImage ? (
-                  <img 
-                    src={logoImage} 
-                    alt={logoText || "Logo"} 
-                    width={120} 
-                    height={40} 
-                    className="h-8 w-auto" 
-                  />
-                ) : logoText ? (
-                  <span className="text-xl font-bold">{logoText}</span>
-                ) : (
-                  <div className="h-8 w-24 bg-current opacity-20 rounded"></div>
-                )}
-              </div>
-            )}
+        return {
+            header: {
+                backgroundColor: getSchemeColor(backgroundColor),
+                borderColor: ["background", "card"].includes(backgroundColor) ? getColor('border', '#E4E4E7') : getSchemeColor(backgroundColor),
+            },
+            text: {
+                color: ["background", "card"].includes(textColor) ? getForegroundColor(backgroundColor) : getSchemeColor(textColor),
+            },
+            primaryButton: {
+                backgroundColor: getSchemeColor(buttonColor),
+                color: getForegroundColor(buttonColor),
+            },
+            secondaryButton: {
+                borderColor: ["background", "card", "border"].includes(buttonColor) ? getColor('border', '#E4E4E7') : getSchemeColor(buttonColor),
+                color: ["background", "card"].includes(buttonColor) ? getForegroundColor(backgroundColor) : getSchemeColor(buttonColor),
+                backgroundColor: 'transparent',
+            }
+        };
+    };
 
-            {/* Desktop Navigation */}
-            {showNavigation && navigationItems.length > 0 && (
-              <nav className={cn(
-                "hidden md:flex md:flex-1 md:items-center md:px-6",
-                getAlignmentClass()
-              )}>
-                <ul className={cn("flex space-x-10", alignment === "center" ? "mx-auto" : "")}>
-                  {navigationItems.map((item, index) => (
-                    <li key={index}>
-                      <Link 
-                        href={item.url} 
-                        className={cn(
-                          "text-sm font-medium transition-colors",
-                          colors.linkHover
-                        )}
-                      >
-                        {item.text}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </nav>
-            )}            {/* CTA Buttons */}
-            <div className="hidden md:flex md:items-center md:space-x-4">
-              {showSecondaryButton && (
-                <Link
-                  href={secondaryButtonUrl}
-                  className={cn(
-                    "inline-flex h-10 items-center justify-center rounded-md border px-5 py-2 text-sm font-medium shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
-                    colors.outlineButton,
-                  )}
-                >
-                  {secondaryButtonText}
-                </Link>
-              )}
-              {showPrimaryButton && (
-                <Link
-                  href={primaryButtonUrl}
-                  className={cn(
-                    "inline-flex h-10 items-center justify-center rounded-md px-5 py-2 text-sm font-medium shadow transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
-                    colors.primaryButton,
-                  )}
-                >
-                  {primaryButtonText}
-                </Link>
-              )}
-            </div>            {/* Mobile Menu Button */}
-            <div className="flex md:hidden">
-              <button
-                type="button"
-                className={cn(
-                  "inline-flex items-center justify-center rounded-md p-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
-                  colors.text,
-                  "hover:bg-accent hover:text-accent-foreground",
-                )}
-                onClick={() => setIsDrawerOpen(!isDrawerOpen)}
-                aria-expanded={isDrawerOpen}
-                aria-controls="mobile-menu"
-              >
-                <span className="sr-only">
-                  {isDrawerOpen ? "Close main menu" : "Open main menu"}
-                </span>
-                {isDrawerOpen ? (
-                  <X className="h-6 w-6" aria-hidden="true" />
-                ) : (
-                  <Menu className="h-6 w-6" aria-hidden="true" />
-                )}
-              </button>
-            </div>
-          </div>
-        </div>        {/* Mobile Drawer */}
-        {isDrawerOpen && (
-          <div className="fixed inset-0 z-40 md:hidden">
-            {/* Backdrop */}
-            <div 
-              className="fixed inset-0 bg-black/80 backdrop-blur-sm"
-              onClick={() => setIsDrawerOpen(false)}
-            />
-            
-            {/* Drawer Content */}            <div
-              className={cn(
-                "fixed inset-x-0 top-0 z-50 h-full overflow-y-auto border-b pt-16",
-                colors.text,
-                colors.border,
-                colors.mobileMenuBg === "gradient-overlay" ? colors.background : colors.mobileMenuBg,
-                getRoundedClass()
-              )}
+    const colorStyles = getColorStyles(backgroundColor, textColor, buttonColor);    const linksAlignmentClasses = {
+        left: "justify-start",
+        center: "justify-center",
+        right: "justify-end"
+    };
+    
+    return (
+        <header 
+            className={`${getSpacingClass(spacing)} ${sticky ? "sticky top-0 z-50" : ""}`}
+        >
+            <div
+                className={`w-full ${detached ? '' : 'border-b'}`}
+                style={{
+                    ...(detached
+                        ? {}
+                        : {
+                            ...colorStyles.header,
+                            borderBottomWidth: '1px',
+                            borderBottomStyle: 'solid',
+                        }
+                    ),
+                }}
             >
-              <div className="container mx-auto px-6">
-                <nav className="flex flex-col space-y-8 py-8">
-                  {showNavigation && navigationItems.length > 0 && (
-                    <ul className="flex flex-col space-y-6">
-                      {navigationItems.map((item, index) => (
-                        <li key={index}>
-                          <Link
-                            href={item.url}
-                            className={cn("text-lg font-medium transition-colors", colors.linkHover)}
-                            onClick={() => setIsDrawerOpen(false)}
-                          >
-                            {item.text}
-                          </Link>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                  
-                  {(showPrimaryButton || showSecondaryButton) && (
-                    <div className="flex flex-col space-y-4">
-                      {showPrimaryButton && (
-                        <Link
-                          href={primaryButtonUrl}
-                          className={cn(
-                            "inline-flex h-10 items-center justify-center rounded-md px-5 py-2 text-sm font-medium shadow transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
-                            colors.primaryButton,
-                          )}
-                          onClick={() => setIsDrawerOpen(false)}
+                <div
+                    className={`container mx-auto px-4 md:px-6 ${detached ? `border ${getRoundnessClass(roundness)} ${(sticky && isScrolled) || detached ? "shadow-lg" : ""}` : ''} transition-all duration-300`}
+                    style={{
+                        ...(detached
+                            ? {
+                                ...colorStyles.header,
+                                borderWidth: '1px',
+                                borderStyle: 'solid',
+                            }
+                            : {}
+                        ),
+                    }}
+                >
+                <div className="flex items-center justify-between h-16 md:h-20">
+                    {/* Logo */}
+                    <div className="flex-shrink-0">
+                        {logo ? (
+                            <Link href="/" className="flex items-center">
+                                <img
+                                    src={logo}
+                                    alt={logoAlt}
+                                    width={120}
+                                    height={40}
+                                    className="h-8 md:h-10 w-auto"
+                                />
+                            </Link>
+                        ) : (
+                            <Link href="/" className="text-xl md:text-2xl font-bold" style={colorStyles.text}>
+                                {logoAlt}
+                            </Link>
+                        )}
+                    </div>                    {/* Desktop Navigation */}
+                    <nav className="hidden md:flex items-center space-x-8">
+                        <div className={`flex space-x-6 ${linksAlignmentClasses[linksAlignment as keyof typeof linksAlignmentClasses]}`}>
+                            {links.map((link: LinkItem, index: number) => (
+                                <Link
+                                    key={index}
+                                    href={link.url || "#"}
+                                    className="text-sm lg:text-base font-medium hover:opacity-70 transition-opacity"
+                                    style={colorStyles.text}
+                                >
+                                    {link.text || `Link ${index + 1}`}
+                                </Link>
+                            ))}
+                        </div>
+                    </nav>
+
+                    {/* CTA Buttons and Mobile Menu Toggle */}
+                    <div className="flex items-center space-x-4">
+                        {/* CTA Buttons - Desktop */}
+                        <div className="hidden md:flex items-center space-x-3">
+                            {secondaryButtonText && (
+                                <Link
+                                    href={secondaryButtonLink}
+                                    className={`inline-flex items-center justify-center ${getRoundnessClass(buttonRoundness)} border-2 px-4 py-2 text-sm font-medium transition-all hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2`}
+                                    style={{
+                                        ...colorStyles.secondaryButton,
+                                        borderWidth: '2px',
+                                        borderStyle: 'solid',
+                                    }}
+                                >
+                                    {secondaryButtonText}
+                                </Link>
+                            )}
+                            {primaryButtonText && (
+                                <Link
+                                    href={primaryButtonLink}
+                                    className={`inline-flex items-center justify-center ${getRoundnessClass(buttonRoundness)} px-4 py-2 text-sm font-medium shadow-md transition-all hover:shadow-lg hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2`}
+                                    style={colorStyles.primaryButton}
+                                >
+                                    {primaryButtonText}
+                                </Link>
+                            )}
+                        </div>
+
+                        {/* Mobile Menu Toggle */}
+                        <button
+                            className="md:hidden p-2 rounded-md hover:bg-opacity-10 hover:bg-gray-500 transition-colors"
+                            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                            aria-label="Toggle mobile menu"
                         >
-                          {primaryButtonText}
-                        </Link>
-                      )}
-                      {showSecondaryButton && (
-                        <Link
-                          href={secondaryButtonUrl}
-                          className={cn(
-                            "inline-flex h-10 items-center justify-center rounded-md border px-5 py-2 text-sm font-medium shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
-                            colors.outlineButton,
-                          )}
-                          onClick={() => setIsDrawerOpen(false)}
-                        >
-                          {secondaryButtonText}
-                        </Link>
-                      )}
+                            <svg
+                                className="h-6 w-6"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                                style={colorStyles.text}
+                            >
+                                {isMobileMenuOpen ? (
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                ) : (
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                                )}
+                            </svg>
+                        </button>
                     </div>
-                  )}
-                </nav>
-              </div>
+                </div>                {/* Mobile Menu */}
+                {isMobileMenuOpen && (
+                    <div className="md:hidden py-4 border-t" style={{ borderColor: colorStyles.header.borderColor }}>
+                        <div className="flex flex-col space-y-4">
+                            {/* Mobile Navigation Links */}
+                            {links.map((link: LinkItem, index: number) => (
+                                <Link
+                                    key={index}
+                                    href={link.url || "#"}
+                                    className="text-base font-medium hover:opacity-70 transition-opacity py-2"
+                                    style={colorStyles.text}
+                                    onClick={() => setIsMobileMenuOpen(false)}
+                                >
+                                    {link.text || `Link ${index + 1}`}
+                                </Link>
+                            ))}
+
+                            {/* Mobile CTA Buttons */}
+                            <div className="flex flex-col space-y-3 pt-4">
+                                {secondaryButtonText && (
+                                    <Link
+                                        href={secondaryButtonLink}
+                                        className={`inline-flex items-center justify-center ${getRoundnessClass(buttonRoundness)} border-2 px-4 py-3 text-base font-medium transition-all hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2`}
+                                        style={{
+                                            ...colorStyles.secondaryButton,
+                                            borderWidth: '2px',
+                                            borderStyle: 'solid',
+                                        }}
+                                        onClick={() => setIsMobileMenuOpen(false)}
+                                    >
+                                        {secondaryButtonText}
+                                    </Link>
+                                )}
+                                {primaryButtonText && (
+                                    <Link
+                                        href={primaryButtonLink}
+                                        className={`inline-flex items-center justify-center ${getRoundnessClass(buttonRoundness)} px-4 py-3 text-base font-medium shadow-md transition-all hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2`}
+                                        style={colorStyles.primaryButton}
+                                        onClick={() => setIsMobileMenuOpen(false)}
+                                    >
+                                        {primaryButtonText}
+                                    </Link>
+                                )}                            </div>
+                        </div>
+                    </div>
+                )}
+                </div>
             </div>
-          </div>
-        )}
-      </header>
-    </div>
-  )
+        </header>
+    );
 }
 
 export const properties: BlockProperties = {
-  name: "Dynamic Header",
-  description: "A flexible header component with theme and layout options",
-  contentFields: {
-    logoText: {
-      type: "text",
-      name: "logoText",
-      label: "Logo Text",
-      description: "Text to display as logo (if no logo image is provided)",
-      defaultValue: "Your Brand"
-    },
-    logoImage: {
-      type: "image",
-      name: "logoImage",
-      label: "Logo Image",
-      description: "Upload a logo image",
-      defaultValue: ""
-    },
-    showLogo: {
-      type: "switch",
-      name: "showLogo",
-      label: "Show Logo",
-      description: "Display the logo in the header",
-      defaultValue: true
-    },
-    showNavigation: {
-      type: "switch",
-      name: "showNavigation",
-      label: "Show Navigation",
-      description: "Display navigation menu",
-      defaultValue: true
-    },
-    navigationItems: {
-      type: "list",
-      name: "navigationItems",
-      label: "Navigation Items",
-      description: "Configure navigation menu items",
-      value: {
-        name: "Navigation Item",
-        description: "A navigation menu item",
-        contentFields: {
-          text: {
+    name: "Dynamic Header",
+    description: "A flexible header component with theme and layout options",
+    
+    contentFields: {
+        logo: {
             type: "text",
-            name: "text",
-            label: "Link Text",
-            description: "Display text for the navigation link",
+            name: "logo",
+            label: "Logo URL",
+            description: "URL for the logo image",
             defaultValue: ""
-          },
-          url: {
-            type: "text",
-            name: "url",
-            label: "URL",
-            description: "Destination URL for the navigation link",
-            defaultValue: "#"
-          }
         },
-        themeFields: {},
-        layoutFields: {}
-      },
-      defaultValue: [
-        { text: "Home", url: "/" },
-        { text: "About", url: "/about" },
-        { text: "Services", url: "/services" },
-        { text: "Contact", url: "/contact" }
-      ]
+        logoAlt: {
+            type: "text",
+            name: "logoAlt",
+            label: "Logo Alt Text / Brand Name",
+            description: "Alt text for logo or brand name if no logo",
+            defaultValue: "Logo"
+        },        links: {
+            type: "list",
+            name: "links",
+            label: "Navigation Links",
+            description: "Navigation menu items",
+            value: {
+                name: "Navigation Link",
+                description: "A navigation link item",
+                contentFields: {
+                    text: {
+                        type: "text",
+                        name: "text",
+                        label: "Link Text",
+                        description: "Display text for the link",
+                        defaultValue: "Link"
+                    },
+                    url: {
+                        type: "text",
+                        name: "url",
+                        label: "Link URL",
+                        description: "URL for the link",
+                        defaultValue: "#"
+                    }
+                },
+                themeFields: {},
+                layoutFields: {}
+            },
+            defaultValue: [
+                { text: "Home", url: "/" },
+                { text: "About", url: "/about" },
+                { text: "Services", url: "/services" },
+                { text: "Contact", url: "/contact" }
+            ]
+        },
+        primaryButtonText: {
+            type: "text",
+            name: "primaryButtonText",
+            label: "Primary Button Text",
+            description: "Text for the primary CTA button",
+            defaultValue: ""
+        },
+        primaryButtonLink: {
+            type: "text",
+            name: "primaryButtonLink",
+            label: "Primary Button Link",
+            description: "URL for the primary button",
+            defaultValue: "#"
+        },
+        secondaryButtonText: {
+            type: "text",
+            name: "secondaryButtonText",
+            label: "Secondary Button Text",
+            description: "Text for the secondary CTA button",
+            defaultValue: ""
+        },
+        secondaryButtonLink: {
+            type: "text",
+            name: "secondaryButtonLink",
+            label: "Secondary Button Link",
+            description: "URL for the secondary button",
+            defaultValue: "#"
+        }
     },
-    primaryButtonText: {
-      type: "text",
-      name: "primaryButtonText",
-      label: "Primary Button Text",
-      description: "Text for the primary call-to-action button",
-      defaultValue: "Get Started"
-    },
-    primaryButtonUrl: {
-      type: "text",
-      name: "primaryButtonUrl",
-      label: "Primary Button URL",
-      description: "URL for the primary button",
-      defaultValue: "#"
-    },
-    secondaryButtonText: {
-      type: "text",
-      name: "secondaryButtonText",
-      label: "Secondary Button Text",
-      description: "Text for the secondary button",
-      defaultValue: "Learn More"
-    },
-    secondaryButtonUrl: {
-      type: "text",
-      name: "secondaryButtonUrl",
-      label: "Secondary Button URL",
-      description: "URL for the secondary button",
-      defaultValue: "#"
-    },
-    showPrimaryButton: {
-      type: "switch",
-      name: "showPrimaryButton",
-      label: "Show Primary Button",
-      description: "Display the primary call-to-action button",
-      defaultValue: true
-    },
-    showSecondaryButton: {
-      type: "switch",
-      name: "showSecondaryButton",
-      label: "Show Secondary Button",
-      description: "Display the secondary button",
-      defaultValue: false
+
+    themeFields: {
+        backgroundColor: {
+            type: "select",
+            name: "backgroundColor",
+            label: "Background Color",
+            description: "Choose the background color scheme",
+            options: backgroundThemeOptions,
+            defaultValue: "background"
+        },
+        textColor: {
+            type: "select",
+            name: "textColor",
+            label: "Text Color",
+            description: "Choose the text color scheme",
+            options: backgroundThemeOptions,
+            defaultValue: "foreground"
+        },
+        buttonColor: {
+            type: "select",
+            name: "buttonColor",
+            label: "Button Color",
+            description: "Choose the button color scheme",
+            options: backgroundThemeOptions,
+            defaultValue: "primary"
+        }
+    },    layoutFields: {
+        linksAlignment: {
+            type: "select",
+            name: "linksAlignment",
+            label: "Links Alignment",
+            description: "How to align the navigation links",
+            options: [
+                { label: "Left", value: "left" },
+                { label: "Center", value: "center" },
+                { label: "Right", value: "right" }
+            ],
+            defaultValue: "left"
+        },
+        detached: {
+            type: "switch",
+            name: "detached",
+            label: "Detached",
+            description: "Whether the header should be detached from the page edges with rounded corners and top spacing",
+            defaultValue: false
+        },
+        sticky: {
+            type: "switch",
+            name: "sticky",
+            label: "Sticky",
+            description: "Whether the header should stick to the top when scrolling",
+            defaultValue: false
+        },
+        spacing: {
+            type: "multi_toggle",
+            name: "spacing",
+            label: "Spacing",
+            description: "Add vertical padding to the header",
+            options: [
+                { label: "Top", value: "top" },
+                { label: "Bottom", value: "bottom" }
+            ],
+            defaultValue: []
+        },
+        roundness: {
+            type: "select",
+            name: "roundness",
+            label: "Roundness",
+            description: "Border radius for detached headers",
+            options: roundnessOptions,
+            defaultValue: "medium"
+        },
+        buttonRoundness: {
+            type: "select",
+            name: "buttonRoundness",
+            label: "Button Roundness",
+            description: "Border radius for buttons",
+            options: roundnessOptions,
+            defaultValue: "medium"
+        }
     }
-  },  themeFields: {
-    backgroundTheme: {
-      type: "select",
-      name: "backgroundTheme",
-      label: "Background Theme",
-      description: "Choose the background theme for the header",
-      options: backgroundThemeOptions,
-      defaultValue: "background"
-    },
-    gradientType: {
-      type: "select",
-      name: "gradientType",
-      label: "Gradient Type",
-      description: "Type of gradient effect",
-      options: [
-        { label: "None", value: "none" },
-        { label: "Linear", value: "linear" },
-        { label: "Radial", value: "radial" },
-        { label: "Conic", value: "conic" }
-      ],
-      defaultValue: "none"
-    },
-    gradientDirection: {
-      type: "select",
-      name: "gradientDirection",
-      label: "Gradient Direction",
-      description: "Direction of the gradient",
-      options: [
-        { label: "To Right", value: "to-right" },
-        { label: "To Left", value: "to-left" },
-        { label: "To Bottom", value: "to-bottom" },
-        { label: "To Top", value: "to-top" },
-        { label: "To Bottom Right", value: "to-bottom-right" },
-        { label: "To Bottom Left", value: "to-bottom-left" },
-        { label: "To Top Right", value: "to-top-right" },
-        { label: "To Top Left", value: "to-top-left" }
-      ],
-      defaultValue: "to-right"
-    },
-    gradientStyle: {
-      type: "select",
-      name: "gradientStyle",
-      label: "Gradient Style",
-      description: "Choose gradient color combination",
-      options: [
-        { label: "Subtle (Background to Muted)", value: "subtle" },
-        { label: "Bold (Primary to Secondary)", value: "bold" },
-        { label: "Vibrant (Accent to Primary)", value: "vibrant" }
-      ],
-      defaultValue: "subtle"
-    }
-  },
-  layoutFields: {
-    alignment: {
-      type: "select",
-      name: "alignment",
-      label: "Alignment",
-      description: "Navigation alignment",
-      options: [
-        { label: "Left", value: "left" },
-        { label: "Center", value: "center" },
-        { label: "Right", value: "right" },
-        { label: "Space Between", value: "space-between" }
-      ],
-      defaultValue: "left"
-    },
-    roundedCorners: {
-      type: "select",
-      name: "roundedCorners",
-      label: "Rounded Corners",
-      description: "Border radius (only visible in detached mode)",
-      options: [
-        { label: "None", value: "none" },
-        { label: "Small", value: "sm" },
-        { label: "Medium", value: "md" },
-        { label: "Large", value: "lg" },
-        { label: "Extra Large", value: "xl" },
-        { label: "Full", value: "full" }
-      ],
-      defaultValue: "none"
-    },
-    detachedMode: {
-      type: "switch",
-      name: "detachedMode",
-      label: "Detached Mode",
-      description: "Display header as a detached card with shadow",
-      defaultValue: false
-    }
-  }
 };

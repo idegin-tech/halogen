@@ -6,6 +6,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { Separator } from '@/components/ui/separator';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
@@ -23,7 +25,8 @@ import {
   X,
   FileText,
   Palette,
-  Layout
+  Layout,
+  Info
 } from 'lucide-react';
 import { getBlockProperties } from '@repo/ui/blocks';
 import { BlockConfigListValue, BlockFieldConfig, BlockProperties } from '@halogen/common/types';
@@ -40,6 +43,25 @@ export default function BlockConfigForm() {
 
   const [localFormState, setLocalFormState] = useState<Record<string, any>>({});
   const [localListItemsState, setLocalListItemsState] = useState<Record<string, Record<number, Record<string, any>>>>({});
+
+  // Helper component for field labels with tooltips
+  const FieldLabel = ({ label, description, htmlFor }: { label: string; description?: string; htmlFor?: string }) => (
+    <div className="flex items-center gap-1.5">
+      <label htmlFor={htmlFor} className="text-sm font-medium text-muted-foreground">
+        {label}
+      </label>
+      {description && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Info className="h-3.5 w-3.5 text-muted-foreground/60 hover:text-muted-foreground cursor-help" />
+          </TooltipTrigger>
+          <TooltipContent>
+            <p className="max-w-xs">{description}</p>
+          </TooltipContent>
+        </Tooltip>
+      )}
+    </div>
+  );
   useEffect(() => {
     const loadBlockProperties = async () => {
       if (!selectedBlock) {
@@ -431,15 +453,74 @@ export default function BlockConfigForm() {
               onChange={(value) => updateLocalListItemValue(fieldName, itemIndex, itemFieldName, value)}
               onBlur={() => commitListItemChange(fieldName, itemIndex, itemFieldName)}
               placeholder={itemField.placeholder || `Enter image URL or select from project`}
-              description={itemField.description}            />          </div>
-        );
+              description={itemField.description}            />          </div>        );
 
-      default:
+      case 'single_toggle':
         return (
           <div className="grid gap-1.5">
             <label htmlFor={`${fieldName}-${itemIndex}-${itemFieldName}`} className="text-sm font-medium text-muted-foreground">
               {itemField.label}
-            </label>
+            </label>            <ToggleGroup
+              type="single"
+              value={getListItemValue(fieldName, itemIndex, itemFieldName) ?? (value || itemField.defaultValue)}
+              onValueChange={(val: string) => {
+                updateLocalListItemValue(fieldName, itemIndex, itemFieldName, val);
+                commitListItemChange(fieldName, itemIndex, itemFieldName);
+              }}
+              className="justify-start"
+            >
+              {itemField.options?.map((option: any) => (
+                <ToggleGroupItem 
+                  key={option.value} 
+                  value={option.value}
+                  className="data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+                >
+                  {option.label}
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
+            {itemField.description && (
+              <p className="text-xs text-muted-foreground">{itemField.description}</p>
+            )}
+          </div>
+        );      case 'multi_toggle':
+        return (
+          <div className="grid gap-1.5">
+            <label htmlFor={`${fieldName}-${itemIndex}-${itemFieldName}`} className="text-sm font-medium text-muted-foreground">
+              {itemField.label}
+            </label>            <ToggleGroup
+              type="multiple"
+              variant="outline"
+              size="sm"
+              value={getListItemValue(fieldName, itemIndex, itemFieldName) ?? (value || itemField.defaultValue || [])}
+              onValueChange={(val: string[]) => {
+                updateLocalListItemValue(fieldName, itemIndex, itemFieldName, val);
+                commitListItemChange(fieldName, itemIndex, itemFieldName);
+              }}
+              className="justify-start gap-1 w-full"
+            >
+              {itemField.options?.map((option: any) => (
+                <ToggleGroupItem 
+                  key={option.value} 
+                  value={option.value}
+                  className="flex-1 min-w-0 px-3 py-2 text-xs font-medium transition-all duration-200 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-sm hover:bg-muted/50 border-muted-foreground/20 data-[state=on]:border-primary"
+                >
+                  <span className="truncate">{option.label}</span>
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
+            {itemField.description && (
+              <p className="text-xs text-muted-foreground">{itemField.description}</p>
+            )}
+          </div>
+        );default:
+        return (
+          <div className="grid gap-1.5">
+            <FieldLabel 
+              label={itemField.label} 
+              description={itemField.description}
+              htmlFor={`${fieldName}-${itemIndex}-${itemFieldName}`}
+            />
             <Input
               id={`${fieldName}-${itemIndex}-${itemFieldName}`}
               placeholder={itemField.placeholder || `Enter ${itemField.label.toLowerCase()}`}
@@ -453,9 +534,6 @@ export default function BlockConfigForm() {
               }}
               className="w-full"
             />
-            {itemField.description && (
-              <p className="text-xs text-muted-foreground">{itemField.description}</p>
-            )}
           </div>
         );
     }
@@ -586,11 +664,10 @@ export default function BlockConfigForm() {
       );
     }
 
-    switch (field.type) {
-      case 'text':
+    switch (field.type) {      case 'text':
         return (
           <div className="grid gap-1.5">
-            <label className="text-sm font-medium text-muted-foreground">{field.label}</label>
+            <FieldLabel label={field.label} description={field.description} />
             <Input
               placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}`}
               value={getFieldValue(fieldName) ?? value}
@@ -603,14 +680,11 @@ export default function BlockConfigForm() {
               }}
               className="w-full"
             />
-            {field.description && (
-              <p className="text-xs text-muted-foreground">{field.description}</p>
-            )}
           </div>
-        ); case 'textarea':
+        );      case 'textarea':
         return (
           <div className="grid gap-1.5">
-            <label className="text-sm font-medium text-muted-foreground">{field.label}</label>
+            <FieldLabel label={field.label} description={field.description} />
             <Textarea
               placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}`}
               value={getFieldValue(fieldName) ?? value}
@@ -618,16 +692,11 @@ export default function BlockConfigForm() {
               onBlur={() => commitFieldChange(fieldName)}
               className="w-full min-h-[100px] resize-none"
             />
-            {field.description && (
-              <p className="text-xs text-muted-foreground">{field.description}</p>
-            )}
           </div>
-        );
-
-      case 'select':
+        );      case 'select':
         return (
           <div className="grid gap-1.5">
-            <label className="text-sm font-medium text-muted-foreground">{field.label}</label>
+            <FieldLabel label={field.label} description={field.description} />
             <Select
               value={value}
               onValueChange={(val) => handleFieldChange(fieldName, val)}
@@ -643,13 +712,8 @@ export default function BlockConfigForm() {
                 ))}
               </SelectContent>
             </Select>
-            {field.description && (
-              <p className="text-xs text-muted-foreground">{field.description}</p>
-            )}
           </div>
-        );
-
-      case 'checkbox':
+        );      case 'checkbox':
         return (
           <div className="flex items-start space-x-3 bg-muted/30 hover:bg-muted/50 p-3 rounded-lg transition-colors border border-border">
             <div className="pt-0.5">
@@ -660,28 +724,44 @@ export default function BlockConfigForm() {
                 className="data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
               />
             </div>
-            <div>
-              <label
-                htmlFor={`checkbox-${fieldName}`}
-                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-              >
-                {field.label}
-              </label>
-              {field.description && (
-                <p className="text-xs text-muted-foreground mt-1">{field.description}</p>
-              )}
+            <div className="flex-1">
+              <div className="flex items-center gap-1.5">
+                <label
+                  htmlFor={`checkbox-${fieldName}`}
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                >
+                  {field.label}
+                </label>
+                {field.description && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info className="h-3.5 w-3.5 text-muted-foreground/60 hover:text-muted-foreground cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className="max-w-xs">{field.description}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+              </div>
             </div>
           </div>
-        );
-
-      case 'switch':
+        );      case 'switch':
         return (
           <div className="flex items-center justify-between bg-muted/30 hover:bg-muted/50 p-3 rounded-lg transition-colors border border-border">
             <div className="space-y-0.5">
-              <label className="text-sm font-medium text-muted-foreground">{field.label}</label>
-              {field.description && (
-                <p className="text-xs text-muted-foreground">{field.description}</p>
-              )}
+              <div className="flex items-center gap-1.5">
+                <label className="text-sm font-medium text-muted-foreground">{field.label}</label>
+                {field.description && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info className="h-3.5 w-3.5 text-muted-foreground/60 hover:text-muted-foreground cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className="max-w-xs">{field.description}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+              </div>
             </div>
             <div className="relative flex items-center">
               {value && (
@@ -696,10 +776,54 @@ export default function BlockConfigForm() {
               />
             </div>
           </div>
-        ); case 'url':
+        );      case 'single_toggle':
         return (
           <div className="grid gap-1.5">
-            <label className="text-sm font-medium text-muted-foreground">{field.label}</label>
+            <FieldLabel label={field.label} description={field.description} />
+            <ToggleGroup
+              type="single"
+              value={value || field.defaultValue}
+              onValueChange={(val: string) => handleFieldChange(fieldName, val)}
+              className="justify-start"
+            >
+              {field.options?.map((option: any) => (
+                <ToggleGroupItem 
+                  key={option.value} 
+                  value={option.value}
+                  className="data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+                >
+                  {option.label}
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
+          </div>
+        );      case 'multi_toggle':
+        return (
+          <div className="grid gap-1.5">
+            <FieldLabel label={field.label} description={field.description} />
+            <ToggleGroup
+              type="multiple"
+              variant="outline"
+              size="sm"
+              value={value || field.defaultValue || []}
+              onValueChange={(val: string[]) => handleFieldChange(fieldName, val)}
+              className="justify-start gap-1 w-full"
+            >
+              {field.options?.map((option: any) => (
+                <ToggleGroupItem 
+                  key={option.value} 
+                  value={option.value}
+                  className="flex-1 min-w-0 px-3 py-2 text-xs font-medium transition-all duration-200 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-sm hover:bg-muted/50 border-muted-foreground/20 data-[state=on]:border-primary"
+                >
+                  <span className="truncate">{option.label}</span>
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
+          </div>
+        );case 'url':
+        return (
+          <div className="grid gap-1.5">
+            <FieldLabel label={field.label} description={field.description} />
             <Input
               type="url"
               placeholder={field.placeholder || `Enter URL`}
@@ -713,11 +837,8 @@ export default function BlockConfigForm() {
               }}
               className="w-full"
             />
-            {field.description && (
-              <p className="text-xs text-muted-foreground">{field.description}</p>
-            )}
           </div>
-        ); case 'image':
+        );case 'image':
         return (
           <ImageInput
             label={field.label}
@@ -728,10 +849,10 @@ export default function BlockConfigForm() {
             description={field.description}
             fieldName={fieldName}
           />
-        ); case 'color':
+        );      case 'color':
         return (
           <div className="grid gap-1.5">
-            <label className="text-sm font-medium text-muted-foreground">{field.label}</label>
+            <FieldLabel label={field.label} description={field.description} />
             <div className="flex items-center gap-2">
               <input
                 type="color"
@@ -754,14 +875,12 @@ export default function BlockConfigForm() {
                 placeholder="#FFFFFF"
                 className="flex-1"
               />
-            </div>            {field.description && (
-              <p className="text-xs text-muted-foreground">{field.description}</p>
-            )}          </div>
-        ); 
-      default:
+            </div>
+          </div>
+        );      default:
         return (
           <div className="grid gap-1.5">
-            <label className="text-sm font-medium text-muted-foreground">{field.label}</label>
+            <FieldLabel label={field.label} description={field.description} />
             <Input
               placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}`}
               value={getFieldValue(fieldName) ?? value}
@@ -774,9 +893,6 @@ export default function BlockConfigForm() {
               }}
               className="w-full"
             />
-            {field.description && (
-              <p className="text-xs text-muted-foreground">{field.description}</p>
-            )}
           </div>
         );
     }
