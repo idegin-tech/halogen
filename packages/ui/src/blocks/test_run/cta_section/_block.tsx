@@ -21,12 +21,12 @@ export function CTASection(fields: typeof properties.contentFields & typeof prop
     const layout = fields?.layout?.value || "center";
     const buttonLayout = fields?.buttonLayout?.value || "both";
     const detached = fields?.detached?.value || false;
-    const spacing = fields?.spacing?.value || [];    const roundness = fields?.roundness?.value || "medium";
+    const spacing = fields?.spacing?.value || [];    
+    const roundness = fields?.roundness?.value || "medium";
     const buttonRoundness = fields?.buttonRoundness?.value || "medium";
     const borderWidth = fields?.borderWidth?.value || "none";
     const shadowSize = fields?.shadowSize?.value || "none";
 
-    // Individual color selections
     const backgroundColor = fields?.backgroundColor?.value || "background";
     const headingColor = fields?.headingColor?.value || "foreground";
     const paragraphColor = fields?.paragraphColor?.value || "muted-foreground";

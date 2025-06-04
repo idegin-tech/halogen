@@ -21,11 +21,10 @@ export default function PageOutline() {
     const [expandedBlocks, setExpandedBlocks] = useState<Set<string>>(new Set());
     const [blockNames, setBlockNames] = useState<Record<string, string>>({});
 
-    // Initialize DnD sensors
     const sensors = useSensors(
         useSensor(PointerSensor, {
             activationConstraint: {
-                distance: 5, // Minimum drag distance required before activation
+                distance: 5, 
             },
         }),
         useSensor(KeyboardSensor, {
@@ -33,7 +32,6 @@ export default function PageOutline() {
         })
     );
 
-    // Filter blocks for the selected page
     useEffect(() => {
         if (!state.selectedPageId) {
             setBlocks([]);
@@ -47,7 +45,6 @@ export default function PageOutline() {
         setBlocks(pageBlocks);
     }, [state.blocks, state.selectedPageId]);
 
-    // Load block names
     useEffect(() => {
         const loadBlockNames = async () => {
             const names: Record<string, string> = {};
@@ -71,7 +68,6 @@ export default function PageOutline() {
         loadBlockNames();
     }, [blocks]);
 
-    // Toggle the expanded state of a block
     const toggleExpanded = (blockId: string) => {
         setExpandedBlocks(prev => {
             const newSet = new Set(prev);
@@ -84,7 +80,6 @@ export default function PageOutline() {
         });
     };
 
-    // Handle drag end event - update block order
     const handleDragEnd = (event: DragEndEvent) => {
         const { active, over } = event;
 
@@ -93,16 +88,13 @@ export default function PageOutline() {
             const newIndex = blocks.findIndex(block => block.instance_id === over.id);
 
             if (oldIndex !== -1 && newIndex !== -1) {
-                // Reorder blocks locally
                 const newBlocks = arrayMove(blocks, oldIndex, newIndex);
 
-                // Update indexes
                 const updatedBlocks = newBlocks.map((block, index) => ({
                     ...block,
                     index
                 }));
 
-                // Update the builder context with the new order
                 updateBuilderState({
                     blocks: state.blocks.map(block => {
                         const updatedBlock = updatedBlocks.find(b => b.instance_id === block.instance_id);
