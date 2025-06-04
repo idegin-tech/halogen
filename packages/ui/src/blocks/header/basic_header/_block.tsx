@@ -2,15 +2,17 @@
 
 import { BlockProperties } from "@halogen/common/types";
 
-
 interface ColorVariables {
   [key: string]: string;
 }
 
-export function BasicHeader(fields: typeof properties.contentFields & typeof properties.themeFields & typeof properties.layoutFields & { colorVariables?: ColorVariables }) {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function BasicHeader(_fields: typeof properties.contentFields & typeof properties.themeFields & typeof properties.layoutFields & { colorVariables?: ColorVariables }) {
   return (
-    <header>
-      Basic Header
+    <header className="bg-background text-foreground border-b border-border py-4">
+      <div className="container mx-auto px-4">
+        Basic Header
+      </div>
     </header>
   );
 }

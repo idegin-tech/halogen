@@ -3,7 +3,8 @@
 import React from 'react'
 import Link from "next/link"
 import { BlockProperties } from "@halogen/common/types";
-import { backgroundThemeOptions, roundnessOptions, shadowOptions, shadowColorOptions } from '../../../config';
+import { backgroundThemeOptions, roundnessOptions, shadowOptions } from '../../../config';
+import { cn } from '../../../utils/classNames';
 
 interface ColorVariables {
     [key: string]: string;
@@ -20,38 +21,87 @@ export function CTASection(fields: typeof properties.contentFields & typeof prop
     const layout = fields?.layout?.value || "center";
     const buttonLayout = fields?.buttonLayout?.value || "both";
     const detached = fields?.detached?.value || false;
-    const spacing = fields?.spacing?.value || [];
-    const roundness = fields?.roundness?.value || "medium";
+    const spacing = fields?.spacing?.value || [];    const roundness = fields?.roundness?.value || "medium";
     const buttonRoundness = fields?.buttonRoundness?.value || "medium";
     const borderWidth = fields?.borderWidth?.value || "none";
     const shadowSize = fields?.shadowSize?.value || "none";
-    const shadowColor = fields?.shadowColor?.value || "border";
 
     // Individual color selections
     const backgroundColor = fields?.backgroundColor?.value || "background";
-    const headingColor = fields?.headingColor?.value || "primary";
-    const paragraphColor = fields?.paragraphColor?.value || "muted";
+    const headingColor = fields?.headingColor?.value || "foreground";
+    const paragraphColor = fields?.paragraphColor?.value || "muted-foreground";
     const buttonColor = fields?.buttonColor?.value || "primary";
     const borderColor = fields?.borderColor?.value || "border";
 
-    const colorVariables = fields?.colorVariables || {}; const getColor = (colorKey: string, fallback: string) => {
-        return colorVariables[colorKey] || fallback;
-    }; const getRoundnessClass = (roundness: string) => {
-        switch (roundness) {
-            case "none":
-                return "";
-            case "medium":
-                return "rounded-lg";
-            case "large":
-                return "rounded-xl";
-            case "extra-large":
-                return "rounded-2xl";
-            case "full":
-                return "rounded-full";
-            default:
-                return "rounded-lg";
+    const getBackgroundColorClass = (colorName: string) => {
+        switch (colorName) {
+            case "primary": return "bg-primary";
+            case "primary-foreground": return "bg-primary-foreground";
+            case "secondary": return "bg-secondary";
+            case "secondary-foreground": return "bg-secondary-foreground";
+            case "background": return "bg-background";
+            case "foreground": return "bg-foreground";
+            case "muted": return "bg-muted";
+            case "muted-foreground": return "bg-muted-foreground";
+            case "card": return "bg-card";
+            case "card-foreground": return "bg-card-foreground";
+            case "accent": return "bg-accent";
+            case "accent-foreground": return "bg-accent-foreground";
+            case "border": return "bg-border";
+            default: return "bg-background";
         }
-    }; const getSpacingClass = (spacing: string[]) => {
+    };
+
+    const getTextColorClass = (colorName: string) => {
+        switch (colorName) {
+            case "primary": return "text-primary";
+            case "primary-foreground": return "text-primary-foreground";
+            case "secondary": return "text-secondary";
+            case "secondary-foreground": return "text-secondary-foreground";
+            case "background": return "text-background";
+            case "foreground": return "text-foreground";
+            case "muted": return "text-muted";
+            case "muted-foreground": return "text-muted-foreground";
+            case "card": return "text-card";
+            case "card-foreground": return "text-card-foreground";
+            case "accent": return "text-accent";
+            case "accent-foreground": return "text-accent-foreground";
+            case "border": return "text-border";
+            default: return "text-foreground";
+        }
+    };
+
+    const getBorderColorClass = (colorName: string) => {
+        switch (colorName) {
+            case "primary": return "border-primary";
+            case "primary-foreground": return "border-primary-foreground";
+            case "secondary": return "border-secondary";
+            case "secondary-foreground": return "border-secondary-foreground";
+            case "background": return "border-background";
+            case "foreground": return "border-foreground";
+            case "muted": return "border-muted";
+            case "muted-foreground": return "border-muted-foreground";
+            case "card": return "border-card";
+            case "card-foreground": return "border-card-foreground";
+            case "accent": return "border-accent";
+            case "accent-foreground": return "border-accent-foreground";
+            case "border": return "border-border";
+            default: return "border-border";
+        }
+    };
+
+    const getRoundnessClass = (roundness: string) => {
+        switch (roundness) {
+            case "none": return "";
+            case "medium": return "rounded-lg";
+            case "large": return "rounded-xl";
+            case "extra-large": return "rounded-2xl";
+            case "full": return "rounded-full";
+            default: return "rounded-lg";
+        }
+    };
+
+    const getSpacingClass = (spacing: string[]) => {
         const classes = [];
         if (spacing.includes('top')) {
             classes.push('pt-16');
@@ -60,141 +110,26 @@ export function CTASection(fields: typeof properties.contentFields & typeof prop
             classes.push('pb-16');
         }
         return classes.join(' ');
-    };    const getBorderWidthClass = (borderWidth: string) => {
-        switch (borderWidth) {
-            case "none":
-                return "";
-            case "small":
-                return "border";
-            case "large":
-                return "border-4";
-            case "extra-large":
-                return "border-8";
-            default:
-                return "";
-        }
-    };    const getShadowStyle = (shadowSize: string, shadowColor: string) => {
-        if (shadowSize === "none") return {};
-        
-        const shadowColorValue = (() => {
-            switch (shadowColor) {
-                case "primary":
-                    return getColor('primary', '#6D3DF2');
-                case "secondary":
-                    return getColor('secondary', '#F55B00');
-                case "accent":
-                    return getColor('accent', '#F1F5F9');
-                case "muted":
-                    return getColor('muted', '#F5F5F6');
-                case "border":
-                    return getColor('border', '#E4E4E7');
-                default:
-                    return getColor('border', '#E4E4E7');
-            }
-        })();
-
-        // Convert hex to rgba for shadow
-        const hexToRgba = (hex: string, alpha: number = 0.25) => {
-            const r = parseInt(hex.slice(1, 3), 16);
-            const g = parseInt(hex.slice(3, 5), 16);
-            const b = parseInt(hex.slice(5, 7), 16);
-            return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-        };
-
-        const shadowColorRgba = hexToRgba(shadowColorValue, 0.25);
-
-        switch (shadowSize) {
-            case "small":
-                return { boxShadow: `0 1px 2px 0 ${shadowColorRgba}` };
-            case "large":
-                return { boxShadow: `0 10px 15px -3px ${shadowColorRgba}, 0 4px 6px -2px ${hexToRgba(shadowColorValue, 0.05)}` };
-            case "extra-large":
-                return { boxShadow: `0 25px 50px -12px ${shadowColorRgba}` };
-            default:
-                return {};
-        }
-    };const getColorStyles = (backgroundColor: string, headingColor: string, paragraphColor: string, buttonColor: string, borderColor: string, shadowColor: string) => {// Helper function to get foreground color for a given color scheme
-        const getForegroundColor = (colorScheme: string) => {
-            switch (colorScheme) {
-                case "primary":
-                    return getColor('primary-foreground', '#FAFAFA');
-                case "primary-foreground":
-                    return getColor('primary', '#6D3DF2');
-                case "secondary":
-                    return getColor('secondary-foreground', '#0F0F10');
-                case "secondary-foreground":
-                    return getColor('secondary', '#F55B00');
-                case "muted":
-                    return getColor('muted-foreground', '#757578');
-                case "muted-foreground":
-                    return getColor('muted', '#F5F5F6'); case "card":
-                    return getColor('card-foreground', '#0A0A0A');
-                case "card-foreground":
-                    return getColor('card', '#FFFFFF');
-                case "accent":
-                    return getColor('accent-foreground', '#FAFAFA');
-                case "accent-foreground":
-                    return getColor('accent', '#F1F5F9');
-                case "foreground":
-                    return getColor('background', '#FFFFFF');
-                case "border":
-                    return getColor('foreground', '#0A0A0A');
-                default: // background
-                    return getColor('foreground', '#0A0A0A');
-            }
-        };
-
-        // Helper function to get color value for a given color scheme
-        const getSchemeColor = (colorScheme: string) => {
-            switch (colorScheme) {
-                case "primary":
-                    return getColor('primary', '#6D3DF2');
-                case "primary-foreground":
-                    return getColor('primary-foreground', '#FAFAFA');
-                case "secondary":
-                    return getColor('secondary', '#F55B00');
-                case "secondary-foreground":
-                    return getColor('secondary-foreground', '#0F0F10');
-                case "muted":
-                    return getColor('muted', '#F5F5F6');
-                case "muted-foreground":
-                    return getColor('muted-foreground', '#757578'); case "card":
-                    return getColor('card', '#FFFFFF');
-                case "card-foreground":
-                    return getColor('card-foreground', '#0A0A0A');
-                case "accent":
-                    return getColor('accent', '#F1F5F9');
-                case "accent-foreground":
-                    return getColor('accent-foreground', '#0F172A');
-                case "foreground":
-                    return getColor('foreground', '#0A0A0A');
-                case "border":
-                    return getColor('border', '#E4E4E7');
-                default: // background
-                    return getColor('background', '#FFFFFF');
-            }
-        };        return {
-            section: {
-                backgroundColor: getSchemeColor(backgroundColor),
-                borderColor: getSchemeColor(borderColor),
-                ...getShadowStyle(shadowSize, shadowColor),
-            },heading: {
-                color: ["background", "card"].includes(headingColor) ? getForegroundColor(backgroundColor) : getSchemeColor(headingColor),
-            }, subtitle: {
-                color: ["background", "card"].includes(paragraphColor) ? getForegroundColor(backgroundColor) : getSchemeColor(paragraphColor),
-            },
-            primaryButton: {
-                backgroundColor: getSchemeColor(buttonColor),
-                color: getForegroundColor(buttonColor),
-            }, secondaryButton: {
-                borderColor: ["background", "card", "border"].includes(buttonColor) ? getColor('border', '#E4E4E7') : getSchemeColor(buttonColor),
-                color: ["background", "card"].includes(buttonColor) ? getForegroundColor(backgroundColor) : getSchemeColor(buttonColor),
-                backgroundColor: 'transparent',
-            }
-        };
     };
 
-    const colorStyles = getColorStyles(backgroundColor, headingColor, paragraphColor, buttonColor, borderColor, shadowColor);
+    const getBorderWidthClass = (borderWidth: string) => {
+        switch (borderWidth) {
+            case "none": return "";
+            case "small": return "border";
+            case "large": return "border-4";
+            case "extra-large": return "border-8";
+            default: return "";
+        }
+    };
+
+    const getShadowClass = (shadowSize: string) => {
+        switch (shadowSize) {
+            case "small": return "shadow-sm";
+            case "large": return "shadow-lg";
+            case "extra-large": return "shadow-xl";
+            default: return "";
+        }
+    };
 
     const showPrimary = buttonLayout === "primary" || buttonLayout === "both";
     const showSecondary = buttonLayout === "secondary" || buttonLayout === "both";
@@ -209,69 +144,108 @@ export function CTASection(fields: typeof properties.contentFields & typeof prop
         center: "justify-center",
         left: "justify-start",
         right: "justify-end"
-    };    return (
+    };
+
+    const buttonColorClasses = {
+        primary: cn("bg-primary text-primary-foreground hover:bg-primary/90"),
+        secondary: cn("bg-secondary text-secondary-foreground hover:bg-secondary/90"),
+        background: cn("bg-background text-foreground hover:bg-muted/50"),
+        foreground: cn("bg-foreground text-background hover:bg-foreground/90"),
+        muted: cn("bg-muted text-muted-foreground hover:bg-muted/50"),
+        accent: cn("bg-accent text-accent-foreground hover:bg-accent/90"),
+        border: cn("bg-border text-foreground hover:bg-border/90"),
+        card: cn("bg-card text-card-foreground hover:bg-card/90")
+    };
+
+    const secondaryButtonColorClasses = {
+        primary: cn("border-primary text-primary hover:bg-primary/10"),
+        secondary: cn("border-secondary text-secondary hover:bg-secondary/10"),
+        background: cn("border-background text-foreground hover:bg-background/10"),
+        foreground: cn("border-foreground text-foreground hover:bg-foreground/10"),
+        muted: cn("border-muted text-muted-foreground hover:bg-muted/10"),
+        accent: cn("border-accent text-accent-foreground hover:bg-accent/10"),
+        border: cn("border-border text-foreground hover:bg-border/10"),
+        card: cn("border-card text-card-foreground hover:bg-card/10")
+    };
+
+    return (
         <section
             className={getSpacingClass(spacing)}
         >
             <div
-                className={`w-full ${detached ? '' : getBorderWidthClass(borderWidth) || 'border-y'}`}
-                style={{
-                    ...(detached
-                        ? {}
-                        : {
-                            ...colorStyles.section,
-                            borderTopWidth: borderWidth === 'none' ? '1px' : undefined,
-                            borderBottomWidth: borderWidth === 'none' ? '1px' : undefined,
-                            borderTopStyle: 'solid',
-                            borderBottomStyle: 'solid',
-                        }
-                    ),
-                }}
-            >                <div
-                    className={`container md:py-24 py-16 mx-auto px-4 md:px-6 ${detached ? `${getBorderWidthClass(borderWidth)} ${getRoundnessClass(roundness)}` : ''}`}
-                    style={{
-                        ...(detached
-                            ? {
-                                ...colorStyles.section,
-                                borderStyle: 'solid',
-                            }
-                            : {}
-                        ),
-                    }}
+                className={cn(
+                    "w-full",
+                    getBackgroundColorClass(backgroundColor),
+                    !detached && (getBorderWidthClass(borderWidth) || 'border-y'),
+                    !detached && getBorderColorClass(borderColor),
+                    getShadowClass(shadowSize)
+                )}
+            >
+                <div
+                    className={cn(
+                        "container md:py-24 py-16 mx-auto px-4 md:px-6",
+                        detached && getBorderWidthClass(borderWidth),
+                        detached && getBorderColorClass(borderColor),
+                        detached && getRoundnessClass(roundness),
+                        detached && getBackgroundColorClass(backgroundColor),
+                        detached && getShadowClass(shadowSize)
+                    )}
                 >
-                    <div className={`max-w-4xl mx-auto ${layoutClasses[layout as keyof typeof layoutClasses]}`}>
+                    <div className={cn(
+                        "max-w-4xl mx-auto",
+                        layoutClasses[layout as keyof typeof layoutClasses]
+                    )}>
                         <h2
-                            className="text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight mb-4 md:mb-6"
-                            style={colorStyles.heading}
+                            className={cn(
+                                "text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight mb-4 md:mb-6",
+                                getTextColorClass(headingColor)
+                            )}
                         >
                             {title}
                         </h2>
 
                         <p
-                            className="text-lg md:text-xl mb-8 md:mb-10 max-w-2xl mx-auto"
-                            style={colorStyles.subtitle}
+                            className={cn(
+                                "text-lg md:text-xl mb-8 md:mb-10 max-w-2xl mx-auto",
+                                getTextColorClass(paragraphColor)
+                            )}
                         >
                             {subtitle}
                         </p>
 
-                        <div className={`flex flex-col sm:flex-row gap-4 sm:gap-6 items-center ${buttonContainerClasses[layout as keyof typeof buttonContainerClasses]}`}>                            {showPrimary && (<Link
-                                href={primaryButtonLink}
-                                className={`inline-flex h-12 md:h-14 items-center justify-center ${getRoundnessClass(buttonRoundness)} px-8 md:px-10 py-3 text-base md:text-lg font-semibold shadow-lg transition-all hover:shadow-xl hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 w-full sm:w-auto`}
-                                style={colorStyles.primaryButton}
-                            >
-                                {primaryButtonText}
-                            </Link>
+                        <div className={cn(
+                            "flex flex-col sm:flex-row gap-4 sm:gap-6 items-center",
+                            buttonContainerClasses[layout as keyof typeof buttonContainerClasses]
+                        )}>
+                            {showPrimary && (
+                                <Link
+                                    href={primaryButtonLink}
+                                    className={cn(
+                                        "inline-flex h-12 md:h-14 items-center justify-center",
+                                        getRoundnessClass(buttonRoundness),
+                                        "px-8 md:px-10 py-3 text-base md:text-lg font-semibold shadow-lg",
+                                        "transition-all hover:shadow-xl hover:scale-105",
+                                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                                        "w-full sm:w-auto",
+                                        buttonColorClasses[buttonColor as keyof typeof buttonColorClasses] || buttonColorClasses.primary
+                                    )}
+                                >
+                                    {primaryButtonText}
+                                </Link>
                             )}
 
                             {showSecondary && (
                                 <Link
                                     href={secondaryButtonLink}
-                                    className={`inline-flex h-12 md:h-14 items-center justify-center ${getRoundnessClass(buttonRoundness)} border-2 px-8 md:px-10 py-3 text-base md:text-lg font-semibold transition-all hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 w-full sm:w-auto`}
-                                    style={{
-                                        ...colorStyles.secondaryButton,
-                                        borderWidth: '2px',
-                                        borderStyle: 'solid',
-                                    }}
+                                    className={cn(
+                                        "inline-flex h-12 md:h-14 items-center justify-center",
+                                        getRoundnessClass(buttonRoundness),
+                                        "border-2 px-8 md:px-10 py-3 text-base md:text-lg font-semibold",
+                                        "transition-all hover:shadow-md",
+                                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                                        "w-full sm:w-auto",
+                                        secondaryButtonColorClasses[buttonColor as keyof typeof secondaryButtonColorClasses] || secondaryButtonColorClasses.primary
+                                    )}
                                 >
                                     {secondaryButtonText}
                                 </Link>
@@ -342,13 +316,14 @@ export const properties: BlockProperties = {
             description: "Choose the background color scheme",
             options: backgroundThemeOptions,
             defaultValue: "background"
-        }, headingColor: {
+        }, 
+        headingColor: {
             type: "select",
             name: "headingColor",
             label: "Heading Color",
             description: "Choose the heading color scheme",
             options: backgroundThemeOptions,
-            defaultValue: "primary"
+            defaultValue: "foreground"
         },
         paragraphColor: {
             type: "select",
@@ -357,7 +332,8 @@ export const properties: BlockProperties = {
             description: "Choose the paragraph color scheme",
             options: backgroundThemeOptions,
             defaultValue: "muted"
-        },        buttonColor: {
+        },        
+        buttonColor: {
             type: "select",
             name: "buttonColor",
             label: "Button Color",
@@ -372,7 +348,8 @@ export const properties: BlockProperties = {
             description: "Choose the border color scheme",
             options: backgroundThemeOptions,
             defaultValue: "border"
-        },        borderWidth: {
+        },        
+        borderWidth: {
             type: "select",
             name: "borderWidth",
             label: "Border Width",
@@ -384,22 +361,13 @@ export const properties: BlockProperties = {
                 { label: "Extra Large", value: "extra-large" }
             ],
             defaultValue: "none"
-        },
-        shadowSize: {
+        },        shadowSize: {
             type: "select",
             name: "shadowSize",
             label: "Shadow Size",
             description: "Shadow size for the section",
             options: shadowOptions,
             defaultValue: "none"
-        },
-        shadowColor: {
-            type: "select",
-            name: "shadowColor",
-            label: "Shadow Color",
-            description: "Choose the shadow color scheme",
-            options: shadowColorOptions,
-            defaultValue: "border"
         },
         roundness: {
             type: "select",

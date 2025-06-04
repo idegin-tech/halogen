@@ -91,7 +91,7 @@ export const colorVariables: Variable[] = [
         name: 'Muted',
         key: '--muted',
         type: 'color',
-        primaryValue: "#F5F5F6",
+        primaryValue: "#767C93",
         secondaryValue: "#262628",
         variableSet: 'set_colors',
     },

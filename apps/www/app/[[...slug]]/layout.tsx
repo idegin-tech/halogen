@@ -88,13 +88,10 @@ export default async function RootLayout({
   
   try {
     const projectData = await fetchProjectData(subdomain, '/', [`${subdomain}-layout`]);
-    console.log('THE PROJECT KEYS::', Object.keys(projectData))
+    // console.log('THE PROJECT KEYS::', Object.keys(projectData))
+    // console.log('VARIABLES :::', projectData?.variables)
 
-    if (!projectData) {
-      console.warn(`No project data found for subdomain ${subdomain}. Using default variables.`);
-    } else if (!projectData.variables) {
-      console.warn(`Project data returned but no variables found for subdomain: ${subdomain}`);
-    } else {
+    if (projectData?.variables) {
       projectVariables = projectData.variables;
       
       if (projectData.settings) {
@@ -124,12 +121,14 @@ export default async function RootLayout({
     })
     .join('\n        ');
 
-    console.log('\n\n')
-    console.log({
-      headingFont,
-      bodyFont,
-      googleFontsUrl
-    })
+    // console.log('\n\n')
+    // console.log({
+    //   headingFont,
+    //   bodyFont,
+    //   googleFontsUrl
+    // })
+
+    console.log(`FORMATTED VARIABLES:::`, tailwindThemeVariables)
 
   return (
     <html lang="en">
@@ -154,7 +153,7 @@ export default async function RootLayout({
         </style>
       </head>
       <body
-        className={`antialiased bg-background text-foreground min-h-screen grid grid-cols-1`}
+        className={`antialiased min-h-screen grid grid-cols-1`}
         style={{
           fontFamily: bodyFont ? `"${bodyFont}", sans-serif` : undefined
         }}

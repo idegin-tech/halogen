@@ -14,14 +14,13 @@ export default function Error({
     <div className="container mx-auto p-8">
       <h1 className="text-3xl font-bold mb-6">Something went wrong</h1>
       <p className="mb-4">We encountered an error while loading this page.</p>
-      <div className="flex gap-4">
-        <button
+      <div className="flex gap-4">        <button
           onClick={() => reset()}
-          className="px-4 py-2 bg-primary text-white rounded hover:bg-primary/90"
+          className="px-4 py-2 rounded"
         >
           Try again
         </button>
-        <Link href="/" className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50">
+        <Link href="/" className="px-4 py-2 border rounded">
           Return Home
         </Link>
       </div>

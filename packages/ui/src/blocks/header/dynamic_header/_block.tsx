@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react'
 import Link from "next/link"
 import { BlockProperties } from "@halogen/common/types"
 import { backgroundThemeOptions, roundnessOptions } from '../../../config'
+import { cn } from '../../../utils/classNames'
 
 interface ColorVariables {
   [key: string]: string;
@@ -27,7 +28,9 @@ export function DynamicHeader(fields: typeof properties.contentFields & typeof p
     const primaryButtonText = fields?.primaryButtonText?.value || "";
     const primaryButtonLink = fields?.primaryButtonLink?.value || "#";
     const secondaryButtonText = fields?.secondaryButtonText?.value || "";
-    const secondaryButtonLink = fields?.secondaryButtonLink?.value || "#";    // Layout fields
+    const secondaryButtonLink = fields?.secondaryButtonLink?.value || "#";
+
+    // Layout fields
     const linksAlignment = fields?.linksAlignment?.value || "left";
     const detached = fields?.detached?.value || false;
     const sticky = fields?.sticky?.value || false;
@@ -40,26 +43,75 @@ export function DynamicHeader(fields: typeof properties.contentFields & typeof p
     const textColor = fields?.textColor?.value || "foreground";
     const buttonColor = fields?.buttonColor?.value || "primary";
 
-    const colorVariables = fields?.colorVariables || {};
-
-    const getColor = (colorKey: string, fallback: string) => {
-        return colorVariables[colorKey] || fallback;
-    };    const getRoundnessClass = (roundness: string) => {
-        switch (roundness) {
-            case "none":
-                return "";
-            case "medium":
-                return "rounded-lg";
-            case "large":
-                return "rounded-xl";
-            case "extra-large":
-                return "rounded-2xl";
-            case "full":
-                return "rounded-full";
-            default:
-                return "rounded-lg";
+    const getBackgroundColorClass = (colorName: string) => {
+        switch (colorName) {
+            case "primary": return "bg-primary";
+            case "primary-foreground": return "bg-primary-foreground";
+            case "secondary": return "bg-secondary";
+            case "secondary-foreground": return "bg-secondary-foreground";
+            case "background": return "bg-background";
+            case "foreground": return "bg-foreground";
+            case "muted": return "bg-muted";
+            case "muted-foreground": return "bg-muted-foreground";
+            case "card": return "bg-card";
+            case "card-foreground": return "bg-card-foreground";
+            case "accent": return "bg-accent";
+            case "accent-foreground": return "bg-accent-foreground";
+            case "border": return "bg-border";
+            default: return "bg-background";
         }
-    };    const getSpacingClass = (spacing: string[]) => {
+    };
+
+    const getTextColorClass = (colorName: string) => {
+        switch (colorName) {
+            case "primary": return "text-primary";
+            case "primary-foreground": return "text-primary-foreground";
+            case "secondary": return "text-secondary";
+            case "secondary-foreground": return "text-secondary-foreground";
+            case "background": return "text-background";
+            case "foreground": return "text-foreground";
+            case "muted": return "text-muted";
+            case "muted-foreground": return "text-muted-foreground";
+            case "card": return "text-card";
+            case "card-foreground": return "text-card-foreground";
+            case "accent": return "text-accent";
+            case "accent-foreground": return "text-accent-foreground";
+            case "border": return "text-border";
+            default: return "text-foreground";
+        }
+    };
+
+    const getBorderColorClass = (colorName: string) => {
+        switch (colorName) {
+            case "primary": return "border-primary";
+            case "primary-foreground": return "border-primary-foreground";
+            case "secondary": return "border-secondary";
+            case "secondary-foreground": return "border-secondary-foreground";
+            case "background": return "border-background";
+            case "foreground": return "border-foreground";
+            case "muted": return "border-muted";
+            case "muted-foreground": return "border-muted-foreground";
+            case "card": return "border-card";
+            case "card-foreground": return "border-card-foreground";
+            case "accent": return "border-accent";
+            case "accent-foreground": return "border-accent-foreground";
+            case "border": return "border-border";
+            default: return "border-border";
+        }
+    };
+
+    const getRoundnessClass = (roundness: string) => {
+        switch (roundness) {
+            case "none": return "";
+            case "medium": return "rounded-lg";
+            case "large": return "rounded-xl";
+            case "extra-large": return "rounded-2xl";
+            case "full": return "rounded-full";
+            default: return "rounded-lg";
+        }
+    };
+
+    const getSpacingClass = (spacing: string[]) => {
         const classes = [];
         if (spacing.includes('top')) {
             classes.push('pt-8');
@@ -81,91 +133,29 @@ export function DynamicHeader(fields: typeof properties.contentFields & typeof p
         return () => window.removeEventListener('scroll', handleScroll);
     }, [sticky]);
 
-    const getColorStyles = (backgroundColor: string, textColor: string, buttonColor: string) => {
-        const getForegroundColor = (colorScheme: string) => {
-            switch (colorScheme) {
-                case "primary":
-                    return getColor('primary-foreground', '#FAFAFA');
-                case "primary-foreground":
-                    return getColor('primary', '#6D3DF2');
-                case "secondary":
-                    return getColor('secondary-foreground', '#0F0F10');
-                case "secondary-foreground":
-                    return getColor('secondary', '#F55B00');
-                case "muted":
-                    return getColor('muted-foreground', '#757578');
-                case "muted-foreground":
-                    return getColor('muted', '#F5F5F6');
-                case "card":
-                    return getColor('card-foreground', '#0A0A0A');
-                case "card-foreground":
-                    return getColor('card', '#FFFFFF');
-                case "accent":
-                    return getColor('accent-foreground', '#FAFAFA');
-                case "accent-foreground":
-                    return getColor('accent', '#F1F5F9');
-                case "foreground":
-                    return getColor('background', '#FFFFFF');
-                case "border":
-                    return getColor('foreground', '#0A0A0A');
-                default: // background
-                    return getColor('foreground', '#0A0A0A');
-            }
-        };
-
-        // Helper function to get color value for a given color scheme
-        const getSchemeColor = (colorScheme: string) => {
-            switch (colorScheme) {
-                case "primary":
-                    return getColor('primary', '#6D3DF2');
-                case "primary-foreground":
-                    return getColor('primary-foreground', '#FAFAFA');
-                case "secondary":
-                    return getColor('secondary', '#F55B00');
-                case "secondary-foreground":
-                    return getColor('secondary-foreground', '#0F0F10');
-                case "muted":
-                    return getColor('muted', '#F5F5F6');
-                case "muted-foreground":
-                    return getColor('muted-foreground', '#757578');
-                case "card":
-                    return getColor('card', '#FFFFFF');
-                case "card-foreground":
-                    return getColor('card-foreground', '#0A0A0A');
-                case "accent":
-                    return getColor('accent', '#F1F5F9');
-                case "accent-foreground":
-                    return getColor('accent-foreground', '#0F172A');
-                case "foreground":
-                    return getColor('foreground', '#0A0A0A');
-                case "border":
-                    return getColor('border', '#E4E4E7');
-                default: // background
-                    return getColor('background', '#FFFFFF');
-            }
-        };
-
-        return {
-            header: {
-                backgroundColor: getSchemeColor(backgroundColor),
-                borderColor: ["background", "card"].includes(backgroundColor) ? getColor('border', '#E4E4E7') : getSchemeColor(backgroundColor),
-            },
-            text: {
-                color: ["background", "card"].includes(textColor) ? getForegroundColor(backgroundColor) : getSchemeColor(textColor),
-            },
-            primaryButton: {
-                backgroundColor: getSchemeColor(buttonColor),
-                color: getForegroundColor(buttonColor),
-            },
-            secondaryButton: {
-                borderColor: ["background", "card", "border"].includes(buttonColor) ? getColor('border', '#E4E4E7') : getSchemeColor(buttonColor),
-                color: ["background", "card"].includes(buttonColor) ? getForegroundColor(backgroundColor) : getSchemeColor(buttonColor),
-                backgroundColor: 'transparent',
-            }
-        };
+    const buttonColorClasses = {
+        primary: cn("bg-primary text-primary-foreground hover:bg-primary/90"),
+        secondary: cn("bg-secondary text-secondary-foreground hover:bg-secondary/90"),
+        background: cn("bg-background text-foreground hover:bg-muted/50"),
+        foreground: cn("bg-foreground text-background hover:bg-foreground/90"),
+        muted: cn("bg-muted text-muted-foreground hover:bg-muted/50"),
+        accent: cn("bg-accent text-accent-foreground hover:bg-accent/90"),
+        border: cn("bg-border text-foreground hover:bg-border/90"),
+        card: cn("bg-card text-card-foreground hover:bg-card/90")
     };
 
-    const colorStyles = getColorStyles(backgroundColor, textColor, buttonColor);    const linksAlignmentClasses = {
+    const secondaryButtonColorClasses = {
+        primary: cn("border-primary text-primary hover:bg-primary/10"),
+        secondary: cn("border-secondary text-secondary hover:bg-secondary/10"),
+        background: cn("border-background text-foreground hover:bg-background/10"),
+        foreground: cn("border-foreground text-foreground hover:bg-foreground/10"),
+        muted: cn("border-muted text-muted-foreground hover:bg-muted/10"),
+        accent: cn("border-accent text-accent-foreground hover:bg-accent/10"),
+        border: cn("border-border text-foreground hover:bg-border/10"),
+        card: cn("border-card text-card-foreground hover:bg-card/10")
+    };
+
+    const linksAlignmentClasses = {
         left: "justify-start",
         center: "justify-center",
         right: "justify-end"
@@ -173,33 +163,28 @@ export function DynamicHeader(fields: typeof properties.contentFields & typeof p
     
     return (
         <header 
-            className={`${getSpacingClass(spacing)} ${sticky ? "sticky top-0 z-50" : ""}`}
+            className={cn(
+                getSpacingClass(spacing),
+                sticky && "sticky top-0 z-50"
+            )}
         >
             <div
-                className={`w-full ${detached ? '' : 'border-b'}`}
-                style={{
-                    ...(detached
-                        ? {}
-                        : {
-                            ...colorStyles.header,
-                            borderBottomWidth: '1px',
-                            borderBottomStyle: 'solid',
-                        }
-                    ),
-                }}
+                className={cn(
+                    "w-full",
+                    getBackgroundColorClass(backgroundColor),
+                    !detached && "border-b",
+                    !detached && getBorderColorClass(backgroundColor)
+                )}
             >
                 <div
-                    className={`container mx-auto px-4 md:px-6 ${detached ? `border ${getRoundnessClass(roundness)} ${(sticky && isScrolled) || detached ? "shadow-lg" : ""}` : ''} transition-all duration-300`}
-                    style={{
-                        ...(detached
-                            ? {
-                                ...colorStyles.header,
-                                borderWidth: '1px',
-                                borderStyle: 'solid',
-                            }
-                            : {}
-                        ),
-                    }}
+                    className={cn(
+                        "container mx-auto px-4 md:px-6 transition-all duration-300",
+                        detached && "border",
+                        detached && getBorderColorClass(backgroundColor),
+                        detached && getRoundnessClass(roundness),
+                        detached && getBackgroundColorClass(backgroundColor),
+                        ((sticky && isScrolled) || detached) && "shadow-lg"
+                    )}
                 >
                 <div className="flex items-center justify-between h-16 md:h-20">
                     {/* Logo */}
@@ -215,19 +200,29 @@ export function DynamicHeader(fields: typeof properties.contentFields & typeof p
                                 />
                             </Link>
                         ) : (
-                            <Link href="/" className="text-xl md:text-2xl font-bold" style={colorStyles.text}>
+                            <Link href="/" className={cn(
+                                "text-xl md:text-2xl font-bold",
+                                getTextColorClass(textColor)
+                            )}>
                                 {logoAlt}
                             </Link>
                         )}
-                    </div>                    {/* Desktop Navigation */}
+                    </div>
+
+                    {/* Desktop Navigation */}
                     <nav className="hidden md:flex items-center space-x-8">
-                        <div className={`flex space-x-6 ${linksAlignmentClasses[linksAlignment as keyof typeof linksAlignmentClasses]}`}>
+                        <div className={cn(
+                            "flex space-x-6",
+                            linksAlignmentClasses[linksAlignment as keyof typeof linksAlignmentClasses]
+                        )}>
                             {links.map((link: LinkItem, index: number) => (
                                 <Link
                                     key={index}
                                     href={link.url || "#"}
-                                    className="text-sm lg:text-base font-medium hover:opacity-70 transition-opacity"
-                                    style={colorStyles.text}
+                                    className={cn(
+                                        "text-sm lg:text-base font-medium hover:opacity-70 transition-opacity",
+                                        getTextColorClass(textColor)
+                                    )}
                                 >
                                     {link.text || `Link ${index + 1}`}
                                 </Link>
@@ -242,12 +237,13 @@ export function DynamicHeader(fields: typeof properties.contentFields & typeof p
                             {secondaryButtonText && (
                                 <Link
                                     href={secondaryButtonLink}
-                                    className={`inline-flex items-center justify-center ${getRoundnessClass(buttonRoundness)} border-2 px-4 py-2 text-sm font-medium transition-all hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2`}
-                                    style={{
-                                        ...colorStyles.secondaryButton,
-                                        borderWidth: '2px',
-                                        borderStyle: 'solid',
-                                    }}
+                                    className={cn(
+                                        "inline-flex items-center justify-center",
+                                        getRoundnessClass(buttonRoundness),
+                                        "border-2 px-4 py-2 text-sm font-medium transition-all hover:shadow-md",
+                                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                                        secondaryButtonColorClasses[buttonColor as keyof typeof secondaryButtonColorClasses] || secondaryButtonColorClasses.primary
+                                    )}
                                 >
                                     {secondaryButtonText}
                                 </Link>
@@ -255,8 +251,13 @@ export function DynamicHeader(fields: typeof properties.contentFields & typeof p
                             {primaryButtonText && (
                                 <Link
                                     href={primaryButtonLink}
-                                    className={`inline-flex items-center justify-center ${getRoundnessClass(buttonRoundness)} px-4 py-2 text-sm font-medium shadow-md transition-all hover:shadow-lg hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2`}
-                                    style={colorStyles.primaryButton}
+                                    className={cn(
+                                        "inline-flex items-center justify-center",
+                                        getRoundnessClass(buttonRoundness),
+                                        "px-4 py-2 text-sm font-medium shadow-md transition-all hover:shadow-lg hover:scale-105",
+                                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                                        buttonColorClasses[buttonColor as keyof typeof buttonColorClasses] || buttonColorClasses.primary
+                                    )}
                                 >
                                     {primaryButtonText}
                                 </Link>
@@ -265,7 +266,10 @@ export function DynamicHeader(fields: typeof properties.contentFields & typeof p
 
                         {/* Mobile Menu Toggle */}
                         <button
-                            className="md:hidden p-2 rounded-md hover:bg-opacity-10 hover:bg-gray-500 transition-colors"
+                            className={cn(
+                                "md:hidden p-2 rounded-md hover:bg-opacity-10 hover:bg-gray-500 transition-colors",
+                                getTextColorClass(textColor)
+                            )}
                             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                             aria-label="Toggle mobile menu"
                         >
@@ -274,7 +278,6 @@ export function DynamicHeader(fields: typeof properties.contentFields & typeof p
                                 fill="none"
                                 viewBox="0 0 24 24"
                                 stroke="currentColor"
-                                style={colorStyles.text}
                             >
                                 {isMobileMenuOpen ? (
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -284,17 +287,24 @@ export function DynamicHeader(fields: typeof properties.contentFields & typeof p
                             </svg>
                         </button>
                     </div>
-                </div>                {/* Mobile Menu */}
+                </div>
+
+                {/* Mobile Menu */}
                 {isMobileMenuOpen && (
-                    <div className="md:hidden py-4 border-t" style={{ borderColor: colorStyles.header.borderColor }}>
+                    <div className={cn(
+                        "md:hidden py-4 border-t",
+                        getBorderColorClass(backgroundColor)
+                    )}>
                         <div className="flex flex-col space-y-4">
                             {/* Mobile Navigation Links */}
                             {links.map((link: LinkItem, index: number) => (
                                 <Link
                                     key={index}
                                     href={link.url || "#"}
-                                    className="text-base font-medium hover:opacity-70 transition-opacity py-2"
-                                    style={colorStyles.text}
+                                    className={cn(
+                                        "text-base font-medium hover:opacity-70 transition-opacity py-2",
+                                        getTextColorClass(textColor)
+                                    )}
                                     onClick={() => setIsMobileMenuOpen(false)}
                                 >
                                     {link.text || `Link ${index + 1}`}
@@ -306,12 +316,13 @@ export function DynamicHeader(fields: typeof properties.contentFields & typeof p
                                 {secondaryButtonText && (
                                     <Link
                                         href={secondaryButtonLink}
-                                        className={`inline-flex items-center justify-center ${getRoundnessClass(buttonRoundness)} border-2 px-4 py-3 text-base font-medium transition-all hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2`}
-                                        style={{
-                                            ...colorStyles.secondaryButton,
-                                            borderWidth: '2px',
-                                            borderStyle: 'solid',
-                                        }}
+                                        className={cn(
+                                            "inline-flex items-center justify-center",
+                                            getRoundnessClass(buttonRoundness),
+                                            "border-2 px-4 py-3 text-base font-medium transition-all hover:shadow-md",
+                                            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                                            secondaryButtonColorClasses[buttonColor as keyof typeof secondaryButtonColorClasses] || secondaryButtonColorClasses.primary
+                                        )}
                                         onClick={() => setIsMobileMenuOpen(false)}
                                     >
                                         {secondaryButtonText}
@@ -320,13 +331,19 @@ export function DynamicHeader(fields: typeof properties.contentFields & typeof p
                                 {primaryButtonText && (
                                     <Link
                                         href={primaryButtonLink}
-                                        className={`inline-flex items-center justify-center ${getRoundnessClass(buttonRoundness)} px-4 py-3 text-base font-medium shadow-md transition-all hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2`}
-                                        style={colorStyles.primaryButton}
+                                        className={cn(
+                                            "inline-flex items-center justify-center",
+                                            getRoundnessClass(buttonRoundness),
+                                            "px-4 py-3 text-base font-medium shadow-md transition-all hover:shadow-lg",
+                                            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                                            buttonColorClasses[buttonColor as keyof typeof buttonColorClasses] || buttonColorClasses.primary
+                                        )}
                                         onClick={() => setIsMobileMenuOpen(false)}
                                     >
                                         {primaryButtonText}
                                     </Link>
-                                )}                            </div>
+                                )}
+                            </div>
                         </div>
                     </div>
                 )}
