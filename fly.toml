@@ -108,17 +108,12 @@ kill_timeout = "10s"
 # fly secrets set ADMIN_EMAIL="your-admin-email"
 
 # Additional environment variables for MongoDB and services
-[env.MONGODB_CONFIG]
-  # MongoDB runs locally on the same machine
-  host = "127.0.0.1"
-  port = "27017"
-  database = "halogen"
-
-[env.SERVICE_PORTS]
+  MONGODB_HOST = "127.0.0.1"
+  MONGODB_PORT = "27017"
+  MONGODB_DATABASE = "halogen"
   # Internal service ports
-  backend = "8081"
-  frontend = "3000"
-  www = "3001"
-  sudo_api = "8082"
-  mongodb = "27017"
-  redis = "6379"
+  BACKEND_PORT = "8081"
+  FRONTEND_PORT = "3000"
+  WWW_PORT = "3001"
+  SUDO_API_PORT = "8082"
+  REDIS_PORT = "6379"
