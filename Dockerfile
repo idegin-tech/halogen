@@ -85,7 +85,6 @@ RUN npm install -g pm2
 WORKDIR /app
 
 # Copy Node.js applications from builder
-COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/apps ./apps
 COPY --from=builder /app/packages ./packages
 COPY --from=builder /app/package.json ./
