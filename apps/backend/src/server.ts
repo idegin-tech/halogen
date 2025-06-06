@@ -57,7 +57,6 @@ class App {
                     return callback(null, true);
                 }
 
-                // In production, allow any origin for maximum flexibility
                 // You can restrict this later based on your security requirements
                 Logger.debug(`CORS: Production mode - allowing any origin: ${origin || 'no origin'}`);
                 callback(null, true);

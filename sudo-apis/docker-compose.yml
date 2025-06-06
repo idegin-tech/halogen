@@ -7,7 +7,6 @@ services:
     ports:
       - "8082:8082"
     volumes:
-      # Mount system directories for Nginx and SSL
       - /etc/nginx:/etc/nginx
       - /etc/letsencrypt:/etc/letsencrypt
       - /var/www/certbot:/var/www/certbot
