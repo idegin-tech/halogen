@@ -1,10 +1,11 @@
 # Fly.io configuration for Halogen project
-# This deploys a multi-service application on a single machine
+# Multi-service application with MongoDB on a single machine
+# Services: Backend (8081), Frontend (3000), WWW (3001), Sudo-APIs (8082), MongoDB (27017), Redis (6379)
 
 app = "halogen"
 primary_region = "iad"
 kill_signal = "SIGINT"
-kill_timeout = "5s"
+kill_timeout = "10s"
 
 [experimental]
   auto_rollback = true
@@ -15,6 +16,19 @@ kill_timeout = "5s"
 [env]
   NODE_ENV = "production"
   HOSTNAME = "0.0.0.0"
+  # MongoDB local connection
+  MONGODB_URI = "mongodb://127.0.0.1:27017/halogen"
+  MONGODB_AUTH_SOURCE = "admin"
+  # Redis local connection  
+  REDIS_URL = "redis://127.0.0.1:6379"
+  # API endpoints
+  API_ENDPOINT = "https://halogen.fly.dev/api/v1"
+  SUDO_API_BASE_URL = "http://127.0.0.1:8082"
+  PREVIEW_URL = "https://halogen.fly.dev"
+  # CORS configuration
+  CORS_ORIGIN = "https://halogen.fly.dev"
+  COOKIE_SECURE = "true"
+  COOKIE_DOMAIN = ".fly.dev"
 
 # HTTP service configuration
 [[services]]
@@ -82,7 +96,6 @@ kill_timeout = "5s"
 
 # Secrets (environment variables that need to be set via fly secrets)
 # Run these commands to set secrets:
-# fly secrets set MONGODB_URI="mongodb://127.0.0.1:27017/halogen"
 # fly secrets set SESSION_SECRET="your-session-secret-here"
 # fly secrets set JWT_SECRET="your-jwt-secret-here"
 # fly secrets set EMAIL_HOST="your-email-host"
@@ -93,4 +106,19 @@ kill_timeout = "5s"
 # fly secrets set CLOUDINARY_API_KEY="your-cloudinary-api-key"
 # fly secrets set CLOUDINARY_API_SECRET="your-cloudinary-api-secret"
 # fly secrets set ADMIN_EMAIL="your-admin-email"
-# fly secrets set REDIS_URL="redis://127.0.0.1:6379"
+
+# Additional environment variables for MongoDB and services
+[env.MONGODB_CONFIG]
+  # MongoDB runs locally on the same machine
+  host = "127.0.0.1"
+  port = "27017"
+  database = "halogen"
+
+[env.SERVICE_PORTS]
+  # Internal service ports
+  backend = "8081"
+  frontend = "3000"
+  www = "3001"
+  sudo_api = "8082"
+  mongodb = "27017"
+  redis = "6379"
