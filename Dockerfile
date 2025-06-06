@@ -2,10 +2,10 @@
 # Runs all services on a single machine: MongoDB, Redis, Nginx, Backend, Frontend, WWW, Sudo-APIs
 
 FROM node:18-alpine AS base
-RUN apk update && apk add --no-cache python3 py3-pip bash curl
+RUN apk update && apk add --no-cache python3 py3-pip bash curl git
 
-# Install pnpm globally
-RUN npm install -g pnpm turbo
+# Install turbo globally
+RUN npm install -g turbo
 
 #################################
 # Dependencies stage
@@ -14,15 +14,23 @@ FROM base AS deps
 WORKDIR /app
 
 # Copy package files
-COPY package.json pnpm-lock.yaml* ./
+COPY package.json package-lock.json* ./
 COPY turbo.json ./
+
+# Create package directories first
+RUN mkdir -p apps/backend apps/frontend apps/www packages/common packages/eslint-config packages/typescript-config packages/ui
+
+# Copy package files for all workspaces
 COPY apps/backend/package.json ./apps/backend/
 COPY apps/frontend/package.json ./apps/frontend/
 COPY apps/www/package.json ./apps/www/
-COPY packages/*/package.json ./packages/*/
+COPY packages/common/package.json ./packages/common/
+COPY packages/eslint-config/package.json ./packages/eslint-config/
+COPY packages/typescript-config/package.json ./packages/typescript-config/
+COPY packages/ui/package.json ./packages/ui/
 
 # Install dependencies
-RUN pnpm install --frozen-lockfile
+RUN npm install
 
 #################################
 # Builder stage
@@ -35,7 +43,7 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 # Build all applications
-RUN pnpm turbo build
+RUN npm run build
 
 #################################
 # Production stage

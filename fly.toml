@@ -21,7 +21,8 @@ kill_timeout = "10s"
   MONGODB_AUTH_SOURCE = "admin"
   MONGODB_HOST = "127.0.0.1"
   MONGODB_PORT = "27017"
-  MONGODB_DATABASE = "halogen"  # Redis local connection  
+  MONGODB_DATABASE = "halogen"
+  # Redis local connection  
   REDIS_URL = "redis://127.0.0.1:6379"
   REDIS_PORT = "6379"
   # API endpoints
