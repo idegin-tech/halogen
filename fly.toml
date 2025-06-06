@@ -19,8 +19,12 @@ kill_timeout = "10s"
   # MongoDB local connection
   MONGODB_URI = "mongodb://127.0.0.1:27017/halogen"
   MONGODB_AUTH_SOURCE = "admin"
+  MONGODB_HOST = "127.0.0.1"
+  MONGODB_PORT = "27017"
+  MONGODB_DATABASE = "halogen"
   # Redis local connection  
   REDIS_URL = "redis://127.0.0.1:6379"
+  REDIS_PORT = "6379"
   # API endpoints
   API_ENDPOINT = "https://halogen.fly.dev/api/v1"
   SUDO_API_BASE_URL = "http://127.0.0.1:8082"
@@ -29,6 +33,11 @@ kill_timeout = "10s"
   CORS_ORIGIN = "https://halogen.fly.dev"
   COOKIE_SECURE = "true"
   COOKIE_DOMAIN = ".fly.dev"
+  # Internal service ports
+  BACKEND_PORT = "8081"
+  FRONTEND_PORT = "3000"
+  WWW_PORT = "3001"
+  SUDO_API_PORT = "8082"
 
 # HTTP service configuration
 [[services]]
@@ -106,14 +115,3 @@ kill_timeout = "10s"
 # fly secrets set CLOUDINARY_API_KEY="your-cloudinary-api-key"
 # fly secrets set CLOUDINARY_API_SECRET="your-cloudinary-api-secret"
 # fly secrets set ADMIN_EMAIL="your-admin-email"
-
-# Additional environment variables for MongoDB and services
-  MONGODB_HOST = "127.0.0.1"
-  MONGODB_PORT = "27017"
-  MONGODB_DATABASE = "halogen"
-  # Internal service ports
-  BACKEND_PORT = "8081"
-  FRONTEND_PORT = "3000"
-  WWW_PORT = "3001"
-  SUDO_API_PORT = "8082"
-  REDIS_PORT = "6379"
