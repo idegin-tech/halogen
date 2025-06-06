@@ -2,7 +2,7 @@
 # Multi-service application with MongoDB on a single machine
 # Services: Backend (8081), Frontend (3000), WWW (3001), Sudo-APIs (8082), MongoDB (27017), Redis (6379)
 
-app = "halogen"
+app = "halogen-multi-service"
 primary_region = "iad"
 kill_signal = "SIGINT"
 kill_timeout = "10s"
@@ -24,13 +24,12 @@ kill_timeout = "10s"
   MONGODB_DATABASE = "halogen"
   # Redis local connection  
   REDIS_URL = "redis://127.0.0.1:6379"
-  REDIS_PORT = "6379"
-  # API endpoints
-  API_ENDPOINT = "https://halogen.fly.dev/api/v1"
+  REDIS_PORT = "6379"  # API endpoints
+  API_ENDPOINT = "https://halogen-multi-service.fly.dev/api/v1"
   SUDO_API_BASE_URL = "http://127.0.0.1:8082"
-  PREVIEW_URL = "https://halogen.fly.dev"
+  PREVIEW_URL = "https://halogen-multi-service.fly.dev"
   # CORS configuration
-  CORS_ORIGIN = "https://halogen.fly.dev"
+  CORS_ORIGIN = "https://halogen-multi-service.fly.dev"
   COOKIE_SECURE = "true"
   COOKIE_DOMAIN = ".fly.dev"
   # Internal service ports
