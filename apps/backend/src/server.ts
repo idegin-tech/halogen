@@ -45,44 +45,26 @@ class App {
         this.configureStandardMiddleware();
         this.configureRoutes();
         this.configureErrorHandlers();
-    }
-
-    private configureSecurityMiddleware(): void {
+    }    private configureSecurityMiddleware(): void {
         this.app.use(helmet());
-        const corsOrigins = env.CORS_ORIGIN.split(',');
+        
+        // Allow any origin for maximum compatibility
         this.app.use(cors({
             origin: (origin, callback) => {
-
-                if (!origin) return callback(null, true);
-                if (env.NODE_ENV === 'development') return callback(null, true);
-
-                Logger.debug(`CORS: Checking origin: ${origin} against allowed origins: ${corsOrigins.join(', ')}`);
-
-                const isAllowed = corsOrigins.some(allowedOrigin => {
-                    if (allowedOrigin === origin) {
-                        Logger.debug(`CORS: Direct match for ${origin}`);
-                        return true;
-                    }
-
-                    if (allowedOrigin.includes('*')) {
-                        const domainPart = allowedOrigin.replace('*.', '');
-                        const matches = origin.endsWith(domainPart);
-                        Logger.debug(`CORS: Wildcard check for ${origin} against ${domainPart} - Match: ${matches}`);
-                        return matches;
-                    }
-
-                    return false;
-                }); 
-                if (isAllowed) {
-                    callback(null, true);
-                } else {
-                    Logger.warn(`CORS: Origin rejected: ${origin}`);
-                    callback(new Error('Not allowed by CORS'));
+                // Allow any origin in development
+                if (env.NODE_ENV === 'development') {
+                    Logger.debug(`CORS: Development mode - allowing origin: ${origin || 'no origin'}`);
+                    return callback(null, true);
                 }
+
+                // In production, allow any origin for maximum flexibility
+                // You can restrict this later based on your security requirements
+                Logger.debug(`CORS: Production mode - allowing any origin: ${origin || 'no origin'}`);
+                callback(null, true);
             },
             credentials: true,
             methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-            allowedHeaders: ['Content-Type', 'Authorization'],
+            allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
             maxAge: 86400
         }));
 

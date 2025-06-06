@@ -25,15 +25,16 @@ export class SessionConfig {
       
       store.on('disconnected', () => {
         Logger.warn('MongoDB session store disconnected');
-      });
-        const sessionConfig = {
+      });        
+      
+      const sessionConfig = {
         secret: env.SESSION_SECRET,
         cookie: {
           maxAge: 1000 * 60 * 60 * 24 * 2,
           httpOnly: true,
           secure: env.COOKIE_SECURE,
-          sameSite: 'lax' as const,
-          domain: env.COOKIE_DOMAIN || undefined
+          sameSite: 'none' as const, // Changed from 'lax' to 'none' for cross-domain support
+          domain: undefined // Set to undefined to allow cookies from any domain
         },
         store: store,
         resave: false,

@@ -20,12 +20,10 @@ export function validateEnv() {try {
       ADMIN_EMAIL: str(),
 
       MONGODB_URI: str(),
-      MONGODB_AUTH_SOURCE: str({ default: 'admin' }),
-
-      SESSION_SECRET: str(),
-      CORS_ORIGIN: str(),
+      MONGODB_AUTH_SOURCE: str({ default: 'admin' }),      SESSION_SECRET: str(),
+      CORS_ORIGIN: str({ default: '*' }), // Default to allow all origins
       COOKIE_SECURE: bool({ default: process.env.NODE_ENV === 'production' }),
-      COOKIE_DOMAIN: str(),
+      COOKIE_DOMAIN: str({ default: undefined }), // Make optional since we're setting to undefined
       RATE_LIMIT_MAX: num({ default: 100 }),
       RATE_LIMIT_WINDOW_MS: num({ default: 60 * 1000 }),
 
