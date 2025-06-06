@@ -21,10 +21,10 @@ kill_timeout = "10s"
   MONGODB_AUTH_SOURCE = "admin"
   MONGODB_HOST = "127.0.0.1"
   MONGODB_PORT = "27017"
-  MONGODB_DATABASE = "halogen"
-  # Redis local connection  
+  MONGODB_DATABASE = "halogen"  # Redis local connection  
   REDIS_URL = "redis://127.0.0.1:6379"
-  REDIS_PORT = "6379"  # API endpoints
+  REDIS_PORT = "6379"
+  # API endpoints
   API_ENDPOINT = "https://halogen-multi-service.fly.dev/api/v1"
   SUDO_API_BASE_URL = "http://127.0.0.1:8082"
   PREVIEW_URL = "https://halogen-multi-service.fly.dev"
