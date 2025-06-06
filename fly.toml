@@ -1,0 +1,96 @@
+# Fly.io configuration for Halogen project
+# This deploys a multi-service application on a single machine
+
+app = "halogen"
+primary_region = "iad"
+kill_signal = "SIGINT"
+kill_timeout = "5s"
+
+[experimental]
+  auto_rollback = true
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  NODE_ENV = "production"
+  HOSTNAME = "0.0.0.0"
+
+# HTTP service configuration
+[[services]]
+  protocol = "tcp"
+  internal_port = 80
+  processes = ["app"]
+
+  [[services.ports]]
+    port = 80
+    handlers = ["http"]
+    force_https = true
+
+  [[services.ports]]
+    port = 443
+    handlers = ["tls", "http"]
+
+  [services.concurrency]
+    type = "connections"
+    hard_limit = 1000
+    soft_limit = 500
+
+  [[services.tcp_checks]]
+    interval = "15s"
+    timeout = "2s"
+    grace_period = "1s"
+
+  [[services.http_checks]]
+    interval = "10s"
+    timeout = "2s"
+    grace_period = "5s"
+    restart_limit = 0
+    method = "get"
+    path = "/health"
+
+# Volume for MongoDB data persistence
+[[mounts]]
+  source = "halogen_mongodb_data"
+  destination = "/data/db"
+
+# Volume for application logs
+[[mounts]]
+  source = "halogen_logs"
+  destination = "/app/logs"
+
+# Volume for Nginx configurations
+[[mounts]]
+  source = "halogen_nginx"
+  destination = "/etc/nginx"
+
+# Volume for SSL certificates
+[[mounts]]
+  source = "halogen_ssl"
+  destination = "/etc/letsencrypt"
+
+# Process configuration
+[processes]
+  app = "supervisord -c /etc/supervisor/supervisord.conf"
+
+# Machine configuration
+[machine]
+  guest_cpu_kind = "shared"
+  cpu_kind = "shared"
+  cpus = 2
+  memory = "2gb"
+
+# Secrets (environment variables that need to be set via fly secrets)
+# Run these commands to set secrets:
+# fly secrets set MONGODB_URI="mongodb://127.0.0.1:27017/halogen"
+# fly secrets set SESSION_SECRET="your-session-secret-here"
+# fly secrets set JWT_SECRET="your-jwt-secret-here"
+# fly secrets set EMAIL_HOST="your-email-host"
+# fly secrets set EMAIL_USER="your-email-user"
+# fly secrets set EMAIL_PASS="your-email-password"
+# fly secrets set EMAIL_FROM="your-from-email"
+# fly secrets set CLOUDINARY_CLOUD_NAME="your-cloudinary-cloud-name"
+# fly secrets set CLOUDINARY_API_KEY="your-cloudinary-api-key"
+# fly secrets set CLOUDINARY_API_SECRET="your-cloudinary-api-secret"
+# fly secrets set ADMIN_EMAIL="your-admin-email"
+# fly secrets set REDIS_URL="redis://127.0.0.1:6379"
