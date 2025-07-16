@@ -1,117 +1,35 @@
-# Fly.io configuration for Halogen project
-# Multi-service application with MongoDB on a single machine
-# Services: Backend (8081), Frontend (3000), WWW (3001), Sudo-APIs (8082), MongoDB (27017), Redis (6379)
-
-app = "halogen-multi-service"
+app = "halogen-backend"
 primary_region = "iad"
-kill_signal = "SIGINT"
-kill_timeout = "10s"
-
-[experimental]
-  auto_rollback = true
 
 [build]
-  dockerfile = "Dockerfile"
 
 [env]
   NODE_ENV = "production"
-  HOSTNAME = "0.0.0.0"
-  # MongoDB local connection
-  MONGODB_URI = "mongodb://127.0.0.1:27017/halogen"
-  MONGODB_AUTH_SOURCE = "admin"
-  MONGODB_HOST = "127.0.0.1"
-  MONGODB_PORT = "27017"
-  MONGODB_DATABASE = "halogen"
-  # Redis local connection  
-  REDIS_URL = "redis://127.0.0.1:6379"
-  REDIS_PORT = "6379"
-  # API endpoints
-  API_ENDPOINT = "https://halogen-multi-service.fly.dev/api/v1"
-  SUDO_API_BASE_URL = "http://127.0.0.1:8082"
-  PREVIEW_URL = "https://halogen-multi-service.fly.dev"
-  # CORS configuration
-  CORS_ORIGIN = "https://halogen-multi-service.fly.dev"
-  COOKIE_SECURE = "true"
-  COOKIE_DOMAIN = ".fly.dev"
-  # Internal service ports
-  BACKEND_PORT = "8081"
-  FRONTEND_PORT = "3000"
-  WWW_PORT = "3001"
-  SUDO_API_PORT = "8082"
+  PORT = "8080"
 
-# HTTP service configuration
-[[services]]
-  protocol = "tcp"
-  internal_port = 80
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 1
   processes = ["app"]
 
-  [[services.ports]]
-    port = 80
-    handlers = ["http"]
-    force_https = true
-
-  [[services.ports]]
-    port = 443
-    handlers = ["tls", "http"]
-
-  [services.concurrency]
-    type = "connections"
-    hard_limit = 1000
-    soft_limit = 500
-
-  [[services.tcp_checks]]
-    interval = "15s"
-    timeout = "2s"
-    grace_period = "1s"
-
-  [[services.http_checks]]
-    interval = "10s"
-    timeout = "2s"
-    grace_period = "5s"
-    restart_limit = 0
-    method = "get"
+  [[http_service.checks]]
+    grace_period = "10s"
+    interval = "30s"
+    method = "GET"
+    timeout = "5s"
     path = "/health"
 
-# Volume for MongoDB data persistence
-[[mounts]]
-  source = "halogen_mongodb_data"
-  destination = "/data/db"
-
-# Volume for application logs
-[[mounts]]
-  source = "halogen_logs"
-  destination = "/app/logs"
-
-# Volume for Nginx configurations
-[[mounts]]
-  source = "halogen_nginx"
-  destination = "/etc/nginx"
-
-# Volume for SSL certificates
-[[mounts]]
-  source = "halogen_ssl"
-  destination = "/etc/letsencrypt"
-
-# Process configuration
-[processes]
-  app = "supervisord -c /etc/supervisor/supervisord.conf"
-
-# Machine configuration
-[machine]
-  guest_cpu_kind = "shared"
+[[vm]]
   cpu_kind = "shared"
-  cpus = 2
-  memory = "2gb"
+  cpus = 1
+  memory_mb = 1024
 
-# Secrets (environment variables that need to be set via fly secrets)
-# Run these commands to set secrets:
-# fly secrets set SESSION_SECRET="your-session-secret-here"
-# fly secrets set JWT_SECRET="your-jwt-secret-here"
-# fly secrets set EMAIL_HOST="your-email-host"
-# fly secrets set EMAIL_USER="your-email-user"
-# fly secrets set EMAIL_PASS="your-email-password"
-# fly secrets set EMAIL_FROM="your-from-email"
-# fly secrets set CLOUDINARY_CLOUD_NAME="your-cloudinary-cloud-name"
-# fly secrets set CLOUDINARY_API_KEY="your-cloudinary-api-key"
-# fly secrets set CLOUDINARY_API_SECRET="your-cloudinary-api-secret"
-# fly secrets set ADMIN_EMAIL="your-admin-email"
+[[mounts]]
+  source = "halogen_data"
+  destination = "/data"
+
+[deploy]
+  release_command = "npm run build"

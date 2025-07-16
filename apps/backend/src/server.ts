@@ -48,7 +48,6 @@ class App {
     }    private configureSecurityMiddleware(): void {
         this.app.use(helmet());
         
-        // Allow any origin for maximum compatibility
         this.app.use(cors({
             origin: (origin, callback) => {
                 // Allow any origin in development
@@ -57,7 +56,6 @@ class App {
                     return callback(null, true);
                 }
 
-                // You can restrict this later based on your security requirements
                 Logger.debug(`CORS: Production mode - allowing any origin: ${origin || 'no origin'}`);
                 callback(null, true);
             },
