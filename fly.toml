@@ -30,6 +30,3 @@ primary_region = "iad"
 [[mounts]]
   source = "halogen_data"
   destination = "/data"
-
-[deploy]
-  release_command = "npm run build"
