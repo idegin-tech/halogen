@@ -32,9 +32,9 @@ export class SessionConfig {
         cookie: {
           maxAge: 1000 * 60 * 60 * 24 * 2,
           httpOnly: true,
-          secure: env.COOKIE_SECURE,
-          sameSite: 'none' as const, // Changed from 'lax' to 'none' for cross-domain support
-          domain: undefined // Set to undefined to allow cookies from any domain
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: process.env.NODE_ENV === 'production' ? 'none' as 'none' : 'lax' as 'lax',
+          domain: undefined
         },
         store: store,
         resave: false,
@@ -50,7 +50,9 @@ export class SessionConfig {
         cookieHttpOnly: sessionConfig.cookie.httpOnly,
         cookieMaxAge: sessionConfig.cookie.maxAge,
         sessionName: sessionConfig.name
-      })}`);      app.use(session(sessionConfig));
+      })}`);      
+      
+      app.use(session(sessionConfig));
       
       app.use((req, res, next) => {
         const originalSend = res.send;

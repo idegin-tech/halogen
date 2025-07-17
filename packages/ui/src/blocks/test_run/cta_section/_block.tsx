@@ -1,257 +1,126 @@
-"use client"
-
-import React from 'react'
-import Link from "next/link"
 import { BlockProperties } from "@halogen/common/types";
-import { backgroundThemeOptions, roundnessOptions, shadowOptions } from '../../../config';
-import { cn } from '../../../utils/classNames';
+import { themeColorOptions, blockSpacingValue, borderWidthOptions, roundnessOptions, shadowOptions } from '../../../config';
 
-interface ColorVariables {
-    [key: string]: string;
+
+
+function hasValueProp(val: unknown): val is { value: unknown } {
+    return val !== null && typeof val === 'object' && 'value' in val;
 }
 
-export function CTASection(fields: typeof properties.contentFields & typeof properties.themeFields & typeof properties.layoutFields & { colorVariables?: ColorVariables }) {
-    const title = fields?.title?.value || "Ready to get started?";
-    const subtitle = fields?.subtitle?.value || "Join thousands of companies already growing with our platform.";
-    const primaryButtonText = fields?.primaryButtonText?.value || "Get Started";
-    const primaryButtonLink = fields?.primaryButtonLink?.value || "#";
-    const secondaryButtonText = fields?.secondaryButtonText?.value || "Learn More";
-    const secondaryButtonLink = fields?.secondaryButtonLink?.value || "#";
+function getStringField(obj: Record<string, unknown>, key: string, defaultValue: string): string {
+    if (!obj) return defaultValue;
+    const val = obj[key];
+    if (val === undefined || val === null) return defaultValue;
+    if (typeof val === 'string') return val;
+    if (hasValueProp(val) && typeof val.value === 'string') return val.value;
+    return defaultValue;
+}
+function getArrayField(obj: Record<string, unknown>, key: string, defaultValue: string[]): string[] {
+    if (!obj) return defaultValue;
+    const val = obj[key];
+    if (Array.isArray(val)) return val;
+    if (hasValueProp(val) && Array.isArray(val.value)) return val.value;
+    return defaultValue;
+}
+function getBoolField(obj: Record<string, unknown>, key: string, defaultValue: boolean): boolean {
+    if (!obj) return defaultValue;
+    const val = obj[key];
+    if (typeof val === 'boolean') return val;
+    if (hasValueProp(val) && typeof val.value === 'boolean') return val.value;
+    return defaultValue;
+}
 
-    const layout = fields?.layout?.value || "center";
-    const buttonLayout = fields?.buttonLayout?.value || "both";
-    const detached = fields?.detached?.value || false;
-    const spacing = fields?.spacing?.value || [];    
-    const roundness = fields?.roundness?.value || "medium";
-    const buttonRoundness = fields?.buttonRoundness?.value || "medium";
-    const borderWidth = fields?.borderWidth?.value || "none";
-    const shadowSize = fields?.shadowSize?.value || "none";
+export function CTASection(fields: Record<string, unknown>) {
+    const content = properties.contentFields;
+    const theme = properties.themeFields;
+    const layout = properties.layoutFields;
 
-    const backgroundColor = fields?.backgroundColor?.value || "background";
-    const headingColor = fields?.headingColor?.value || "foreground";
-    const paragraphColor = fields?.paragraphColor?.value || "muted-foreground";
-    const buttonColor = fields?.buttonColor?.value || "primary";
-    const borderColor = fields?.borderColor?.value || "border";
+    const title = getStringField(fields, 'title', content.title?.defaultValue ?? 'Ready to get started?');
+    const subtitle = getStringField(fields, 'subtitle', content.subtitle?.defaultValue ?? 'Join thousands of companies already growing with our platform.');
+    const primaryButtonText = getStringField(fields, 'primaryButtonText', content.primaryButtonText?.defaultValue ?? 'Get Started');
+    const primaryButtonLink = getStringField(fields, 'primaryButtonLink', content.primaryButtonLink?.defaultValue ?? '#');
+    const secondaryButtonText = getStringField(fields, 'secondaryButtonText', content.secondaryButtonText?.defaultValue ?? 'Learn More');
+    const secondaryButtonLink = getStringField(fields, 'secondaryButtonLink', content.secondaryButtonLink?.defaultValue ?? '#');
 
-    const getBackgroundColorClass = (colorName: string) => {
-        switch (colorName) {
-            case "primary": return "bg-primary";
-            case "primary-foreground": return "bg-primary-foreground";
-            case "secondary": return "bg-secondary";
-            case "secondary-foreground": return "bg-secondary-foreground";
-            case "background": return "bg-background";
-            case "foreground": return "bg-foreground";
-            case "muted": return "bg-muted";
-            case "muted-foreground": return "bg-muted-foreground";
-            case "card": return "bg-card";
-            case "card-foreground": return "bg-card-foreground";
-            case "accent": return "bg-accent";
-            case "accent-foreground": return "bg-accent-foreground";
-            case "border": return "bg-border";
-            default: return "bg-background";
-        }
-    };
+    const backgroundColor = getStringField(fields, 'backgroundColor', theme.backgroundColor?.defaultValue ?? 'background');
+    const headingColor = getStringField(fields, 'headingColor', theme.headingColor?.defaultValue ?? 'foreground');
+    const paragraphColor = getStringField(fields, 'paragraphColor', theme.paragraphColor?.defaultValue ?? 'muted');
+    const buttonColor = getStringField(fields, 'buttonColor', theme.buttonColor?.defaultValue ?? 'primary');
+    const borderColor = getStringField(fields, 'borderColor', theme.borderColor?.defaultValue ?? 'border');
+    const borderWidth = getStringField(fields, 'borderWidth', theme.borderWidth?.defaultValue ?? 'border-0');
+    const shadowSize = getStringField(fields, 'shadowSize', theme.shadowSize?.defaultValue ?? 'none');
+    const roundness = getStringField(fields, 'roundness', theme.roundness?.defaultValue ?? 'medium');
+    const buttonRoundness = getStringField(fields, 'buttonRoundness', theme.buttonRoundness?.defaultValue ?? 'medium');
+    const spacing = getArrayField(fields, 'spacing', theme.spacing?.defaultValue ?? []);
 
-    const getTextColorClass = (colorName: string) => {
-        switch (colorName) {
-            case "primary": return "text-primary";
-            case "primary-foreground": return "text-primary-foreground";
-            case "secondary": return "text-secondary";
-            case "secondary-foreground": return "text-secondary-foreground";
-            case "background": return "text-background";
-            case "foreground": return "text-foreground";
-            case "muted": return "text-muted";
-            case "muted-foreground": return "text-muted-foreground";
-            case "card": return "text-card";
-            case "card-foreground": return "text-card-foreground";
-            case "accent": return "text-accent";
-            case "accent-foreground": return "text-accent-foreground";
-            case "border": return "text-border";
-            default: return "text-foreground";
-        }
-    };
+    const textAlign = getStringField(fields, 'layout', layout.layout?.defaultValue ?? 'center');
+    const buttonLayout = getStringField(fields, 'buttonLayout', layout.buttonLayout?.defaultValue ?? 'both');
+    const detached = getBoolField(fields, 'detached', layout.detached?.defaultValue ?? false);
 
-    const getBorderColorClass = (colorName: string) => {
-        switch (colorName) {
-            case "primary": return "border-primary";
-            case "primary-foreground": return "border-primary-foreground";
-            case "secondary": return "border-secondary";
-            case "secondary-foreground": return "border-secondary-foreground";
-            case "background": return "border-background";
-            case "foreground": return "border-foreground";
-            case "muted": return "border-muted";
-            case "muted-foreground": return "border-muted-foreground";
-            case "card": return "border-card";
-            case "card-foreground": return "border-card-foreground";
-            case "accent": return "border-accent";
-            case "accent-foreground": return "border-accent-foreground";
-            case "border": return "border-border";
-            default: return "border-border";
-        }
-    };
+    const sectionClass = [
+        detached ? 'container justify-center mx-auto' : '',
+        Array.isArray(spacing) && spacing.includes('top') ? `pt-[${blockSpacingValue}]` : '',
+        Array.isArray(spacing) && spacing.includes('bottom') ? `pb-[${blockSpacingValue}]` : '',
+    ].filter(Boolean).join(' ');
 
-    const getRoundnessClass = (roundness: string) => {
-        switch (roundness) {
-            case "none": return "";
-            case "medium": return "rounded-lg";
-            case "large": return "rounded-xl";
-            case "extra-large": return "rounded-2xl";
-            case "full": return "rounded-full";
-            default: return "rounded-lg";
-        }
-    };
+    const mainContentClass = [
+        'p-10 w-full flex flex-col items-center',
+        backgroundColor !== 'background' ? `bg-${backgroundColor}` : 'bg-background',
+        borderColor !== 'border' ? `border-${borderColor}` : 'border-border',
+        borderWidth !== 'border-0' ? `border-${borderWidth}` : '',
+        shadowSize !== 'none' ? `shadow-${shadowSize}` : '',
+        detached ? `rounded-${roundness}` : '',
+        'transition-all',
+    ].filter(Boolean).join(' ');
 
-    const getSpacingClass = (spacing: string[]) => {
-        const classes = [];
-        if (spacing.includes('top')) {
-            classes.push('pt-16');
-        }
-        if (spacing.includes('bottom')) {
-            classes.push('pb-16');
-        }
-        return classes.join(' ');
-    };
+    const headingClass = [
+        'text-3xl font-bold mb-4',
+        headingColor !== 'foreground' ? `text-${headingColor}` : 'text-foreground',
+        textAlign === 'center' ? 'text-center' : textAlign === 'right' ? 'text-right' : 'text-left',
+    ].filter(Boolean).join(' ');
 
-    const getBorderWidthClass = (borderWidth: string) => {
-        switch (borderWidth) {
-            case "none": return "";
-            case "small": return "border";
-            case "large": return "border-4";
-            case "extra-large": return "border-8";
-            default: return "";
-        }
-    };
+    const subtitleClass = [
+        'text-lg mb-8',
+        paragraphColor !== 'muted' ? `text-${paragraphColor}` : 'text-muted',
+        textAlign === 'center' ? 'text-center' : textAlign === 'right' ? 'text-right' : 'text-left',
+    ].filter(Boolean).join(' ');
 
-    const getShadowClass = (shadowSize: string) => {
-        switch (shadowSize) {
-            case "small": return "shadow-sm";
-            case "large": return "shadow-lg";
-            case "extra-large": return "shadow-xl";
-            default: return "";
-        }
-    };
+    const buttonBaseClass = [
+        'px-6 py-3 font-semibold transition-colors',
+        buttonRoundness !== 'medium' ? `rounded-${buttonRoundness}` : 'rounded-md',
+        buttonColor !== 'primary' ? `bg-${buttonColor}` : 'bg-primary',
+        'text-white',
+        'hover:opacity-90',
+    ].filter(Boolean).join(' ');
 
-    const showPrimary = buttonLayout === "primary" || buttonLayout === "both";
-    const showSecondary = buttonLayout === "secondary" || buttonLayout === "both";
+    const secondaryButtonClass = [
+        'px-6 py-3 font-semibold transition-colors',
+        buttonRoundness !== 'medium' ? `rounded-${buttonRoundness}` : 'rounded-md',
+        'bg-transparent',
+        buttonColor !== 'primary' ? `border border-${buttonColor} text-${buttonColor}` : 'border border-primary text-primary',
+        'hover:opacity-90',
+    ].filter(Boolean).join(' ');
 
-    const layoutClasses = {
-        center: "text-center",
-        left: "text-left",
-        right: "text-right"
-    };
-
-    const buttonContainerClasses = {
-        center: "justify-center",
-        left: "justify-start",
-        right: "justify-end"
-    };
-
-    const buttonColorClasses = {
-        primary: cn("bg-primary text-primary-foreground hover:bg-primary/90"),
-        secondary: cn("bg-secondary text-secondary-foreground hover:bg-secondary/90"),
-        background: cn("bg-background text-foreground hover:bg-muted/50"),
-        foreground: cn("bg-foreground text-background hover:bg-foreground/90"),
-        muted: cn("bg-muted text-muted-foreground hover:bg-muted/50"),
-        accent: cn("bg-accent text-accent-foreground hover:bg-accent/90"),
-        border: cn("bg-border text-foreground hover:bg-border/90"),
-        card: cn("bg-card text-card-foreground hover:bg-card/90")
-    };
-
-    const secondaryButtonColorClasses = {
-        primary: cn("border-primary text-primary hover:bg-primary/10"),
-        secondary: cn("border-secondary text-secondary hover:bg-secondary/10"),
-        background: cn("border-background text-foreground hover:bg-background/10"),
-        foreground: cn("border-foreground text-foreground hover:bg-foreground/10"),
-        muted: cn("border-muted text-muted-foreground hover:bg-muted/10"),
-        accent: cn("border-accent text-accent-foreground hover:bg-accent/10"),
-        border: cn("border-border text-foreground hover:bg-border/10"),
-        card: cn("border-card text-card-foreground hover:bg-card/10")
-    };
+    // Button layout logic
+    const showPrimary = buttonLayout === 'primary' || buttonLayout === 'both';
+    const showSecondary = buttonLayout === 'secondary' || buttonLayout === 'both';
 
     return (
-        <section
-            className={getSpacingClass(spacing)}
-        >
-            <div
-                className={cn(
-                    "w-full",
-                    getBackgroundColorClass(backgroundColor),
-                    !detached && (getBorderWidthClass(borderWidth) || 'border-y'),
-                    !detached && getBorderColorClass(borderColor),
-                    getShadowClass(shadowSize)
-                )}
-            >
-                <div
-                    className={cn(
-                        "container md:py-24 py-16 mx-auto px-4 md:px-6",
-                        detached && getBorderWidthClass(borderWidth),
-                        detached && getBorderColorClass(borderColor),
-                        detached && getRoundnessClass(roundness),
-                        detached && getBackgroundColorClass(backgroundColor),
-                        detached && getShadowClass(shadowSize)
+        <section className={sectionClass}>
+            <div id="main-content" className={mainContentClass}>
+                <h2 className={headingClass}>{title}</h2>
+                <p className={subtitleClass}>{subtitle}</p>
+                <div className={`flex gap-4 mt-6 ${textAlign === 'center' ? 'justify-center' : textAlign === 'right' ? 'justify-end' : 'justify-start'}`}>
+                    {showPrimary && (
+                        <a href={primaryButtonLink} className={buttonBaseClass}>
+                            {primaryButtonText}
+                        </a>
                     )}
-                >
-                    <div className={cn(
-                        "max-w-4xl mx-auto",
-                        layoutClasses[layout as keyof typeof layoutClasses]
-                    )}>
-                        <h2
-                            className={cn(
-                                "text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight mb-4 md:mb-6",
-                                getTextColorClass(headingColor)
-                            )}
-                        >
-                            {title}
-                        </h2>
-
-                        <p
-                            className={cn(
-                                "text-lg md:text-xl mb-8 md:mb-10 max-w-2xl mx-auto",
-                                getTextColorClass(paragraphColor)
-                            )}
-                        >
-                            {subtitle}
-                        </p>
-
-                        <div className={cn(
-                            "flex flex-col sm:flex-row gap-4 sm:gap-6 items-center",
-                            buttonContainerClasses[layout as keyof typeof buttonContainerClasses]
-                        )}>
-                            {showPrimary && (
-                                <Link
-                                    href={primaryButtonLink}
-                                    className={cn(
-                                        "inline-flex h-12 md:h-14 items-center justify-center",
-                                        getRoundnessClass(buttonRoundness),
-                                        "px-8 md:px-10 py-3 text-base md:text-lg font-semibold shadow-lg",
-                                        "transition-all hover:shadow-xl hover:scale-105",
-                                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-                                        "w-full sm:w-auto",
-                                        buttonColorClasses[buttonColor as keyof typeof buttonColorClasses] || buttonColorClasses.primary
-                                    )}
-                                >
-                                    {primaryButtonText}
-                                </Link>
-                            )}
-
-                            {showSecondary && (
-                                <Link
-                                    href={secondaryButtonLink}
-                                    className={cn(
-                                        "inline-flex h-12 md:h-14 items-center justify-center",
-                                        getRoundnessClass(buttonRoundness),
-                                        "border-2 px-8 md:px-10 py-3 text-base md:text-lg font-semibold",
-                                        "transition-all hover:shadow-md",
-                                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-                                        "w-full sm:w-auto",
-                                        secondaryButtonColorClasses[buttonColor as keyof typeof secondaryButtonColorClasses] || secondaryButtonColorClasses.primary
-                                    )}
-                                >
-                                    {secondaryButtonText}
-                                </Link>
-                            )}
-                        </div>
-                    </div>
+                    {showSecondary && (
+                        <a href={secondaryButtonLink} className={secondaryButtonClass}>
+                            {secondaryButtonText}
+                        </a>
+                    )}
                 </div>
             </div>
         </section>
@@ -314,7 +183,7 @@ export const properties: BlockProperties = {
             name: "backgroundColor",
             label: "Background Color",
             description: "Choose the background color scheme",
-            options: backgroundThemeOptions,
+            options: themeColorOptions,
             defaultValue: "background"
         }, 
         headingColor: {
@@ -322,7 +191,7 @@ export const properties: BlockProperties = {
             name: "headingColor",
             label: "Heading Color",
             description: "Choose the heading color scheme",
-            options: backgroundThemeOptions,
+            options: themeColorOptions,
             defaultValue: "foreground"
         },
         paragraphColor: {
@@ -330,7 +199,7 @@ export const properties: BlockProperties = {
             name: "paragraphColor",
             label: "Paragraph Color",
             description: "Choose the paragraph color scheme",
-            options: backgroundThemeOptions,
+            options: themeColorOptions,
             defaultValue: "muted"
         },        
         buttonColor: {
@@ -338,7 +207,7 @@ export const properties: BlockProperties = {
             name: "buttonColor",
             label: "Button Color",
             description: "Choose the button color scheme",
-            options: backgroundThemeOptions,
+            options: themeColorOptions,
             defaultValue: "primary"
         },        
         borderColor: {
@@ -346,7 +215,7 @@ export const properties: BlockProperties = {
             name: "borderColor",
             label: "Border Color",
             description: "Choose the border color scheme",
-            options: backgroundThemeOptions,
+            options: themeColorOptions,
             defaultValue: "border"
         },        
         borderWidth: {
@@ -354,14 +223,10 @@ export const properties: BlockProperties = {
             name: "borderWidth",
             label: "Border Width",
             description: "Border width for the section",
-            options: [
-                { label: "None", value: "none" },
-                { label: "Small", value: "small" },
-                { label: "Large", value: "large" },
-                { label: "Extra Large", value: "extra-large" }
-            ],
+            options: borderWidthOptions,
             defaultValue: "none"
-        },        shadowSize: {
+        },        
+        shadowSize: {
             type: "select",
             name: "shadowSize",
             label: "Shadow Size",

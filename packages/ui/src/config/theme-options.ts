@@ -1,6 +1,6 @@
 import { BlockFieldConfig } from "@halogen/common/types";
 
-export const backgroundThemeOptions = [
+export const themeColorOptions = [
   { label: "Primary", value: "primary" },
   { label: "Primary Foreground", value: "primary-foreground" },
   { label: "Secondary", value: "secondary" },
@@ -32,29 +32,27 @@ export const backgroundTypeOptions = [
 
 export const roundnessOptions = [
   { label: "None", value: "none" },
-  { label: "Medium", value: "medium" },
-  { label: "Large", value: "large" },
-  { label: "Extra Large", value: "extra-large" },
+  { label: "Medium", value: "md" },
+  { label: "Large", value: "lg" },
+  { label: "Extra Large", value: "xl" },
   { label: "Full", value: "full" },
 ];
 
 export const borderWidthOptions = [
-  { label: "None", value: "none" },
-  { label: "Small", value: "small" },
-  { label: "Large", value: "large" },
-  { label: "Extra Large", value: "extra-large" },
+  { label: "None", value: "0" },
+  { label: "Thin", value: "1" },
+  { label: "Default", value: "2" },
+  { label: "Medium", value: "4" },
+  { label: "Thick", value: "8" },
 ];
-
-export const borderColorOptions = backgroundThemeOptions;
 
 export const shadowOptions = [
   { label: "None", value: "none" },
-  { label: "Small", value: "small" },
-  { label: "Large", value: "large" },
-  { label: "Extra Large", value: "extra-large" },
+  { label: "Small", value: "sm" },
+  { label: "Large", value: "lg" },
+  { label: "Extra Large", value: "xl" },
 ];
 
-export const shadowColorOptions = backgroundThemeOptions;
 
 export const themeOptions: Record<string, BlockFieldConfig> = {
   theme: {
@@ -62,7 +60,7 @@ export const themeOptions: Record<string, BlockFieldConfig> = {
     name: "theme",
     label: "Color Scheme",
     description: "Choose a color scheme for styling",
-    options: backgroundThemeOptions,
+    options: themeColorOptions,
     defaultValue: "background"
   },
   variant: {
@@ -97,7 +95,6 @@ export const themeOptions: Record<string, BlockFieldConfig> = {
   }
 };
 
-// Individual option exports for easier access
 export const backgroundColorOptions = themeOptions.backgroundColor;
 export const textColorOptions = themeOptions.textColor;
 
