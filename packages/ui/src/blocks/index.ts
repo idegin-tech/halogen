@@ -1,6 +1,5 @@
 import { BlockProperties } from '@halogen/common/types';
 import React from 'react';
-import blocksConfig from '../blocks.json';
 
 export interface BlockRegistryItem {
   component: React.ComponentType<unknown>;
@@ -21,6 +20,41 @@ function getComponentName(folderName: string, subFolder: string): string {
   const subFolderPascal = subFolder.charAt(0).toUpperCase() + subFolder.slice(1);
   return `${folderPascal}${subFolderPascal}`;
 }
+
+const blocksConfig: Record<string, BlockConfig[]> = {
+  header: [
+    {
+      name: "basic_header",
+      path: "header/basic_header",
+      displayName: "Basic Header",
+      description: "A responsive header with dropdown navigation, mobile menu, and customizable buttons",
+      hasThumbnail: false
+    },
+    {
+      name: "dynamic_header",
+      path: "header/dynamic_header",
+      displayName: "Dynamic Header",
+      description: "A dynamic header with navigation and user menu",
+      hasThumbnail: false
+    }
+  ],
+  test_run: [
+    {
+      name: "cta_section",
+      path: "test_run/cta_section",
+      displayName: "CTA Section",
+      description: "A call-to-action section with configurable content and alignment",
+      hasThumbnail: false
+    },
+    {
+      name: "blog_section",
+      path: "test_run/blog_section",
+      displayName: "Blog Section",
+      description: "A section to display blog posts with heading, subheading, and a show more button.",
+      hasThumbnail: false
+    }
+  ]
+};
 
 export async function getBlockProperties(folderName: string, subFolder: string): Promise<BlockProperties | null> {
   try {
@@ -45,7 +79,9 @@ export async function getBlockComponent(folderName: string, subFolder: string): 
                      module.BasicFooter ||
                      module.BasicHeader ||
                      module.DynamicHeader ||
-                     module.BasicAboutUs;
+                     module.BasicAboutUs ||
+                     module.BlogSection ||
+                     module.CTASection;
     
     return component as React.ComponentType<unknown> || null;
   } catch (err) {

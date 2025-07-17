@@ -30,8 +30,8 @@ export type BlockProperties = {
     contentFields: Record<string, BlockFieldConfig>;
     themeFields: Record<string, BlockFieldConfig>;
     layoutFields: Record<string, BlockFieldConfig>;
-    fields?: Record<string, BlockFieldConfig>; // Legacy support
-    theme?: Record<string, BlockFieldConfig> | null; // Legacy support
+    fields?: Record<string, BlockFieldConfig>; 
+    theme?: Record<string, BlockFieldConfig> | null; 
 }
 
 export type BlockInstance = {

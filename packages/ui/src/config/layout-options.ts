@@ -105,7 +105,7 @@ export const layoutOptions: Record<string, BlockFieldConfig> = {
 };
 
 // Individual option exports for easier access
-export const alignmentOptions = layoutOptions.alignment;
+// export const alignmentOptions = layoutOptions.alignment;
 export const paddingOptions = layoutOptions.padding;
 export const marginOptions = layoutOptions.margin;
 export const roundedCornerOptions = layoutOptions.roundedCorners;

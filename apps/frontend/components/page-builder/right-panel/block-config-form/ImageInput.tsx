@@ -330,7 +330,7 @@ export function ImageInput({
               <ImageIcon className="h-4 w-4" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-96 p-0 shadow-lg border border-border/60" align="end">
+          <PopoverContent className="w-96 p-0 shadow-lg border border-border/60 mt-20 mr-5" align="end">
             <div className="flex items-center justify-between border-b border-border/60 p-3">
               <h4 className="font-medium">Select an image</h4>
               <Button variant="ghost" size="icon" onClick={() => setOpen(false)} className="h-7 w-7">

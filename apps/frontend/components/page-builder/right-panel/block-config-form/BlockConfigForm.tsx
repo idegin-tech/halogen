@@ -44,7 +44,7 @@ export default function BlockConfigForm() {
   const [localFormState, setLocalFormState] = useState<Record<string, any>>({});
   const [localListItemsState, setLocalListItemsState] = useState<Record<string, Record<number, Record<string, any>>>>({});
 
-  // Helper component for field labels with tooltips
+
   const FieldLabel = ({ label, description, htmlFor }: { label: string; description?: string; htmlFor?: string }) => (
     <div className="flex items-center gap-1.5">
       <label htmlFor={htmlFor} className="text-sm font-medium text-muted-foreground">
@@ -236,7 +236,9 @@ export default function BlockConfigForm() {
     });
 
     updateBuilderState({ blocks: updatedBlocks });
-  };  const handleFieldChange = (fieldName: string, value: any) => {
+  }; 
+  
+  const handleFieldChange = (fieldName: string, value: any) => {
     if (!selectedBlock) return;
 
     console.log(`🔄 handleFieldChange: ${fieldName} = ${value}`);
@@ -296,7 +298,9 @@ export default function BlockConfigForm() {
       setActiveListItem(null);
       setIsPopoverOpen(false);
     }
-  }; const renderListItemForm = (fieldName: string, listConfig: BlockFieldConfig, itemIndex: number) => {
+  }; 
+  
+  const renderListItemForm = (fieldName: string, listConfig: BlockFieldConfig, itemIndex: number) => {
     if (!selectedBlock) return null;
 
     const effectiveValues = getEffectiveValues();
@@ -304,7 +308,6 @@ export default function BlockConfigForm() {
     const itemValue = listValue[itemIndex] || {};
     const listItemConfig = listConfig.value as BlockConfigListValue;
 
-    // Add defensive checks for listItemConfig
     if (!listItemConfig || typeof listItemConfig !== 'object') {
       return (
         <div className="p-4 text-center text-muted-foreground">
@@ -314,7 +317,6 @@ export default function BlockConfigForm() {
     }
 
     const renderFieldSection = (sectionName: string, fields: Record<string, BlockFieldConfig>, icon: React.ReactNode) => {
-      // Add defensive check for fields
       if (!fields || typeof fields !== 'object') return null;
       const fieldEntries = Object.entries(fields);
       if (fieldEntries.length === 0) return null;
@@ -347,8 +349,8 @@ export default function BlockConfigForm() {
     };
 
     return (
-      <div className="space-y-4 py-3 w-full px-2 pb-8">
-        <div className="flex items-center justify-between mb-1">
+      <div className="w-full pb-8">
+        <div className="flex items-center justify-between mb-1 py-2 px-3 sticky top-0 bg-background z-10">
           <h4 className="font-medium text-lg flex items-center gap-2">
             <Settings className="h-4 w-4 text-muted-foreground" />
             Edit Item {itemIndex + 1}
@@ -361,9 +363,10 @@ export default function BlockConfigForm() {
           >
             <Trash2 className="h-4 w-4" />
           </Button>
-        </div>        <Separator className="my-2" />
+        </div>        
+        <Separator className="my-2" />
 
-        <Accordion type="multiple" defaultValue={['content', 'theme', 'layout']}>
+        <Accordion type="multiple" defaultValue={['content', 'theme', 'layout']} className='px-2'>
           {renderFieldSection('content', listItemConfig.contentFields || {}, <FileText className="h-4 w-4" />)}
           {renderFieldSection('theme', listItemConfig.themeFields || {}, <Palette className="h-4 w-4" />)}
           {renderFieldSection('layout', listItemConfig.layoutFields || {}, <Layout className="h-4 w-4" />)}
@@ -453,7 +456,7 @@ export default function BlockConfigForm() {
               onChange={(value) => updateLocalListItemValue(fieldName, itemIndex, itemFieldName, value)}
               onBlur={() => commitListItemChange(fieldName, itemIndex, itemFieldName)}
               placeholder={itemField.placeholder || `Enter image URL or select from project`}
-              description={itemField.description}            />          </div>        );
+              description={itemField.description} />          </div>);
 
       case 'single_toggle':
         return (
@@ -470,8 +473,8 @@ export default function BlockConfigForm() {
               className="justify-start"
             >
               {itemField.options?.map((option: any) => (
-                <ToggleGroupItem 
-                  key={option.value} 
+                <ToggleGroupItem
+                  key={option.value}
                   value={option.value}
                   className="data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
                 >
@@ -483,7 +486,7 @@ export default function BlockConfigForm() {
               <p className="text-xs text-muted-foreground">{itemField.description}</p>
             )}
           </div>
-        );      case 'multi_toggle':
+        ); case 'multi_toggle':
         return (
           <div className="grid gap-1.5">
             <label htmlFor={`${fieldName}-${itemIndex}-${itemFieldName}`} className="text-sm font-medium text-muted-foreground">
@@ -500,8 +503,8 @@ export default function BlockConfigForm() {
               className="justify-start gap-1 w-full"
             >
               {itemField.options?.map((option: any) => (
-                <ToggleGroupItem 
-                  key={option.value} 
+                <ToggleGroupItem
+                  key={option.value}
                   value={option.value}
                   className="flex-1 min-w-0 px-3 py-2 text-xs font-medium transition-all duration-200 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-sm hover:bg-muted/50 border-muted-foreground/20 data-[state=on]:border-primary"
                 >
@@ -513,11 +516,11 @@ export default function BlockConfigForm() {
               <p className="text-xs text-muted-foreground">{itemField.description}</p>
             )}
           </div>
-        );default:
+        ); default:
         return (
           <div className="grid gap-1.5">
-            <FieldLabel 
-              label={itemField.label} 
+            <FieldLabel
+              label={itemField.label}
               description={itemField.description}
               htmlFor={`${fieldName}-${itemIndex}-${itemFieldName}`}
             />
@@ -546,7 +549,6 @@ export default function BlockConfigForm() {
       const listConfig = field.value as BlockConfigListValue;
       const listItems = value || [];
 
-      // Add defensive check for listConfig
       if (!listConfig || typeof listConfig !== 'object') {
         return (
           <div className="space-y-3 bg-muted/30 p-4 rounded-lg border border-muted">
@@ -648,7 +650,7 @@ export default function BlockConfigForm() {
                     </Card>
                   </PopoverTrigger>
                   <PopoverContent
-                    className="w-80 p-0 shadow-lg"
+                    className="w-[23rem] mt-16 p-0 shadow-lg mr-5 max-h-[80vh] overflow-y-auto"
                     align="end"
                     sideOffset={40}
                     alignOffset={-40}
@@ -664,7 +666,8 @@ export default function BlockConfigForm() {
       );
     }
 
-    switch (field.type) {      case 'text':
+    switch (field.type) {
+      case 'text':
         return (
           <div className="grid gap-1.5">
             <FieldLabel label={field.label} description={field.description} />
@@ -681,7 +684,8 @@ export default function BlockConfigForm() {
               className="w-full"
             />
           </div>
-        );      case 'textarea':
+        );
+      case 'textarea':
         return (
           <div className="grid gap-1.5">
             <FieldLabel label={field.label} description={field.description} />
@@ -693,7 +697,8 @@ export default function BlockConfigForm() {
               className="w-full min-h-[100px] resize-none"
             />
           </div>
-        );      case 'select':
+        );
+      case 'select':
         return (
           <div className="grid gap-1.5">
             <FieldLabel label={field.label} description={field.description} />
@@ -713,7 +718,8 @@ export default function BlockConfigForm() {
               </SelectContent>
             </Select>
           </div>
-        );      case 'checkbox':
+        );
+      case 'checkbox':
         return (
           <div className="flex items-start space-x-3 bg-muted/30 hover:bg-muted/50 p-3 rounded-lg transition-colors border border-border">
             <div className="pt-0.5">
@@ -745,7 +751,8 @@ export default function BlockConfigForm() {
               </div>
             </div>
           </div>
-        );      case 'switch':
+        );
+      case 'switch':
         return (
           <div className="flex items-center justify-between bg-muted/30 hover:bg-muted/50 p-3 rounded-lg transition-colors border border-border">
             <div className="space-y-0.5">
@@ -776,7 +783,8 @@ export default function BlockConfigForm() {
               />
             </div>
           </div>
-        );      case 'single_toggle':
+        );
+      case 'single_toggle':
         return (
           <div className="grid gap-1.5">
             <FieldLabel label={field.label} description={field.description} />
@@ -787,8 +795,8 @@ export default function BlockConfigForm() {
               className="justify-start"
             >
               {field.options?.map((option: any) => (
-                <ToggleGroupItem 
-                  key={option.value} 
+                <ToggleGroupItem
+                  key={option.value}
                   value={option.value}
                   className="data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
                 >
@@ -797,7 +805,7 @@ export default function BlockConfigForm() {
               ))}
             </ToggleGroup>
           </div>
-        );      case 'multi_toggle':
+        ); case 'multi_toggle':
         return (
           <div className="grid gap-1.5">
             <FieldLabel label={field.label} description={field.description} />
@@ -810,8 +818,8 @@ export default function BlockConfigForm() {
               className="justify-start gap-1 w-full"
             >
               {field.options?.map((option: any) => (
-                <ToggleGroupItem 
-                  key={option.value} 
+                <ToggleGroupItem
+                  key={option.value}
                   value={option.value}
                   className="flex-1 min-w-0 px-3 py-2 text-xs font-medium transition-all duration-200 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-sm hover:bg-muted/50 border-muted-foreground/20 data-[state=on]:border-primary"
                 >
@@ -820,7 +828,8 @@ export default function BlockConfigForm() {
               ))}
             </ToggleGroup>
           </div>
-        );case 'url':
+        );
+      case 'url':
         return (
           <div className="grid gap-1.5">
             <FieldLabel label={field.label} description={field.description} />
@@ -838,7 +847,7 @@ export default function BlockConfigForm() {
               className="w-full"
             />
           </div>
-        );case 'image':
+        ); case 'image':
         return (
           <ImageInput
             label={field.label}
@@ -849,7 +858,8 @@ export default function BlockConfigForm() {
             description={field.description}
             fieldName={fieldName}
           />
-        );      case 'color':
+        );
+      case 'color':
         return (
           <div className="grid gap-1.5">
             <FieldLabel label={field.label} description={field.description} />
@@ -877,7 +887,8 @@ export default function BlockConfigForm() {
               />
             </div>
           </div>
-        );      default:
+        );
+      default:
         return (
           <div className="grid gap-1.5">
             <FieldLabel label={field.label} description={field.description} />

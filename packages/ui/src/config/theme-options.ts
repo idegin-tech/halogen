@@ -38,6 +38,13 @@ export const roundnessOptions = [
   { label: "Full", value: "full" },
 ];
 
+export const alignmentOptions = [
+  { label: "Left", value: "left" },
+  { label: "Center", value: "center" },
+  { label: "Right", value: "right" },
+  { label: "Justify", value: "justify" }
+];
+
 export const borderWidthOptions = [
   { label: "None", value: "0" },
   { label: "Thin", value: "1" },
@@ -94,9 +101,6 @@ export const themeOptions: Record<string, BlockFieldConfig> = {
     defaultValue: "#000000"
   }
 };
-
-export const backgroundColorOptions = themeOptions.backgroundColor;
-export const textColorOptions = themeOptions.textColor;
 
 export const gradientOptions: Record<string, BlockFieldConfig> = {
   gradient: {

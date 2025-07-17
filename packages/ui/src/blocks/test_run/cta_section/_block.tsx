@@ -1,5 +1,5 @@
 import { BlockProperties } from "@halogen/common/types";
-import { themeColorOptions, blockSpacingValue, borderWidthOptions, roundnessOptions, shadowOptions } from '../../../config';
+import { themeColorOptions, blockSpacingValue, borderWidthOptions, roundnessOptions, shadowOptions, alignmentOptions } from '../../../config';
 
 
 
@@ -101,7 +101,6 @@ export function CTASection(fields: Record<string, unknown>) {
         'hover:opacity-90',
     ].filter(Boolean).join(' ');
 
-    // Button layout logic
     const showPrimary = buttonLayout === 'primary' || buttonLayout === 'both';
     const showSecondary = buttonLayout === 'secondary' || buttonLayout === 'both';
 
@@ -268,13 +267,9 @@ export const properties: BlockProperties = {
         layout: {
             type: "select",
             name: "layout",
-            label: "Text Alignment",
+            label: "Content Alignment",
             description: "How to align the content",
-            options: [
-                { label: "Center", value: "center" },
-                { label: "Left", value: "left" },
-                { label: "Right", value: "right" }
-            ],
+            options: alignmentOptions,
             defaultValue: "center"
         },        
         buttonLayout: {

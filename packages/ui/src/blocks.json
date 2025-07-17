@@ -17,6 +17,13 @@
   ],
   "test_run": [
     {
+      "name": "blog_section",
+      "path": "test_run/blog_section",
+      "displayName": "Blog Section",
+      "description": "A section to display blog posts with heading, subheading, and a show more button.",
+      "hasThumbnail": false
+    },
+    {
       "name": "cta_section",
       "path": "test_run/cta_section",
       "displayName": "CTA Section",

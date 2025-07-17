@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import Link from "next/link"
 import { BlockProperties } from "@halogen/common/types"
-import { backgroundThemeOptions, roundnessOptions } from '../../../config'
+import { roundnessOptions, themeColorOptions } from '../../../config'
 import { cn } from '../../../utils/classNames'
 
 interface ColorVariables {
@@ -441,7 +441,7 @@ export const properties: BlockProperties = {
             name: "backgroundColor",
             label: "Background Color",
             description: "Choose the background color scheme",
-            options: backgroundThemeOptions,
+            options: themeColorOptions,
             defaultValue: "background"
         },
         textColor: {
@@ -449,7 +449,7 @@ export const properties: BlockProperties = {
             name: "textColor",
             label: "Text Color",
             description: "Choose the text color scheme",
-            options: backgroundThemeOptions,
+            options: themeColorOptions,
             defaultValue: "foreground"
         },
         buttonColor: {
@@ -457,7 +457,7 @@ export const properties: BlockProperties = {
             name: "buttonColor",
             label: "Button Color",
             description: "Choose the button color scheme",
-            options: backgroundThemeOptions,
+            options: themeColorOptions,
             defaultValue: "primary"
         }
     },    layoutFields: {
